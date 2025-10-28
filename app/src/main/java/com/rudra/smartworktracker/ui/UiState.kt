@@ -7,7 +7,8 @@ import java.util.Date
 data class DashboardUiState(
     val todayWorkType: WorkType? = null,
     val monthlyStats: MonthlyStats = MonthlyStats(),
-    val recentActivities: List<WorkLogUi> = emptyList()
+    val recentActivities: List<WorkLogUi> = emptyList(),
+    val mealCount: Int = 0
 )
 
 data class MonthlyStats(

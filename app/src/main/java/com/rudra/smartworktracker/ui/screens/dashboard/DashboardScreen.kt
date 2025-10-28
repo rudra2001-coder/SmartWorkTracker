@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,6 +83,14 @@ fun DashboardScreen(
                             viewModel.updateTodayWorkType(workType)
                         }
                     }
+                )
+            }
+
+            // Meal Count Card
+            item {
+                MealCountCard(
+                    mealCount = uiState.mealCount,
+                    onAddMeal = { viewModel.addMeal() }
                 )
             }
 
@@ -214,6 +223,42 @@ fun TodayStatusCard(
         }
     }
 }
+
+@Composable
+fun MealCountCard(mealCount: Int, onAddMeal: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Today's Meals",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$mealCount meals recorded",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Button(onClick = onAddMeal) {
+                Icon(Icons.Outlined.Restaurant, contentDescription = "Add Meal")
+            }
+        }
+    }
+}
+
 
 @Composable
 fun RowScope.AnimatedWorkTypeButton(
@@ -358,7 +403,7 @@ fun MonthlyStatsCard(stats: MonthlyStats) {
 
 @Composable
 fun AnimatedStatItem(value: Int, label: String, color: Color, visible: Boolean, delay: Int) {
-    var currentValue by remember { mutableStateOf(0) }
+    var currentValue by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(visible, value) {
         if (visible) {
@@ -586,7 +631,7 @@ fun AnimatedWifiBar(progress: Float, targetHeight: Float, color: Color) {
 
 @Composable
 fun OffDayAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "offday_animation")
+    val infiniteTransition = rememberInfiniteTransition(label = "Off_day_animation")
     val sunRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,

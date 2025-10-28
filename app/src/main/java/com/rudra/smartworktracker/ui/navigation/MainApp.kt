@@ -1,7 +1,6 @@
 package com.rudra.smartworktracker.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,22 +15,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.accompanist.navigation.animation.AnimatedNavHost
-import com.google.accompanist.navigation.animation.composable
-import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
 import com.rudra.smartworktracker.ui.screens.dashboard.DashboardScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MainApp() {
-    val navController = rememberAnimatedNavController()
+    val navController = rememberNavController()
 
     Scaffold(
         bottomBar = {
@@ -41,25 +39,17 @@ fun MainApp() {
             )
         }
     ) { paddingValues ->
-        AnimatedNavHost(
+        NavHost(
             navController = navController,
             startDestination = NavigationItem.Dashboard.route,
             modifier = Modifier.padding(paddingValues)
         ) {
             composable(
                 route = NavigationItem.Dashboard.route,
-                enterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(500)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(500)
-                    )
-                }
+                enterTransition = { defaultEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { defaultPopExitTransition() }
             ) {
                 DashboardScreen(
                     onNavigateToCalendar = {
@@ -70,66 +60,60 @@ fun MainApp() {
 
             composable(
                 route = NavigationItem.Calendar.route,
-                enterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(500)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(500)
-                    )
-                }
+                enterTransition = { defaultEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { defaultPopExitTransition() }
             ) {
-                CalendarScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                CalendarScreen(onNavigateBack = { navController.popBackStack() })
             }
 
             composable(
                 route = NavigationItem.Analytics.route,
-                enterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(500)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(500)
-                    )
-                }
+                enterTransition = { defaultEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { defaultPopExitTransition() }
             ) {
-                AnalyticsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                AnalyticsScreen(onNavigateBack = { navController.popBackStack() })
             }
 
             composable(
                 route = NavigationItem.Settings.route,
-                enterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(500)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(500)
-                    )
-                }
+                enterTransition = { defaultEnterTransition() },
+                exitTransition = { defaultExitTransition() },
+                popEnterTransition = { defaultPopEnterTransition() },
+                popExitTransition = { defaultPopExitTransition() }
             ) {
-                SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                SettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }
 }
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.defaultEnterTransition() =
+    slideIntoContainer(
+        AnimatedContentTransitionScope.SlideDirection.Left,
+        animationSpec = tween(400)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.defaultExitTransition() =
+    slideOutOfContainer(
+        AnimatedContentTransitionScope.SlideDirection.Left,
+        animationSpec = tween(400)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.defaultPopEnterTransition() =
+    slideIntoContainer(
+        AnimatedContentTransitionScope.SlideDirection.Right,
+        animationSpec = tween(400)
+    )
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.defaultPopExitTransition() =
+    slideOutOfContainer(
+        AnimatedContentTransitionScope.SlideDirection.Right,
+        animationSpec = tween(400)
+    )
 
 @Composable
 fun AppBottomNavigation(
@@ -141,6 +125,7 @@ fun AppBottomNavigation(
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.Settings
+
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -149,7 +134,8 @@ fun AppBottomNavigation(
     NavigationBar(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface
-    ) { navigationItems.forEach { item ->
+    ) {
+        navigationItems.forEach { item ->
             NavigationBarItem(
                 icon = {
                     Icon(

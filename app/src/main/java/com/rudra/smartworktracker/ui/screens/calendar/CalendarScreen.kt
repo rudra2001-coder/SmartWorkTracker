@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rudra.smartworktracker.data.entity.WorkType
@@ -36,6 +37,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
     ExperimentalAnimationApi::class
@@ -330,7 +332,9 @@ fun AnimatedMonthCalendar(
                                 )
                             } else {
                                 // Empty day
-                                Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
+                                Spacer(modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f))
                             }
                         }
                     }

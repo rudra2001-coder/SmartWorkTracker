@@ -2,8 +2,10 @@ package com.rudra.smartworktracker.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudra.smartworktracker.data.entity.Meal
 import com.rudra.smartworktracker.data.entity.WorkLog
 import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.data.repository.MealRepository
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -19,7 +21,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: WorkLogRepository
+    private val workLogRepository: WorkLogRepository,
+    private val mealRepository: MealRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -32,10 +35,11 @@ class DashboardViewModel @Inject constructor(
     private fun loadDashboardData() {
         viewModelScope.launch {
             combine(
-                repository.getTodayWorkLog(),
-                repository.getMonthlyStats(),
-                repository.getRecentActivities()
-            ) { todayWorkLog, monthlyStats, recentActivities ->
+                workLogRepository.getTodayWorkLog(),
+                workLogRepository.getMonthlyStats(),
+                workLogRepository.getRecentActivities(),
+                mealRepository.getAllMeals()
+            ) { todayWorkLog, monthlyStats, recentActivities, meals ->
                 DashboardUiState(
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
@@ -50,7 +54,8 @@ class DashboardViewModel @Inject constructor(
                             startTime = it.startTime,
                             endTime = it.endTime
                         )
-                    }
+                    },
+                    mealCount = meals.size
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -67,7 +72,14 @@ class DashboardViewModel @Inject constructor(
                 startTime = "09:00", // Default start time
                 endTime = "17:00"   // Default end time
             )
-            repository.insertWorkLog(workLog)
+            workLogRepository.insertWorkLog(workLog)
+        }
+    }
+
+    fun addMeal() {
+        viewModelScope.launch {
+            val meal = Meal(date = Date(), mealCount = 1)
+            mealRepository.insertMeal(meal)
         }
     }
 }
