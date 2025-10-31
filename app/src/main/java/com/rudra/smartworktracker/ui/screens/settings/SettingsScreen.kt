@@ -2,8 +2,10 @@ package com.rudra.smartworktracker.ui.screens.settings
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -18,18 +20,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.rudra.smartworktracker.di.DatabaseModule
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    navController: NavController? = null,
-    viewModel: SettingsViewModel = hiltViewModel()
+    navController: NavController? = null
 ) {
+    val context = LocalContext.current
+    val viewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.factory(DatabaseModule.provideDatabase(context), context)
+    )
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -68,7 +78,7 @@ fun SettingsScreen(
                 ) {
                     ProfileSection(
                         userName = "Rudra",
-                        userEmail = "rudra@example.com",
+                        userEmail = "rudra@mahmudulhasanrudra.com",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -266,6 +276,31 @@ fun SettingsScreen(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    val context = LocalContext.current
+    val mockViewModel = SettingsViewModel.factory(DatabaseModule.provideDatabase(context), context)
+    SettingsScreen(
+        onNavigateBack = {},
+        navController = null
+    )
+}
+
+open class SettingsViewModelFake : ViewModel() {
+    open val uiState = MutableStateFlow(SettingsUiState())
+    fun toggleNotifications(enabled: Boolean) {}
+    fun toggleDarkTheme(enabled: Boolean) {}
+    fun toggleVibration(enabled: Boolean) {}
+    fun backupData() {}
+    fun restoreData() {}
+    fun showClearDataDialog() {}
+    fun hideClearDataDialog() {}
+    fun clearAllData() {}
+    fun openHelp() {}
+    fun openAbout() {}
+}
+
 @Composable
 fun ProfileSection(
     userName: String,
@@ -398,6 +433,8 @@ fun SettingItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = LocalIndication.current,
                 enabled = onClick != null,
                 onClick = { onClick?.invoke() }
             ),

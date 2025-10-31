@@ -18,11 +18,13 @@ data class MonthlyStats(
     val extraHours: Double = 0.0
 )
 
+
 data class CalendarUiState(
     val selectedDate: LocalDate? = null,
-    val workLogs: List<WorkLogUi> = emptyList()
+    val workLogs: List<WorkLogUi> = emptyList(),
+    val errorMessage: String? = null,
+    val isLoading: Boolean = false
 )
-
 data class WorkLogUi(
     val id: Long,
     val date: Date,

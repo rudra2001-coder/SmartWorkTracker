@@ -10,6 +10,6 @@ data class WorkLog(
     val id: Long = 0,
     val date: Date,
     val workType: WorkType,
-    val startTime: String,
-    val endTime: String
+    val startTime: String?,
+    val endTime: String?
 )

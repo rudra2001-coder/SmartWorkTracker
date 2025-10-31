@@ -1,8 +1,24 @@
 package com.rudra.smartworktracker.ui.screens.calendar
 
-import androidx.compose.animation.*
+import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,7 +29,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -25,30 +40,46 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.dao.WorkLogDao
+import com.rudra.smartworktracker.data.entity.WorkLog
 import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.data.repository.WorkLogRepository
+import com.rudra.smartworktracker.di.DatabaseModule
 import com.rudra.smartworktracker.ui.WorkLogUi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalFoundationApi::class,
     ExperimentalAnimationApi::class
 )
 @Composable
 fun CalendarScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: CalendarViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val viewModel: CalendarViewModel = viewModel(
+        factory = CalendarViewModel.factory(DatabaseModule.provideDatabase(context))
+    )
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState(initialPage = Int.MAX_VALUE / 2, pageCount = { Int.MAX_VALUE })
+
+    // Fixed pager state initialization
+    val pagerState = rememberPagerState(
+        initialPage = Int.MAX_VALUE / 2,
+        pageCount = { Int.MAX_VALUE }
+    )
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
@@ -176,7 +207,9 @@ fun CalendarScreen(
                 uiState.selectedDate?.let { selectedDate ->
                     SelectedDateDetails(
                         selectedDate = selectedDate,
-                        workLog = uiState.workLogs.find { it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == selectedDate },
+                        workLog = uiState.workLogs.find {
+                            it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == selectedDate
+                        },
                         onWorkTypeChange = { workType ->
                             viewModel.markDateWithWorkType(selectedDate, workType)
                         },
@@ -225,10 +258,12 @@ fun MonthNavigationHeader(
             transitionSpec = {
                 if (targetState > initialState) {
                     (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> -width } + fadeOut())
+                        slideOutHorizontally { width -> -width } + fadeOut()
+                    )
                 } else {
                     (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> width } + fadeOut())
+                        slideOutHorizontally { width -> width } + fadeOut()
+                    )
                 }.using(
                     SizeTransform(clip = false)
                 )
@@ -320,7 +355,9 @@ fun AnimatedMonthCalendar(
 
                             if (dayNumber in 1..daysInMonth) {
                                 val date = month.atDay(dayNumber)
-                                val workLog = workLogs.find { it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date }
+                                val workLog = workLogs.find {
+                                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
+                                }
 
                                 AnimatedCalendarDay(
                                     dayNumber = dayNumber,
@@ -388,7 +425,8 @@ fun AnimatedCalendarDay(
             )
             .background(backgroundColor, CircleShape)
             .clip(CircleShape)
-            .clickable { onClick() }
+            // FIXED: Proper clickable modifier usage
+            .clickable(onClick = onClick)
             .graphicsLayer {
                 scaleX = selectionScale
                 scaleY = selectionScale
@@ -542,7 +580,7 @@ fun SelectedDateDetails(
 }
 
 @Composable
-fun RowScope.WorkTypeSelectionButton(
+private fun WorkTypeSelectionButton(
     workType: WorkType,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
@@ -601,4 +639,27 @@ fun RowScope.WorkTypeSelectionButton(
             )
         }
     }
+}
+
+@SuppressLint("ViewModelConstructorInComposable")
+@Preview
+@Composable
+fun CalendarScreenPreview() {
+    val fakeDao = object : WorkLogDao {
+        override fun getAllWorkLogs(): Flow<List<WorkLog>> = flowOf(emptyList())
+        override suspend fun insertWorkLog(workLog: WorkLog) {}
+        override suspend fun getWorkLogByDate(date: java.util.Date): WorkLog? = null
+        override suspend fun countByType(monthYear: String, workType: WorkType): Int = 0
+        override suspend fun getTotalExtraHours(monthYear: String, workType: WorkType): Double = 0.0
+        override suspend fun clearAll() {}
+        override suspend fun deleteWorkLog(workLog: WorkLog) {}
+        override suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog> = emptyList()
+    }
+    val fakeRepository = WorkLogRepository(fakeDao)
+
+    val viewModel = CalendarViewModel(fakeRepository)
+
+    CalendarScreen(
+        onNavigateBack = {}
+    )
 }

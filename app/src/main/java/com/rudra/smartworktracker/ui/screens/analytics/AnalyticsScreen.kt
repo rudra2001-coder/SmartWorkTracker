@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,12 +29,14 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.di.DatabaseModule
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.YearMonth
@@ -43,9 +46,12 @@ import kotlin.math.*
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AnalyticsScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: AnalyticsViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val viewModel: AnalyticsViewModel = viewModel(
+        factory = AnalyticsViewModel.factory(DatabaseModule.provideDatabase(context))
+    )
     val uiState by viewModel.uiState.collectAsState()
 
     // Remove HorizontalPager for now to fix compilation
@@ -505,7 +511,7 @@ fun CustomLineChart(
     }
 }
 
-// REMOVE @Composable from these private Canvas functions - they are not composables!
+// REMOVE @Composable from these private Canvas functions - they are not composable!
 private fun DrawScope.drawGridLines(
     padding: Float,
     chartWidth: Float,

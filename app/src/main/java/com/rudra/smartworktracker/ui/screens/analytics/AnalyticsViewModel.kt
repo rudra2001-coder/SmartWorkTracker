@@ -1,21 +1,18 @@
 package com.rudra.smartworktracker.ui.screens.analytics
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.YearMonth
-import javax.inject.Inject
 
-@HiltViewModel
-class AnalyticsViewModel @Inject constructor(
-    private val repository: WorkLogRepository
-) : ViewModel() {
-    
+class AnalyticsViewModel(private val repository: WorkLogRepository) : ViewModel() {
+
     private val _analyticsData = MutableStateFlow(AnalyticsData())
-    
+
     val uiState: StateFlow<AnalyticsUiState> = _analyticsData.map { analyticsData ->
         AnalyticsUiState(analyticsData = analyticsData)
     }.stateIn(
@@ -23,11 +20,11 @@ class AnalyticsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = AnalyticsUiState()
     )
-    
+
     init {
         loadAnalyticsForMonth(YearMonth.now())
     }
-    
+
     fun loadAnalyticsForMonth(month: YearMonth) {
         viewModelScope.launch {
             // Simulate analytics calculation
@@ -43,8 +40,23 @@ class AnalyticsViewModel @Inject constructor(
                 averageHours = 8.5,
                 productivityScore = 78
             )
-            
+
             _analyticsData.value = analyticsData
+        }
+    }
+
+    companion object {
+        fun factory(appDatabase: AppDatabase): ViewModelProvider.Factory {
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    if (modelClass.isAssignableFrom(AnalyticsViewModel::class.java)) {
+                        val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
+                        return AnalyticsViewModel(workLogRepository) as T
+                    }
+                    throw IllegalArgumentException("Unknown ViewModel class")
+                }
+            }
         }
     }
 }

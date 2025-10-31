@@ -1,48 +1,75 @@
 package com.rudra.smartworktracker.ui.screens.settings
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.rudra.smartworktracker.data.repository.WorkLogRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.repository.SettingsRepository
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    private val repository: WorkLogRepository
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+open class SettingsViewModel(
+    private val repository: SettingsRepository
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(SettingsUiState())
-    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+    open val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    init {
+        loadSettings()
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch {
+            repository.getSettings().collect { settings ->
+                _uiState.value = _uiState.value.copy(
+                    notificationsEnabled = settings.notificationsEnabled,
+                    darkThemeEnabled = settings.darkThemeEnabled,
+                    vibrationEnabled = settings.vibrationEnabled
+                )
+            }
+        }
+    }
 
     fun toggleNotifications(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(notificationsEnabled = enabled)
-        // Save to preferences
+        updateSettings(_uiState.value.copy(notificationsEnabled = enabled))
     }
 
     fun toggleDarkTheme(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(darkThemeEnabled = enabled)
-        // Save to preferences and apply theme
+        updateSettings(_uiState.value.copy(darkThemeEnabled = enabled))
     }
 
     fun toggleVibration(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(vibrationEnabled = enabled)
-        // Save to preferences
+        updateSettings(_uiState.value.copy(vibrationEnabled = enabled))
+    }
+
+    private fun updateSettings(newState: SettingsUiState) {
+        _uiState.value = newState
+        viewModelScope.launch {
+            repository.saveSettings(
+                notificationsEnabled = newState.notificationsEnabled,
+                darkThemeEnabled = newState.darkThemeEnabled,
+                vibrationEnabled = newState.vibrationEnabled
+            )
+        }
     }
 
     fun backupData() {
         viewModelScope.launch {
-            // Implement backup logic
+            repository.backupData()
             _uiState.value = _uiState.value.copy(showBackupSuccess = true)
         }
     }
 
     fun restoreData() {
         viewModelScope.launch {
-            // Implement restore logic
+            repository.restoreData()
             _uiState.value = _uiState.value.copy(showRestoreSuccess = true)
         }
     }
@@ -63,11 +90,36 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun openHelp() {
-        // Navigate to help screen or open documentation
+        // Navigation handled by UI
     }
 
     fun openAbout() {
-        // Navigate to about screen
+        // Navigation handled by UI
+    }
+
+    fun resetSuccessFlags() {
+        _uiState.value = _uiState.value.copy(
+            showBackupSuccess = false,
+            showRestoreSuccess = false,
+            showClearDataSuccess = false
+        )
+    }
+
+    companion object {
+        fun factory(appDatabase: AppDatabase, context: Context): ViewModelProvider.Factory {
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
+                        val settingsRepository = SettingsRepository(
+                            context.dataStore, appDatabase.workLogDao()
+                        )
+                        return SettingsViewModel(settingsRepository) as T
+                    }
+                    throw IllegalArgumentException("Unknown ViewModel class")
+                }
+            }
+        }
     }
 }
 

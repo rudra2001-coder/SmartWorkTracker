@@ -20,11 +20,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.di.DatabaseModule
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.delay
@@ -36,8 +38,11 @@ import kotlin.math.sin
 @Composable
 fun DashboardScreen(
     onNavigateToCalendar: () -> Unit,
-    viewModel: DashboardViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val viewModel: DashboardViewModel = viewModel(
+        factory = DashboardViewModel.factory(DatabaseModule.provideDatabase(context))
+    )
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
