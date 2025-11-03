@@ -94,7 +94,10 @@ dependencies {
     // Charts
     implementation(libs.compose)
     implementation(libs.compose.m3)
+    implementation("co.yml:ycharts:2.1.0")
 
+
+    implementation("com.google.code.gson:gson:2.11.0")
     // DateTime
     implementation(libs.kotlinx.datetime)
 
