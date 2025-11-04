@@ -8,11 +8,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,11 +36,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
+import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
 import com.rudra.smartworktracker.ui.screens.dashboard.DashboardScreen
+import com.rudra.smartworktracker.ui.screens.expense.ExpenseScreen
+import com.rudra.smartworktracker.ui.screens.focus.FocusScreen
+import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
+import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
+import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
+import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
+import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -47,10 +65,19 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
+        NavigationItem.Journal,
+        NavigationItem.WorkTimer,
+        NavigationItem.Focus,
+        NavigationItem.MindfulBreak,
+        NavigationItem.Habit,
+        NavigationItem.Expense,
+        NavigationItem.Health,
+        NavigationItem.Achievements,
+        NavigationItem.Wisdom,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
-        NavigationItem.Settings,
-        NavigationItem.MonthlyReport
+        NavigationItem.MonthlyReport,
+        NavigationItem.Settings
     )
 
     ModalNavigationDrawer(
@@ -161,6 +188,96 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     MonthlyReportScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.WorkTimer.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    WorkTimerScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Expense.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    ExpenseScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Health.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    HealthMetricsScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Focus.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    FocusScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Habit.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    HabitScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Achievements.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AchievementsScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Journal.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    DailyJournalScreen()
+                }
+
+                composable(
+                    route = NavigationItem.MindfulBreak.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    MindfulBreakScreen()
+                }
+
+                composable(
+                    route = NavigationItem.Wisdom.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    WisdomScreen()
                 }
             }
         }
@@ -277,6 +394,55 @@ sealed class NavigationItem(
         route = "monthly_report",
         title = "Monthly Report",
         icon = Icons.Default.PieChart
+    )
+
+    object WorkTimer : NavigationItem(
+        route = "work_timer",
+        title = "Work Timer",
+        icon = Icons.Default.Timer
+    )
+
+    object Expense : NavigationItem(
+        route = "expense",
+        title = "Expense Log",
+        icon = Icons.Default.AttachMoney
+    )
+
+    object Health : NavigationItem(
+        route = "health",
+        title = "Health Metrics",
+        icon = Icons.Default.Favorite
+    )
+
+    object Focus : NavigationItem(
+        route = "focus",
+        title = "Focus Sessions",
+        icon = Icons.Default.FilterCenterFocus
+    )
+    object Habit : NavigationItem(
+        route = "habit",
+        title = "Habit Tracker",
+        icon = Icons.Default.CheckCircle
+    )
+    object Achievements : NavigationItem(
+        route = "achievements",
+        title = "Achievements",
+        icon = Icons.Default.EmojiEvents
+    )
+    object Journal : NavigationItem(
+        route = "journal",
+        title = "Daily Journal",
+        icon = Icons.Default.Book
+    )
+    object MindfulBreak : NavigationItem(
+        route = "mindful_break",
+        title = "Mindful Break",
+        icon = Icons.Default.SelfImprovement
+    )
+    object Wisdom : NavigationItem(
+        route = "wisdom",
+        title = "Wisdom Library",
+        icon = Icons.Default.LibraryBooks
     )
 }
 

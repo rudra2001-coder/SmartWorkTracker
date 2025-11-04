@@ -1,8 +1,8 @@
 package com.rudra.smartworktracker.data.repository
 
 import com.rudra.smartworktracker.data.dao.WorkLogDao
-import com.rudra.smartworktracker.data.entity.WorkLog
-import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.MonthlyStats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -22,7 +22,7 @@ open class WorkLogRepository(private val workLogDao: WorkLogDao) {
         val homeOfficeDays = workLogDao.countByType(monthYear, WorkType.HOME_OFFICE)
         val offDays = workLogDao.countByType(monthYear, WorkType.OFF_DAY)
         val extraHours = workLogDao.getTotalExtraHours(monthYear, WorkType.EXTRA_WORK)
-        emit(MonthlyStats(officeDays, homeOfficeDays, offDays, extraHours))
+        emit(MonthlyStats(officeDays, homeOfficeDays, offDays, extraHours ?: 0.0))
     }
 
     open fun getRecentActivities(): Flow<List<WorkLog>> = workLogDao.getAllWorkLogs()
@@ -37,5 +37,7 @@ open class WorkLogRepository(private val workLogDao: WorkLogDao) {
         workLogDao.clearAll()
     }
 
-    fun deleteWorkLog(workLog: com.rudra.smartworktracker.data.entity.WorkLog) {}
+    open suspend fun deleteWorkLog(workLog: WorkLog) {
+        workLogDao.deleteWorkLog(workLog)
+    }
 }

@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.WorkLog
-import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.ui.CalendarUiState
 import com.rudra.smartworktracker.ui.WorkLogUi

@@ -5,8 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.rudra.smartworktracker.data.entity.WorkLog
-import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.model.WorkType
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 
@@ -34,6 +34,6 @@ interface WorkLogDao {
     suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog>
 
     @Query("SELECT SUM((strftime('%s', endTime) - strftime('%s', startTime)) / 3600.0) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
-    suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double
+    suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double?
 
 }

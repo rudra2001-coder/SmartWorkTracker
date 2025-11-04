@@ -4,10 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.Meal
-import com.rudra.smartworktracker.data.entity.WorkLog
-import com.rudra.smartworktracker.data.entity.WorkType
-import com.rudra.smartworktracker.data.repository.MealRepository
+import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -17,11 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class DashboardViewModel(
-    private val workLogRepository: WorkLogRepository,
-    private val mealRepository: MealRepository
+    private val workLogRepository: WorkLogRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -36,9 +34,8 @@ class DashboardViewModel(
             combine(
                 workLogRepository.getTodayWorkLog(),
                 workLogRepository.getMonthlyStats(),
-                workLogRepository.getRecentActivities(),
-                mealRepository.getAllMeals()
-            ) { todayWorkLog, monthlyStats, recentActivities, meals ->
+                workLogRepository.getRecentActivities()
+            ) { todayWorkLog, monthlyStats, recentActivities ->
                 DashboardUiState(
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
@@ -53,8 +50,7 @@ class DashboardViewModel(
                             startTime = it.startTime,
                             endTime = it.endTime
                         )
-                    },
-                    mealCount = meals.size
+                    }
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -75,13 +71,6 @@ class DashboardViewModel(
         }
     }
 
-    fun addMeal() {
-        viewModelScope.launch {
-            val meal = Meal(date = Date(), mealCount = 1)
-            mealRepository.insertMeal(meal)
-        }
-    }
-
     companion object {
         fun factory(appDatabase: AppDatabase): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
@@ -89,8 +78,7 @@ class DashboardViewModel(
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
                         val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
-                        val mealRepository = MealRepository(appDatabase.mealDao())
-                        return DashboardViewModel(workLogRepository, mealRepository) as T
+                        return DashboardViewModel(workLogRepository) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }

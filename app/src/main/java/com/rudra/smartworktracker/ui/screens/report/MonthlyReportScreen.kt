@@ -41,7 +41,6 @@ import co.yml.charts.ui.piechart.charts.PieChart
 import co.yml.charts.ui.piechart.models.PieChartConfig
 import co.yml.charts.ui.piechart.models.PieChartData
 import com.rudra.smartworktracker.data.SharedPreferenceManager
-import com.rudra.smartworktracker.model.Gender
 import com.rudra.smartworktracker.model.WorkType
 import java.io.OutputStream
 import java.util.Calendar
@@ -112,34 +111,10 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                 Text("No data available for $selectedMonth")
             }
         } else {
-            val maleCount = filteredLogs.count { it.gender == Gender.MALE }
-            val femaleCount = filteredLogs.count { it.gender == Gender.FEMALE }
-
             val officeCount = filteredLogs.count { it.workType == WorkType.OFFICE }
-            val homeCount = filteredLogs.count { it.workType == WorkType.HOME }
-            val offCount = filteredLogs.count { it.workType == WorkType.OFF }
-            val extraCount = filteredLogs.count { it.workType == WorkType.EXTRA }
-
-            // Gender Statistics
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Gender Statistics", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = (maleCount.toFloat() / filteredLogs.size.toFloat()),
-                        modifier = Modifier.fillMaxWidth().height(8.dp)
-                    )
-                    Text("Male: $maleCount")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = (femaleCount.toFloat() / filteredLogs.size.toFloat()),
-                        modifier = Modifier.fillMaxWidth().height(8.dp)
-                    )
-                    Text("Female: $femaleCount")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            val homeCount = filteredLogs.count { it.workType == WorkType.HOME_OFFICE }
+            val offCount = filteredLogs.count { it.workType == WorkType.OFF_DAY }
+            val extraCount = filteredLogs.count { it.workType == WorkType.EXTRA_WORK }
 
             // Work Type Breakdown
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -189,7 +164,7 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(onClick = {
-                val report = createReport(selectedMonth, maleCount, femaleCount, officeCount, homeCount, offCount, extraCount, filteredLogs.size)
+                val report = createReport(selectedMonth, officeCount, homeCount, offCount, extraCount, filteredLogs.size)
                 saveReport(context, "Monthly_Report_$selectedMonth.txt", report)
             }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Share, contentDescription = "Export")
@@ -201,15 +176,11 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
 }
 
 private fun createReport(
-    month: String, male: Int, female: Int, office: Int, home: Int, off: Int, extra: Int, total: Int
+    month: String, office: Int, home: Int, off: Int, extra: Int, total: Int
 ): String {
     return """
     Monthly Report for $month
     ---------------------------------
-    Gender Statistics:
-    - Male: $male
-    - Female: $female
-
     Work Type Breakdown:
     - Office: $office
     - Home: $home

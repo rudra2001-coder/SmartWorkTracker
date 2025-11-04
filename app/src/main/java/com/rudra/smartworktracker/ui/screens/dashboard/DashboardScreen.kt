@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.di.DatabaseModule
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -88,14 +88,6 @@ fun DashboardScreen(
                             viewModel.updateTodayWorkType(workType)
                         }
                     }
-                )
-            }
-
-            // Meal Count Card
-            item {
-                MealCountCard(
-                    mealCount = uiState.mealCount,
-                    onAddMeal = { viewModel.addMeal() }
                 )
             }
 

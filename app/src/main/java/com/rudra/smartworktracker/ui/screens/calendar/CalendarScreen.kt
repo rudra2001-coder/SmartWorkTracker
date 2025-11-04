@@ -47,8 +47,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.dao.WorkLogDao
-import com.rudra.smartworktracker.data.entity.WorkLog
-import com.rudra.smartworktracker.data.entity.WorkType
+import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.di.DatabaseModule
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -650,7 +650,7 @@ fun CalendarScreenPreview() {
         override suspend fun insertWorkLog(workLog: WorkLog) {}
         override suspend fun getWorkLogByDate(date: java.util.Date): WorkLog? = null
         override suspend fun countByType(monthYear: String, workType: WorkType): Int = 0
-        override suspend fun getTotalExtraHours(monthYear: String, workType: WorkType): Double = 0.0
+        override suspend fun getTotalExtraHours(monthYear: String, workType: WorkType): Double? = 0.0
         override suspend fun clearAll() {}
         override suspend fun deleteWorkLog(workLog: WorkLog) {}
         override suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog> = emptyList()
