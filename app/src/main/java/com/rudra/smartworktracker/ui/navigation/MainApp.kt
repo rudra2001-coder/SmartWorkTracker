@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarToday
@@ -18,7 +21,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
@@ -28,15 +33,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
+import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
@@ -46,9 +56,14 @@ import com.rudra.smartworktracker.ui.screens.focus.FocusScreen
 import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
 import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
+import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeScreen
+import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeViewModel
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
+import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
+import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileScreen
+import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileViewModelFactory
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
@@ -65,6 +80,9 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
+        NavigationItem.UserProfile,
+        NavigationItem.AddEntry,
+        NavigationItem.Reports,
         NavigationItem.Journal,
         NavigationItem.WorkTimer,
         NavigationItem.Focus,
@@ -77,6 +95,7 @@ fun MainApp() {
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
+        NavigationItem.MealOvertime,
         NavigationItem.Settings
     )
 
@@ -132,7 +151,7 @@ fun MainApp() {
                 )
             }
         ) { paddingValues ->
-            NavHost(
+            composable(
                 navController = navController,
                 startDestination = NavigationItem.Dashboard.route,
                 modifier = Modifier.padding(paddingValues)
@@ -145,8 +164,11 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     DashboardScreen(
-                        onNavigateToCalendar = {
-                            navController.navigate(NavigationItem.Calendar.route)
+                        onNavigateToAddEntry = {
+                            navController.navigate(NavigationItem.AddEntry.route)
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate(NavigationItem.Settings.route)
                         }
                     )
                 }
@@ -158,7 +180,12 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    CalendarScreen(onNavigateBack = { navController.popBackStack() })
+                    CalendarScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToEditEntry = { workLogId ->
+                            navController.navigate("${NavigationItem.AddEntry.route}?workLogId=$workLogId")
+                        }
+                    )
                 }
 
                 composable(
@@ -178,7 +205,7 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                    SettingsScreen(navController = navController)
                 }
                 composable(
                     route = NavigationItem.MonthlyReport.route,
@@ -278,6 +305,45 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     WisdomScreen()
+                }
+                 composable(
+                    route = NavigationItem.MealOvertime.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    val viewModel: MealOvertimeViewModel = viewModel()
+                    MealOvertimeScreen(viewModel = viewModel)
+                }
+                composable(
+                    route = NavigationItem.UserProfile.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    val context = LocalContext.current
+                    UserProfileScreen(viewModel = viewModel(factory = UserProfileViewModelFactory(context)))
+                }
+                composable(
+                    route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",
+                    arguments = listOf(navArgument("workLogId") { type = LongType; defaultValue = -1L }),
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AddEntryScreen()
+                }
+                composable(
+                    route = NavigationItem.Reports.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    ReportsScreen()
                 }
             }
         }
@@ -442,7 +508,27 @@ sealed class NavigationItem(
     object Wisdom : NavigationItem(
         route = "wisdom",
         title = "Wisdom Library",
-        icon = Icons.Default.LibraryBooks
+        icon = Icons.AutoMirrored.Filled.LibraryBooks
+    )
+    object MealOvertime : NavigationItem(
+        route = "meal_overtime",
+        title = "Meal & Overtime",
+        icon = Icons.Default.Restaurant
+    )
+    object UserProfile : NavigationItem(
+        route = "user_profile",
+        title = "User Profile",
+        icon = Icons.Default.Person
+    )
+    object AddEntry : NavigationItem(
+        route = "add_entry",
+        title = "Add Entry",
+        icon = Icons.Default.Add
+    )
+    object Reports : NavigationItem(
+        route = "reports",
+        title = "Reports",
+        icon = Icons.Default.Assessment
     )
 }
 

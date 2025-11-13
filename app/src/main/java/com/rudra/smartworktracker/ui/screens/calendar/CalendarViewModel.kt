@@ -85,8 +85,8 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                         id = existingWorkLog.id,
                         date = existingWorkLog.date,
                         workType = workType,
-                        startTime = existingWorkLog.startTime.toString(),
-                        endTime = existingWorkLog.endTime.toString()
+                        startTime = existingWorkLog.startTime,
+                        endTime = existingWorkLog.endTime
                     )
                     repository.insertWorkLog(updatedWorkLog)
                 } else {
@@ -118,6 +118,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                 workLog?.let {
                     repository.deleteWorkLog(WorkLog(it.id, it.date, it.workType, it.startTime, it.endTime))
                     loadWorkLogs()
+                    _selectedDate.value = null
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to delete work log: ${e.message}"

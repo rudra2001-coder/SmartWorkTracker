@@ -13,4 +13,10 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses")
     fun getAllExpenses(): Flow<List<Expense>>
+
+    @Query("SELECT * FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime")
+    fun getExpensesBetween(startTime: Long, endTime: Long): Flow<List<Expense>>
+
+    @Query("SELECT SUM(amount) FROM expenses WHERE category = 'MEAL' AND timestamp BETWEEN :startTime AND :endTime")
+    fun getMealExpensesBetween(startTime: Long, endTime: Long): Flow<Double>
 }
