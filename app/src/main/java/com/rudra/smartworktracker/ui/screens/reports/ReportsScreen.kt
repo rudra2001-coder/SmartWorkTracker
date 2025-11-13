@@ -22,14 +22,21 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen() {
+fun ReportsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val viewModel: ReportsViewModel = viewModel(factory = ReportsViewModelFactory(context))
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Monthly Reports") })
+            TopAppBar(
+                title = { Text("Monthly Reports") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Column(

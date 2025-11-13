@@ -167,9 +167,10 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     }
 
     private fun calculateDuration(startTime: String?, endTime: String?): String {
+        if (startTime == null || endTime == null) return "8h"
         return try {
-            val startParts = startTime!!.split(":")
-            val endParts = endTime!!.split(":")
+            val startParts = startTime.split(":")
+            val endParts = endTime.split(":")
             val startHour = startParts[0].toInt()
             val startMinute = startParts[1].toInt()
             val endHour = endParts[0].toInt()

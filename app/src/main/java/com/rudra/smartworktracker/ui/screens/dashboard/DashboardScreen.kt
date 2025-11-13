@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
@@ -43,7 +44,7 @@ fun DashboardScreen(
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModel.factory(AppDatabase.getDatabase(context))
+        factory = DashboardViewModel.factory(AppDatabase.getDatabase(context), context)
     )
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -146,7 +147,7 @@ fun FinancialSummaryCard(summary: FinancialSummary) {
                 FinancialSummaryItem(
                     label = "Income",
                     amount = summary.totalIncome,
-                    icon = Icons.Default.TrendingUp,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )

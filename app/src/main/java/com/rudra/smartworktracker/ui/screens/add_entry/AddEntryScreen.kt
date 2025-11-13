@@ -5,7 +5,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,7 +14,7 @@ import com.rudra.smartworktracker.ui.EntryType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEntryScreen() {
+fun AddEntryScreen(onNavigateBack: () -> Boolean) {
     val viewModel: AddEntryViewModel = viewModel(factory = AddEntryViewModel.Factory)
     val uiState by viewModel.uiState.collectAsState()
 

@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
@@ -151,7 +150,7 @@ fun MainApp() {
                 )
             }
         ) { paddingValues ->
-            composable(
+            NavHost(
                 navController = navController,
                 startDestination = NavigationItem.Dashboard.route,
                 modifier = Modifier.padding(paddingValues)
@@ -207,6 +206,7 @@ fun MainApp() {
                 ) {
                     SettingsScreen(navController = navController)
                 }
+
                 composable(
                     route = NavigationItem.MonthlyReport.route,
                     enterTransition = { defaultEnterTransition() },
@@ -306,7 +306,8 @@ fun MainApp() {
                 ) {
                     WisdomScreen()
                 }
-                 composable(
+
+                composable(
                     route = NavigationItem.MealOvertime.route,
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
@@ -316,6 +317,7 @@ fun MainApp() {
                     val viewModel: MealOvertimeViewModel = viewModel()
                     MealOvertimeScreen(viewModel = viewModel)
                 }
+
                 composable(
                     route = NavigationItem.UserProfile.route,
                     enterTransition = { defaultEnterTransition() },
@@ -324,18 +326,26 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     val context = LocalContext.current
-                    UserProfileScreen(viewModel = viewModel(factory = UserProfileViewModelFactory(context)))
+                    UserProfileScreen(
+                        viewModel = viewModel(factory = UserProfileViewModelFactory(context)),
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
+
                 composable(
                     route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",
-                    arguments = listOf(navArgument("workLogId") { type = LongType; defaultValue = -1L }),
+                    arguments = listOf(navArgument("workLogId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    }),
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    AddEntryScreen()
+                    AddEntryScreen(onNavigateBack = { navController.popBackStack() })
                 }
+
                 composable(
                     route = NavigationItem.Reports.route,
                     enterTransition = { defaultEnterTransition() },
@@ -343,7 +353,7 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    ReportsScreen()
+                    ReportsScreen(onNavigateBack = { navController.popBackStack() })
                 }
             }
         }
@@ -384,7 +394,6 @@ fun AppBottomNavigation(
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.Settings
-
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -485,46 +494,55 @@ sealed class NavigationItem(
         title = "Focus Sessions",
         icon = Icons.Default.FilterCenterFocus
     )
+
     object Habit : NavigationItem(
         route = "habit",
         title = "Habit Tracker",
         icon = Icons.Default.CheckCircle
     )
+
     object Achievements : NavigationItem(
         route = "achievements",
         title = "Achievements",
         icon = Icons.Default.EmojiEvents
     )
+
     object Journal : NavigationItem(
         route = "journal",
         title = "Daily Journal",
         icon = Icons.Default.Book
     )
+
     object MindfulBreak : NavigationItem(
         route = "mindful_break",
         title = "Mindful Break",
         icon = Icons.Default.SelfImprovement
     )
+
     object Wisdom : NavigationItem(
         route = "wisdom",
         title = "Wisdom Library",
         icon = Icons.AutoMirrored.Filled.LibraryBooks
     )
+
     object MealOvertime : NavigationItem(
         route = "meal_overtime",
         title = "Meal & Overtime",
         icon = Icons.Default.Restaurant
     )
+
     object UserProfile : NavigationItem(
         route = "user_profile",
         title = "User Profile",
         icon = Icons.Default.Person
     )
+
     object AddEntry : NavigationItem(
         route = "add_entry",
         title = "Add Entry",
         icon = Icons.Default.Add
     )
+
     object Reports : NavigationItem(
         route = "reports",
         title = "Reports",
