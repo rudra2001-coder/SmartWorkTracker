@@ -41,10 +41,11 @@ data class FinancialSummary(
 }
 
 data class CalendarUiState(
-    val selectedDate: LocalDate? = null,
+    val selectedDates: List<LocalDate> = emptyList(),
     val workLogs: List<WorkLogUi> = emptyList(),
     val errorMessage: String? = null,
     val isLoading: Boolean = false,
+    val selectionMode: Boolean = false,
     val currentMonth: LocalDate = LocalDate.now()
 )
 

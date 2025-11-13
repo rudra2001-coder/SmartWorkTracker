@@ -54,6 +54,7 @@ import com.rudra.smartworktracker.ui.screens.expense.ExpenseScreen
 import com.rudra.smartworktracker.ui.screens.focus.FocusScreen
 import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
 import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
+import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeScreen
 import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeViewModel
@@ -88,6 +89,7 @@ fun MainApp() {
         NavigationItem.MindfulBreak,
         NavigationItem.Habit,
         NavigationItem.Expense,
+        NavigationItem.Income,
         NavigationItem.Health,
         NavigationItem.Achievements,
         NavigationItem.Wisdom,
@@ -182,7 +184,7 @@ fun MainApp() {
                     CalendarScreen(
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToEditEntry = { workLogId ->
-                            navController.navigate("${NavigationItem.AddEntry.route}?workLogId=$workLogId")
+                            navController.navigate("${'$'}{NavigationItem.AddEntry.route}?workLogId=$workLogId")
                         }
                     )
                 }
@@ -236,6 +238,16 @@ fun MainApp() {
                 ) {
                     ExpenseScreen()
                 }
+                 composable(
+                    route = NavigationItem.Income.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    IncomeScreen()
+                }
+
 
                 composable(
                     route = NavigationItem.Health.route,
@@ -480,6 +492,11 @@ sealed class NavigationItem(
     object Expense : NavigationItem(
         route = "expense",
         title = "Expense Log",
+        icon = Icons.Default.AttachMoney
+    )
+    object Income : NavigationItem(
+        route = "income",
+        title = "Income",
         icon = Icons.Default.AttachMoney
     )
 

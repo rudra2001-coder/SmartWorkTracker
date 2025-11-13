@@ -11,6 +11,7 @@ import com.rudra.smartworktracker.data.dao.ExpenseDao
 import com.rudra.smartworktracker.data.dao.FocusSessionDao
 import com.rudra.smartworktracker.data.dao.HabitDao
 import com.rudra.smartworktracker.data.dao.HealthMetricDao
+import com.rudra.smartworktracker.data.dao.IncomeDao
 import com.rudra.smartworktracker.data.dao.MonthlyInputDao
 import com.rudra.smartworktracker.data.dao.SettingsDao
 import com.rudra.smartworktracker.data.dao.SummaryDao
@@ -18,6 +19,7 @@ import com.rudra.smartworktracker.data.dao.UserProfileDao
 import com.rudra.smartworktracker.data.dao.WorkDayDao
 import com.rudra.smartworktracker.data.dao.WorkLogDao
 import com.rudra.smartworktracker.data.dao.WorkSessionDao
+import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.entity.MonthlyInput
 import com.rudra.smartworktracker.data.entity.MonthlySummary
 import com.rudra.smartworktracker.data.entity.Settings
@@ -47,9 +49,10 @@ import com.rudra.smartworktracker.model.WorkSession
         Settings::class,
         MonthlySummary::class,
         MonthlyInput::class,
-        UserProfile::class
+        UserProfile::class,
+        Income::class
     ],
-    version = 10, // Incremented version for the new entity
+    version = 11, 
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, com.rudra.smartworktracker.data.local.TypeConverters::class)
@@ -68,6 +71,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun summaryDao(): SummaryDao
     abstract fun monthlyInputDao(): MonthlyInputDao
     abstract fun userProfileDao(): UserProfileDao
+    abstract fun incomeDao(): IncomeDao
 
     companion object {
         @Volatile

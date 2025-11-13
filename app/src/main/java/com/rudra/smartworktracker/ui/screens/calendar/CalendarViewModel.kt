@@ -23,22 +23,25 @@ import java.util.Locale
 
 class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel() {
 
-    private val _selectedDate = MutableStateFlow<LocalDate?>(null)
+    private val _selectedDates = MutableStateFlow<List<LocalDate>>(emptyList())
     private val _workLogs = MutableStateFlow<List<WorkLogUi>>(emptyList())
     private val _errorMessage = MutableStateFlow<String?>(null)
     private val _isLoading = MutableStateFlow(false)
+    private val _selectionMode = MutableStateFlow(false)
 
     val uiState: StateFlow<CalendarUiState> = combine(
-        _selectedDate,
+        _selectedDates,
         _workLogs,
         _errorMessage,
-        _isLoading
-    ) { selectedDate, workLogs, errorMessage, isLoading ->
+        _isLoading,
+        _selectionMode
+    ) { selectedDates, workLogs, errorMessage, isLoading, selectionMode ->
         CalendarUiState(
-            selectedDate = selectedDate,
+            selectedDates = selectedDates,
             workLogs = workLogs,
             errorMessage = errorMessage,
-            isLoading = isLoading
+            isLoading = isLoading,
+            selectionMode = selectionMode
         )
     }.stateIn(
         scope = viewModelScope,
@@ -50,23 +53,47 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         loadWorkLogs()
     }
 
+    fun toggleSelectionMode() {
+        _selectionMode.value = !_selectionMode.value
+        if (!_selectionMode.value) {
+            _selectedDates.value = emptyList()
+        }
+    }
+
     fun selectDate(date: LocalDate) {
         if (canSelectDate(date)) {
-            _selectedDate.value = date
+            if (_selectionMode.value) {
+                val currentSelectedDates = _selectedDates.value.toMutableList()
+                if (currentSelectedDates.contains(date)) {
+                    currentSelectedDates.remove(date)
+                } else {
+                    currentSelectedDates.add(date)
+                }
+                _selectedDates.value = currentSelectedDates
+            } else {
+                _selectedDates.value = listOf(date)
+            }
             _errorMessage.value = null
         } else {
             _errorMessage.value = "Cannot select future dates"
         }
     }
 
-    fun markSelectedDate(workType: WorkType) {
-        _selectedDate.value?.let { date ->
-            updateWorkLog(date, workType)
+    fun saveSelectedDates(workType: WorkType) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _errorMessage.value = null
+                _selectedDates.value.forEach { date ->
+                    updateWorkLog(date, workType)
+                }
+                toggleSelectionMode()
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to save work logs: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
-    }
-
-    fun markDateWithWorkType(date: LocalDate, workType: WorkType) {
-        updateWorkLog(date, workType)
     }
 
     fun updateWorkLog(date: LocalDate, workType: WorkType) {
@@ -118,7 +145,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                 workLog?.let {
                     repository.deleteWorkLog(WorkLog(it.id, it.date, it.workType, it.startTime, it.endTime))
                     loadWorkLogs()
-                    _selectedDate.value = null
+                    _selectedDates.value = emptyList()
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to delete work log: ${e.message}"
