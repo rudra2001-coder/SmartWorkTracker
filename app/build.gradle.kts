@@ -107,6 +107,11 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+   //Other
+
+    implementation(platform("androidx.compose:compose-bom:2025.01.00"))
+    implementation("androidx.compose.material:material-icons-extended")
+
 
     // Test dependencies
     testImplementation(libs.junit)

@@ -19,9 +19,9 @@ class MealOvertimeRepository(
 
     suspend fun getSettings(): Settings {
         return settingsDao.getSettings() ?: Settings(
-            mealRate = 65.0,
+            mealRate = 60.0,
             overtimeRate = 100.0,
-            dailyWorkHours = 8.0,
+            dailyWorkHours = 9.0,
             workingDaysPerWeek = 5
         ).also {
             settingsDao.saveSettings(it)

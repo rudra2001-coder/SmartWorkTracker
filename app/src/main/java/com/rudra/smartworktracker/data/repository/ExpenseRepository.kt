@@ -10,11 +10,27 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         return expenseDao.getExpensesBetween(startTime, endTime)
     }
 
-    fun getMealExpensesBetween(startTime: Long, endTime: Long): Flow<Double> {
+    fun getMealExpensesBetween(startTime: Long, endTime: Long): Flow<Double?> {
         return expenseDao.getMealExpensesBetween(startTime, endTime)
+    }
+
+    fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?> {
+        return expenseDao.getTotalExpensesBetween(startTime, endTime)
     }
 
     suspend fun insertExpense(expense: Expense) {
         expenseDao.insertExpense(expense)
+    }
+
+    suspend fun updateExpense(expense: Expense) {
+        expenseDao.updateExpense(expense)
+    }
+
+    suspend fun deleteExpense(expense: Expense) {
+        expenseDao.deleteExpense(expense)
+    }
+
+    suspend fun deleteExpenseById(expenseId: Long) {
+        expenseDao.deleteExpenseById(expenseId)
     }
 }

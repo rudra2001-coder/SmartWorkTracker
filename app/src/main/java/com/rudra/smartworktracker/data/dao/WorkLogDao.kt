@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import kotlinx.coroutines.flow.Flow
@@ -21,8 +22,14 @@ interface WorkLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWorkLog(workLog: WorkLog)
 
+    @Update
+    suspend fun updateWorkLog(workLog: WorkLog)
+
     @Delete
     suspend fun deleteWorkLog(workLog: WorkLog)
+
+    @Query("DELETE FROM work_logs WHERE id = :id")
+    suspend fun deleteWorkLogById(id: Long)
 
     @Query("DELETE FROM work_logs")
     suspend fun clearAll()
@@ -41,4 +48,7 @@ interface WorkLogDao {
 
     @Query("SELECT * FROM work_logs WHERE id = :id")
     fun getWorkLogById(id: Long): Flow<WorkLog?>
+
+    @Query("SELECT * FROM work_logs WHERE date(date / 1000, 'unixepoch') = date('now')")
+    fun getTodayWorkLog(): Flow<WorkLog?>
 }

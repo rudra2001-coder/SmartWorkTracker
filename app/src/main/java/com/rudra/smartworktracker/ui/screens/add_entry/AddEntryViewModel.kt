@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Date
-import java.util.UUID
 
 class AddEntryViewModel(
     private val expenseRepository: ExpenseRepository,
@@ -66,13 +65,13 @@ class AddEntryViewModel(
     fun saveExpense() {
         viewModelScope.launch {
             val expense = Expense(
-                id = UUID.randomUUID().toString(),
                 amount = _uiState.value.expenseAmount.toDoubleOrNull() ?: 0.0,
                 currency = "BDT",
                 category = _uiState.value.expenseCategory,
                 merchant = null,
                 notes = _uiState.value.expenseNotes,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                imageUri = null
             )
             expenseRepository.insertExpense(expense)
         }
@@ -114,13 +113,13 @@ class AddEntryViewModel(
     fun saveMeal() {
         viewModelScope.launch {
             val mealExpense = Expense(
-                id = UUID.randomUUID().toString(),
                 amount = _uiState.value.mealAmount.toDoubleOrNull() ?: 0.0,
                 currency = "BDT",
                 category = ExpenseCategory.MEAL,
                 merchant = null,
                 notes = _uiState.value.mealNotes,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                imageUri = null
             )
             expenseRepository.insertExpense(mealExpense)
         }

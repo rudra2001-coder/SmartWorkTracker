@@ -9,5 +9,7 @@ data class Settings(
     val mealRate: Double,
     val overtimeRate: Double,
     val dailyWorkHours: Double,
-    val workingDaysPerWeek: Int
+    val workingDaysPerWeek: Int,
+    val isDarkTheme: Boolean = false,
+    val language: Language = Language.ENGLISH
 )

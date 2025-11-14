@@ -6,33 +6,33 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.SettingsRepository
-import com.rudra.smartworktracker.data.repository.UserProfileRepository
+import com.rudra.smartworktracker.data.repository.WorkLogRepository
+import com.rudra.smartworktracker.model.Expense
+import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
-import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
-import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 
 class DashboardViewModel(
     private val workLogRepository: WorkLogRepository,
-    private val userProfileRepository: UserProfileRepository,
     private val expenseRepository: ExpenseRepository,
+    private val incomeRepository: IncomeRepository,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DashboardUiState())
-    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    private val _uiSate = MutableStateFlow(DashboardUiState())
+    val uiState: StateFlow<DashboardUiState> = _uiSate.asStateFlow()
 
     init {
         loadDashboardData()
@@ -46,30 +46,28 @@ class DashboardViewModel(
 
             combine(
                 workLogRepository.getTodayWorkLog(),
-                userProfileRepository.userProfile,
-                expenseRepository.getExpensesBetween(startTime, endTime),
+                expenseRepository.getTotalExpensesBetween(startTime, endTime),
                 expenseRepository.getMealExpensesBetween(startTime, endTime),
+                incomeRepository.getTotalIncomeBetween(startTime, endTime),
                 settingsRepository.mealRate
-            ) { todayWorkLog, userProfile, monthlyExpenses, monthlyMealExpenses, mealRate ->
-                val totalExpense = monthlyExpenses.sumOf { it.amount }
-                val totalIncome = userProfile?.monthlySalary ?: 0.0
-                val netSavings = totalIncome - totalExpense
+            ) { todayWorkLog, totalExpense, monthlyMealExpenses, totalIncome, mealRate ->
+                val netSavings = (totalIncome ?: 0.0) - (totalExpense ?: 0.0)
                 val monthlyStats = workLogRepository.getMonthlyStats()
 
                 DashboardUiState(
-                    userName = userProfile?.name,
+                    userName = null, // Removed userProfileRepository
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
                     recentActivities = emptyList(),
                     financialSummary = FinancialSummary(
-                        totalIncome = totalIncome,
-                        totalExpense = totalExpense,
+                        totalIncome = totalIncome ?: 0.0,
+                        totalExpense = totalExpense ?: 0.0,
                         netSavings = netSavings,
-                        totalMealCost = monthlyMealExpenses ?: 0.0 * mealRate
+                        totalMealCost = monthlyMealExpenses ?: 0.0
                     )
                 )
             }.collect { newState ->
-                _uiState.value = newState
+                _uiSate.value = newState
             }
         }
     }
@@ -80,10 +78,24 @@ class DashboardViewModel(
             val workLog = WorkLog(
                 date = today,
                 workType = workType,
-                startTime = "09:00", // Default start time
-                endTime = "17:00"   // Default end time
+                startTime = "12:00", // Default start time
+                endTime = "22:00"   // Default end time
             )
             workLogRepository.insertWorkLog(workLog)
+
+            if (workType == WorkType.OFFICE) {
+                val mealRate = settingsRepository.mealRate.first()
+                val mealExpense = Expense(
+                    amount = mealRate,
+                    category = ExpenseCategory.MEAL,
+                    timestamp = today.time,
+                    currency = "BDT", // or your default currency
+                    merchant = "Office Canteen", // or appropriate merchant
+                    notes = "Auto-generated meal expense for office day",
+                    imageUri = null
+                )
+                expenseRepository.insertExpense(mealExpense)
+            }
         }
     }
 
@@ -94,10 +106,10 @@ class DashboardViewModel(
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
                         val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
-                        val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
                         val expenseRepository = ExpenseRepository(appDatabase.expenseDao())
+                        val incomeRepository = IncomeRepository(appDatabase.incomeDao())
                         val settingsRepository = SettingsRepository(context)
-                        return DashboardViewModel(workLogRepository, userProfileRepository, expenseRepository, settingsRepository) as T
+                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, settingsRepository) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.rudra.smartworktracker.ui.navigation.NavigationItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,19 +42,19 @@ fun SettingsScreen(navController: NavController) {
                 .padding(16.dp)
         ) {
             SettingsSection(title = "User Profile") {
-                SettingsItem(title = userProfile?.name ?: "Manage Profile", onClick = { navController.navigate("user_profile") })
+                SettingsItem(title = userProfile?.name ?: "Manage Profile", onClick = { navController.navigate(NavigationItem.UserProfile.route) })
             }
             Spacer(modifier = Modifier.height(16.dp))
             SettingsSection(title = "Calculation Settings") {
-                SettingsItem(title = "Meal & Overtime Rates", onClick = { /* Navigate to Calculation Settings */ })
+                SettingsItem(title = "Meal & Overtime Rates", onClick = { navController.navigate(NavigationItem.Calculation.route) })
             }
             Spacer(modifier = Modifier.height(16.dp))
             SettingsSection(title = "Data Management") {
-                SettingsItem(title = "Backup & Restore", onClick = { /* Navigate to Backup/Restore */ })
+                SettingsItem(title = "Backup & Restore", onClick = { navController.navigate(NavigationItem.Backup.route) })
             }
             Spacer(modifier = Modifier.height(16.dp))
             SettingsSection(title = "Appearance") {
-                SettingsItem(title = "Theme & Language", onClick = { /* Navigate to Appearance Settings */ })
+                SettingsItem(title = "Theme & Language", onClick = { navController.navigate(NavigationItem.Appearance.route) })
             }
         }
     }

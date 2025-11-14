@@ -68,8 +68,11 @@ fun UserProfileForm(userProfile: UserProfile, onSave: (UserProfile) -> Unit, mod
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        // Add dropdowns for SalaryPeriod and Language
+        Spacer(modifier = Modifier.height(16.dp))
+        SalutationDropDown(salaryPeriod) { salaryPeriod = it }
+        Spacer(modifier = Modifier.height(16.dp))
+        LanguageDropDown(language) { language = it }
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = {
             onSave(
                 userProfile.copy(
@@ -82,6 +85,66 @@ fun UserProfileForm(userProfile: UserProfile, onSave: (UserProfile) -> Unit, mod
             )
         }) {
             Text("Save")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SalutationDropDown(selectedSalutation: SalaryPeriod, onSalutationSelected: (SalaryPeriod) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = selectedSalutation.name,
+            onValueChange = {},
+            label = { Text(text = "Salary Period") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier.menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SalaryPeriod.values().forEach { salutation ->
+                DropdownMenuItem(
+                    text = { Text(text = salutation.name) },
+                    onClick = {
+                        onSalutationSelected(salutation)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LanguageDropDown(selectedLanguage: Language, onLanguageSelected: (Language) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = selectedLanguage.name,
+            onValueChange = {},
+            label = { Text(text = "Language") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier.menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Language.values().forEach { language ->
+                DropdownMenuItem(
+                    text = { Text(text = language.name) },
+                    onClick = {
+                        onLanguageSelected(language)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

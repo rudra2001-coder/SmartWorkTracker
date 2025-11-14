@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +41,7 @@ import kotlin.math.sin
 @Composable
 fun DashboardScreen(
     onNavigateToAddEntry: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToAppearance: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
@@ -68,10 +69,13 @@ fun DashboardScreen(
             contentPadding = PaddingValues(16.dp)
         ) {
             item {
-                Header(userName = uiState.userName, onSettingsClick = onNavigateToSettings)
+                Header(userName = uiState.userName)
             }
             item {
                 FinancialSummaryCard(summary = uiState.financialSummary)
+            }
+            item {
+                AppearanceCard(onNavigateToAppearance = onNavigateToAppearance)
             }
             // Today's Status Card
             item {
@@ -99,7 +103,7 @@ fun DashboardScreen(
 }
 
 @Composable
-fun Header(userName: String?, onSettingsClick: () -> Unit) {
+fun Header(userName: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,9 +122,6 @@ fun Header(userName: String?, onSettingsClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-        IconButton(onClick = onSettingsClick) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings")
         }
     }
 }
@@ -178,6 +179,25 @@ fun FinancialSummaryCard(summary: FinancialSummary) {
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AppearanceCard(onNavigateToAppearance: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToAppearance() },
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.AddRoad, contentDescription = "Appearance")
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Appearance", style = MaterialTheme.typography.titleLarge)
         }
     }
 }

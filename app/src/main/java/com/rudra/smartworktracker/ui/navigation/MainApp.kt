@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddRoad
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dashboard
@@ -47,7 +50,10 @@ import androidx.navigation.navArgument
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
 import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
+import com.rudra.smartworktracker.ui.screens.appearance.AppearanceScreen
+import com.rudra.smartworktracker.ui.screens.backup.BackupScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
+import com.rudra.smartworktracker.ui.screens.calculation.CalculationScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
 import com.rudra.smartworktracker.ui.screens.dashboard.DashboardScreen
 import com.rudra.smartworktracker.ui.screens.expense.ExpenseScreen
@@ -97,6 +103,9 @@ fun MainApp() {
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
         NavigationItem.MealOvertime,
+        NavigationItem.Calculation,
+        NavigationItem.Backup,
+        NavigationItem.Appearance,
         NavigationItem.Settings
     )
 
@@ -168,8 +177,8 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToSettings = {
-                            navController.navigate(NavigationItem.Settings.route)
+                        onNavigateToAppearance = {
+                            navController.navigate(NavigationItem.Appearance.route)
                         }
                     )
                 }
@@ -243,7 +252,7 @@ fun MainApp() {
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
                     popEnterTransition = { defaultPopEnterTransition() },
-popExitTransition = { defaultPopExitTransition() }
+                    popExitTransition = { defaultPopExitTransition() }
                 ) {
                     IncomeScreen()
                 }
@@ -331,6 +340,36 @@ popExitTransition = { defaultPopExitTransition() }
                 }
 
                 composable(
+                    route = NavigationItem.Calculation.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    CalculationScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.Backup.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    BackupScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.Appearance.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AppearanceScreen(navController = navController)
+                }
+
+                composable(
                     route = NavigationItem.UserProfile.route,
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
@@ -405,6 +444,7 @@ fun AppBottomNavigation(
         NavigationItem.Dashboard,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
+        NavigationItem.Appearance,
         NavigationItem.Settings
     )
 
@@ -546,6 +586,23 @@ sealed class NavigationItem(
         route = "meal_overtime",
         title = "Meal & Overtime",
         icon = Icons.Default.Restaurant
+    )
+    object Calculation : NavigationItem(
+        route = "calculation",
+        title = "Calculation",
+        icon = Icons.Default.Calculate
+    )
+
+    object Backup : NavigationItem(
+        route = "backup",
+        title = "Backup & Restore",
+        icon = Icons.Default.Backup
+    )
+
+    object Appearance : NavigationItem(
+        route = "appearance",
+        title = "Appearance",
+        icon = Icons.Default.AddRoad
     )
 
     object UserProfile : NavigationItem(

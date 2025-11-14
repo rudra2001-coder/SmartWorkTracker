@@ -27,23 +27,33 @@ fun IncomeScreen(
     val context = LocalContext.current
     val viewModel: IncomeViewModel = viewModel(factory = IncomeViewModelFactory(context))
     var incomeInput by remember { mutableStateOf(TextFieldValue("")) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val savedIncome by viewModel.income.collectAsState()
 
     Column(modifier = modifier.padding(16.dp)) {
         OutlinedTextField(
             value = incomeInput,
-            onValueChange = { incomeInput = it },
+            onValueChange = {
+                incomeInput = it
+                errorMessage = null // Clear error when user starts typing
+            },
             label = { Text("Enter your income") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = errorMessage != null,
+            supportingText = { errorMessage?.let { Text(it) } }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { 
+            onClick = {
                 val incomeValue = incomeInput.text.toDoubleOrNull()
-                if (incomeValue != null) {
+                if (incomeValue != null && incomeValue > 0) {
                     viewModel.saveIncome(incomeValue)
+                    incomeInput = TextFieldValue("") // Clear input after saving
+                    errorMessage = null
+                } else {
+                    errorMessage = "Please enter a valid positive number"
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -53,6 +63,6 @@ fun IncomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Saved Income: $savedIncome")
+        Text("Saved Income: $${String.format("%.2f", savedIncome)}")
     }
 }

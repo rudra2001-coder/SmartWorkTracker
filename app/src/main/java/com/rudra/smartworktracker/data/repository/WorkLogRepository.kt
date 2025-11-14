@@ -13,10 +13,7 @@ import java.util.Locale
 class WorkLogRepository(private val workLogDao: WorkLogDao) {
 
     fun getTodayWorkLog(): Flow<WorkLog?> {
-        val today = Calendar.getInstance()
-        val startOfDay = today.apply { set(Calendar.HOUR_OF_DAY, 0) }.timeInMillis
-        val endOfDay = today.apply { set(Calendar.HOUR_OF_DAY, 23) }.timeInMillis
-        return workLogDao.getWorkLogByDate(startOfDay, endOfDay)
+        return workLogDao.getTodayWorkLog()
     }
 
     suspend fun getMonthlyStats(): MonthlyStats {
@@ -42,12 +39,20 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         workLogDao.insertWorkLog(workLog)
     }
 
+    suspend fun updateWorkLog(workLog: WorkLog) {
+        workLogDao.updateWorkLog(workLog)
+    }
+
     fun getAllWorkLogs(): Flow<List<WorkLog>> {
         return workLogDao.getAllWorkLogs()
     }
 
     suspend fun deleteWorkLog(workLog: WorkLog) {
         workLogDao.deleteWorkLog(workLog)
+    }
+
+    suspend fun deleteWorkLogById(id: Long) {
+        workLogDao.deleteWorkLogById(id)
     }
 
     fun getWorkLogById(id: Long): Flow<WorkLog?> {
