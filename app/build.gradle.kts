@@ -111,7 +111,8 @@ dependencies {
 
     implementation(platform("androidx.compose:compose-bom:2025.01.00"))
     implementation("androidx.compose.material:material-icons-extended")
-
+// https://mvnrepository.com/artifact/org.mnode.ical4j/ical4j
+    implementation("org.mnode.ical4j:ical4j:4.2.1")
 
     // Test dependencies
     testImplementation(libs.junit)

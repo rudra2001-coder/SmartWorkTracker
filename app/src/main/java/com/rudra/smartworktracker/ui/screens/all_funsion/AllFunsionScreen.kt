@@ -129,12 +129,12 @@ fun AllFunsionScreen(navController: NavController) {
                                 durationMillis = 600,
                                 delayMillis = rowIndex * 100
                             )
-                        ),
-//                        modifier = Modifier.animateItemPlacement()
+                        )
                     ) {
                         FeatureCard(
                             feature = feature,
-                            onClick = { navController.navigate(feature.route) }
+                            onClick = { navController.navigate(feature.route) },
+                          //  modifier = Modifier.animateItemPlacement()
                         )
                     }
                 }
@@ -144,7 +144,7 @@ fun AllFunsionScreen(navController: NavController) {
 }
 
 @Composable
-fun FeatureCard(feature: NavigationItem, onClick: () -> Unit) {
+fun FeatureCard(feature: NavigationItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -189,7 +189,7 @@ fun FeatureCard(feature: NavigationItem, onClick: () -> Unit) {
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(140.dp)
             .scale(cardScale)
