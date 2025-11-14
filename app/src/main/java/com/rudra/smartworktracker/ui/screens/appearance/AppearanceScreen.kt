@@ -44,7 +44,7 @@ fun AppearanceScreen(navController: NavController) {
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
-        NavigationItem.MealOvertime,
+//        NavigationItem.MealOvertime,
         NavigationItem.Calculation,
         NavigationItem.Backup
     )
