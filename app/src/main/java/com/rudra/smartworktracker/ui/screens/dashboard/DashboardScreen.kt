@@ -51,6 +51,15 @@ fun DashboardScreen(
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Dashboard") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAddEntry,

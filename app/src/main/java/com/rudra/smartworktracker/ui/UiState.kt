@@ -42,11 +42,26 @@ data class FinancialSummary(
 
 data class CalendarUiState(
     val selectedDates: List<LocalDate> = emptyList(),
-    val workLogs: List<WorkLogUi> = emptyList(),
-    val errorMessage: String? = null,
-    val isLoading: Boolean = false,
+
+   // val workLogs: List<WorkLogUi> = emptyList(),
+   // val errorMessage: String? = null,
+   // val isLoading: Boolean = false,
     val selectionMode: Boolean = false,
-    val currentMonth: LocalDate = LocalDate.now()
+  //  val selectedDate: LocalDate? = null,
+    val selectedWorkType: WorkType? = null,
+    val workTypes: List<WorkType> = WorkType.values().toList(),
+    val selectedMonth: LocalDate = LocalDate.now(),
+    val selectedYear: Int = LocalDate.now().year,
+    val selectedWeek: Int = LocalDate.now().get(java.time.temporal.WeekFields.ISO.weekOfYear()),
+    val selectedDay: Int = LocalDate.now().dayOfWeek.value,
+    val selectedDayOfMonth: Int = LocalDate.now().dayOfMonth,
+    val selectedDayOfYear: Int = LocalDate.now().dayOfYear,
+    val currentMonth: LocalDate = LocalDate.now(),
+    val selectedDate: LocalDate = LocalDate.now(),
+    val workLogs: List<WorkLogUi> = emptyList(),
+    val selectedWorkLog: WorkLogUi? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
 )
 
 data class WorkLogUi(

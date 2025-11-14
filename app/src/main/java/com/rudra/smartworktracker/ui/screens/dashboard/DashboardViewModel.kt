@@ -15,14 +15,17 @@ import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
+import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 class DashboardViewModel(
     private val workLogRepository: WorkLogRepository,
@@ -49,8 +52,15 @@ class DashboardViewModel(
                 expenseRepository.getTotalExpensesBetween(startTime, endTime),
                 expenseRepository.getMealExpensesBetween(startTime, endTime),
                 incomeRepository.getTotalIncomeBetween(startTime, endTime),
-                settingsRepository.mealRate
-            ) { todayWorkLog, totalExpense, monthlyMealExpenses, totalIncome, mealRate ->
+                settingsRepository.mealRate,
+                workLogRepository.getRecentActivities()
+            ) { values ->
+                val todayWorkLog = values[0] as? WorkLog
+                val totalExpense = values[1] as? Double
+                val monthlyMealExpenses = values[2] as? Double
+                val totalIncome = values[3] as? Double
+                val recentActivities = values[5] as? List<WorkLog>
+
                 val netSavings = (totalIncome ?: 0.0) - (totalExpense ?: 0.0)
                 val monthlyStats = workLogRepository.getMonthlyStats()
 
@@ -58,7 +68,7 @@ class DashboardViewModel(
                     userName = null, // Removed userProfileRepository
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
-                    recentActivities = emptyList(),
+                    recentActivities = recentActivities?.map { it.toUiModel() } ?: emptyList(),
                     financialSummary = FinancialSummary(
                         totalIncome = totalIncome ?: 0.0,
                         totalExpense = totalExpense ?: 0.0,
@@ -96,6 +106,42 @@ class DashboardViewModel(
                 )
                 expenseRepository.insertExpense(mealExpense)
             }
+        }
+    }
+
+    private fun WorkLog.toUiModel(): WorkLogUi {
+        return WorkLogUi(
+            id = this.id,
+            date = this.date,
+            workType = this.workType,
+            formattedDate = formatDate(this.date),
+            duration = calculateDuration(this.startTime, this.endTime),
+            startTime = this.startTime,
+            endTime = this.endTime
+        )
+    }
+
+    private fun formatDate(date: Date): String {
+        return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+    }
+
+    private fun calculateDuration(startTime: String?, endTime: String?): String {
+        if (startTime == null || endTime == null) return "-"
+        return try {
+            val startParts = startTime.split(":")
+            val endParts = endTime.split(":")
+            val startHour = startParts[0].toInt()
+            val startMinute = startParts[1].toInt()
+            val endHour = endParts[0].toInt()
+            val endMinute = endParts[1].toInt()
+
+            val totalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
+
+            if (minutes > 0) "${hours}h ${minutes}m" else "${hours}h"
+        } catch (e: Exception) {
+            "-" // Fallback
         }
     }
 

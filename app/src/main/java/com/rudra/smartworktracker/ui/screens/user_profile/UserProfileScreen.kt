@@ -69,7 +69,7 @@ fun UserProfileForm(userProfile: UserProfile, onSave: (UserProfile) -> Unit, mod
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        SalutationDropDown(salaryPeriod) { salaryPeriod = it }
+        SalaryPeriodDropDown(salaryPeriod) { salaryPeriod = it }
         Spacer(modifier = Modifier.height(16.dp))
         LanguageDropDown(language) { language = it }
         Spacer(modifier = Modifier.height(16.dp))
@@ -91,12 +91,12 @@ fun UserProfileForm(userProfile: UserProfile, onSave: (UserProfile) -> Unit, mod
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SalutationDropDown(selectedSalutation: SalaryPeriod, onSalutationSelected: (SalaryPeriod) -> Unit) {
+fun SalaryPeriodDropDown(selectedSalaryPeriod: SalaryPeriod, onSalaryPeriodSelected: (SalaryPeriod) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
         OutlinedTextField(
-            value = selectedSalutation.name,
+            value = selectedSalaryPeriod.name,
             onValueChange = {},
             label = { Text(text = "Salary Period") },
             readOnly = true,
@@ -106,11 +106,11 @@ fun SalutationDropDown(selectedSalutation: SalaryPeriod, onSalutationSelected: (
             modifier = Modifier.menuAnchor()
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            SalaryPeriod.values().forEach { salutation ->
+            SalaryPeriod.values().forEach { period ->
                 DropdownMenuItem(
-                    text = { Text(text = salutation.name) },
+                    text = { Text(text = period.name) },
                     onClick = {
-                        onSalutationSelected(salutation)
+                        onSalaryPeriodSelected(period)
                         expanded = false
                     }
                 )
