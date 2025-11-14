@@ -37,4 +37,8 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
     suspend fun deleteIncomeById(incomeId: Long) {
         incomeDao.deleteIncomeById(incomeId)
     }
+
+    suspend fun clearAll() {
+        incomeDao.deleteAll()
+    }
 }

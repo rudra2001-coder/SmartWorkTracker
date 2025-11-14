@@ -61,19 +61,31 @@ data class CalendarUiState(
     val workLogs: List<WorkLogUi> = emptyList(),
     val selectedWorkLog: WorkLogUi? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isMultiSelectMode: Boolean = false,
+    val multiSelectedDates: List<LocalDate> = emptyList(),
+
+
 )
 
 data class WorkLogUi(
+//    val id: Long,
+//    val date: Date,
+//    val workType: WorkType,
+//    val formattedDate: String,
+//    val duration: String,
+//    val startTime: String? = null,
+//    val endTime: String? = null,
+    val notes: String? = null ,
     val id: Long,
-    val date: Date,
-    val workType: WorkType,
+    val date: java.util.Date,
+    val workType: com.rudra.smartworktracker.model.WorkType,
     val formattedDate: String,
     val duration: String,
-    val startTime: String? = null,
-    val endTime: String? = null,
-    val notes: String? = null
-) {
+    val startTime: String?,
+    val endTime: String?,
+)
+ {
     val isCompleted: Boolean
         get() = startTime != null && endTime != null
 }

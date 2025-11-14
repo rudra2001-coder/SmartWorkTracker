@@ -14,38 +14,34 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
-import kotlin.time.Duration
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow<LocalDate>(LocalDate.now())
     private val _workLogs = MutableStateFlow<List<WorkLogUi>>(emptyList())
     private val _selectedWorkLog = MutableStateFlow<WorkLogUi?>(null)
-    private val _isLoading = MutableStateFlow(false)
-    private val _errorMessage = MutableStateFlow<String?>(null)
+    private val _multiSelectMode = MutableStateFlow(false)
+    private val _multiSelectedDates = MutableStateFlow<List<LocalDate>>(emptyList())
 
     val uiState: StateFlow<CalendarUiState> = combine(
         _selectedDate,
         _workLogs,
         _selectedWorkLog,
-        _isLoading,
-        _errorMessage
-    ) { selectedDate, workLogs, selectedWorkLog, isLoading, errorMessage ->
+        _multiSelectMode,
+        _multiSelectedDates
+    ) { selectedDate, workLogs, selectedWorkLog, multiSelectMode, multiSelectedDates ->
         CalendarUiState(
             selectedDate = selectedDate,
             workLogs = workLogs,
             selectedWorkLog = selectedWorkLog,
-            isLoading = isLoading,
-            errorMessage = errorMessage
+            isMultiSelectMode = multiSelectMode,
+            multiSelectedDates = multiSelectedDates
         )
     }.stateIn(
         scope = viewModelScope,
@@ -59,195 +55,120 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     }
 
     fun onDateSelected(date: LocalDate) {
-        _selectedDate.value = date
-        _errorMessage.value = null // Clear error when user interacts
+        if (_multiSelectMode.value) {
+            val currentDates = _multiSelectedDates.value.toMutableList()
+            if (currentDates.contains(date)) {
+                currentDates.remove(date)
+            } else {
+                currentDates.add(date)
+            }
+            _multiSelectedDates.value = currentDates
+        } else {
+            _selectedDate.value = date
+        }
+    }
+
+    fun toggleMultiSelectMode() {
+        _multiSelectMode.value = !_multiSelectMode.value
+        _multiSelectedDates.value = emptyList() // Clear selection on toggle
+    }
+
+    fun markSelectedDates(workType: WorkType) {
+        viewModelScope.launch {
+            _multiSelectedDates.value.forEach { date ->
+                updateWorkLog(date, workType, isMultiSelect = true)
+            }
+            toggleMultiSelectMode() // Exit multi-select mode after marking
+        }
     }
 
     private fun observeSelectedDate() {
         viewModelScope.launch {
             _selectedDate.collect { date ->
-                _selectedWorkLog.value = _workLogs.value.find { workLog ->
-                    workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
+                _selectedWorkLog.value = _workLogs.value.find {
+                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
                 }
             }
         }
     }
 
-    fun updateWorkLog(date: LocalDate, workType: WorkType) {
+    fun updateWorkLog(date: LocalDate, workType: WorkType, isMultiSelect: Boolean = false) {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _errorMessage.value = null
+            val existingWorkLog = _workLogs.value.find {
+                it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
+            }
 
-                val existingWorkLog = _workLogs.value.find {
-                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
-                }
-
-                if (existingWorkLog != null) {
-                    // Update existing work log
-                    val updatedWorkLog = WorkLog(
-                        id = existingWorkLog.id,
-                        date = existingWorkLog.date,
-                        workType = workType,
-                        startTime = existingWorkLog.startTime,
-                        endTime = existingWorkLog.endTime
-                    )
-                    repository.updateWorkLog(updatedWorkLog)
-                } else {
-                    // Create new work log with default times
-                    val workLog = WorkLog(
-                        date = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
-                        workType = workType,
-                        startTime = getDefaultStartTime(workType),
-                        endTime = getDefaultEndTime(workType)
-                    )
-                    repository.insertWorkLog(workLog)
-                }
-
-                // Show success feedback or update UI state if needed
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to update work log: ${e.message}"
-            } finally {
-                _isLoading.value = false
+            if (existingWorkLog != null) {
+                val updatedWorkLog = WorkLog(
+                    id = existingWorkLog.id,
+                    date = existingWorkLog.date,
+                    workType = workType,
+                    startTime = existingWorkLog.startTime,
+                    endTime = existingWorkLog.endTime
+                )
+                repository.updateWorkLog(updatedWorkLog)
+            } else {
+                val workLog = WorkLog(
+                    date = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                    workType = workType,
+                    startTime = "09:00",
+                    endTime = "17:00"
+                )
+                repository.insertWorkLog(workLog)
             }
         }
     }
 
     fun deleteWorkLog(id: Long) {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _errorMessage.value = null
-
-                repository.deleteWorkLogById(id)
-
-                // Clear selection if the deleted work log was selected
-                _selectedWorkLog.value?.let { selected ->
-                    if (selected.id == id) {
-                        _selectedWorkLog.value = null
-                    }
-                }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to delete work log: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
+            repository.deleteWorkLogById(id)
         }
-    }
-
-    fun clearError() {
-        _errorMessage.value = null
-    }
-
-    fun refreshData() {
-        loadWorkLogs()
     }
 
     private fun loadWorkLogs() {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _errorMessage.value = null
-
-                repository.getAllWorkLogs().collect { workLogs ->
-                    _workLogs.value = workLogs.map { workLog ->
-                        WorkLogUi(
-                            id = workLog.id,
-                            date = workLog.date,
-                            workType = workLog.workType,
-                            formattedDate = formatDate(workLog.date),
-                            duration = calculateDuration(workLog.startTime, workLog.endTime),
-                            startTime = workLog.startTime,
-                            endTime = workLog.endTime
-                        )
-                    }
-
-                    // Update selected work log after loading
-                    _selectedWorkLog.value = _workLogs.value.find {
-                        it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == _selectedDate.value
-                    }
+            repository.getAllWorkLogs().collect { workLogs ->
+                _workLogs.value = workLogs.map { workLog ->
+                    WorkLogUi(
+                        id = workLog.id,
+                        date = workLog.date,
+                        workType = workLog.workType,
+                        formattedDate = formatDate(workLog.date),
+                        duration = calculateDuration(workLog.startTime, workLog.endTime),
+                        startTime = workLog.startTime,
+                        endTime = workLog.endTime
+                    )
                 }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to load work logs: ${e.message}"
-            } finally {
-                _isLoading.value = false
+                // Refresh single-day selection as well
+                _selectedWorkLog.value = _workLogs.value.find {
+                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == _selectedDate.value
+                }
             }
         }
     }
 
-    private fun getDefaultStartTime(workType: WorkType): String {
-        return when (workType) {
-            WorkType.OFF_DAY -> ""
-            else -> "09:00"
-        }
-    }
-
-    private fun getDefaultEndTime(workType: WorkType): String {
-        return when (workType) {
-            WorkType.OFF_DAY -> ""
-            else -> "17:00"
-        }
-    }
-
     private fun formatDate(date: Date): String {
-        return SimpleDateFormat("EEE, MMM dd, yyyy", Locale.getDefault()).format(date)
+        return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
     }
 
     private fun calculateDuration(startTime: String?, endTime: String?): String {
-        if (startTime.isNullOrEmpty() || endTime.isNullOrEmpty()) return "N/A"
-
+        if (startTime == null || endTime == null) return "8h"
         return try {
             val startParts = startTime.split(":")
             val endParts = endTime.split(":")
-
-            if (startParts.size != 2 || endParts.size != 2) return "N/A"
-
             val startHour = startParts[0].toInt()
             val startMinute = startParts[1].toInt()
             val endHour = endParts[0].toInt()
             val endMinute = endParts[1].toInt()
 
-            var totalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
-
-            // Handle overnight shifts (end time before start time)
-            if (totalMinutes < 0) {
-                totalMinutes += 24 * 60
-            }
-
+            val totalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
             val hours = totalMinutes / 60
             val minutes = totalMinutes % 60
 
-            when {
-                hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
-                hours > 0 -> "${hours}h"
-                minutes > 0 -> "${minutes}m"
-                else -> "0h"
-            }
+            if (minutes > 0) "${hours}h ${minutes}m" else "${hours}h"
         } catch (e: Exception) {
-            "N/A"
+            "8h" // Fallback
         }
-    }
-
-    // Helper method to get work logs for a specific month
-    fun getWorkLogsForMonth(yearMonth: java.time.YearMonth): List<WorkLogUi> {
-        return _workLogs.value.filter { workLog ->
-            val localDate = workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            localDate.year == yearMonth.year && localDate.month == yearMonth.month
-        }
-    }
-
-    // Helper method to check if a date has a work log
-    fun hasWorkLog(date: LocalDate): Boolean {
-        return _workLogs.value.any { workLog ->
-            workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
-        }
-    }
-
-    // Get work type for a specific date
-    fun getWorkTypeForDate(date: LocalDate): WorkType? {
-        return _workLogs.value.find { workLog ->
-            workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
-        }?.workType
     }
 
     companion object {
@@ -259,7 +180,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                         val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
                         return CalendarViewModel(workLogRepository) as T
                     }
-                    throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+                    throw IllegalArgumentException("Unknown ViewModel class")
                 }
             }
         }

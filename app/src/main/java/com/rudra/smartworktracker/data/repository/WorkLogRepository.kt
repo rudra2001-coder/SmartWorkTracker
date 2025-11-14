@@ -58,4 +58,8 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
     fun getWorkLogById(id: Long): Flow<WorkLog?> {
         return workLogDao.getWorkLogById(id)
     }
+
+    suspend fun clearAll() {
+        workLogDao.clearAll()
+    }
 }

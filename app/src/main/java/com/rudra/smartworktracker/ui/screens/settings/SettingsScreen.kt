@@ -1,88 +1,66 @@
 package com.rudra.smartworktracker.ui.screens.settings
 
-import androidx.compose.foundation.clickable
+import android.app.Application
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.rudra.smartworktracker.ui.navigation.NavigationItem
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
-    val context = LocalContext.current
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(context))
-    val userProfile by viewModel.userProfile.collectAsState()
+    val application = LocalContext.current.applicationContext as Application
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(application))
+    var showDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") }
-            )
-        }
-    ) { paddingValues ->
+    Scaffold {
         Column(
             modifier = Modifier
-                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(it)
                 .padding(16.dp)
         ) {
-            SettingsSection(title = "User Profile") {
-                SettingsItem(title = userProfile?.name ?: "Manage Profile", onClick = { navController.navigate(NavigationItem.UserProfile.route) })
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            SettingsSection(title = "Calculation Settings") {
-                SettingsItem(title = "Meal & Overtime Rates", onClick = { navController.navigate(NavigationItem.Calculation.route) })
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            SettingsSection(title = "Data Management") {
-                SettingsItem(title = "Backup & Restore", onClick = { navController.navigate(NavigationItem.Backup.route) })
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            SettingsSection(title = "Appearance") {
-                SettingsItem(title = "Theme & Language", onClick = { navController.navigate(NavigationItem.Appearance.route) })
+            Button(onClick = { showDialog = true }) {
+                Text("Reset App Data")
             }
         }
     }
-}
 
-@Composable
-fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        Text(text = title, style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Card {
-            Column {
-                content()
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Reset App Data") },
+            text = { Text("Are you sure you want to delete all data? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearAllData()
+                        showDialog = false
+                    }
+                ) {
+                    Text("Reset")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
             }
-        }
-    }
-}
-
-@Composable
-fun SettingsItem(title: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+        )
     }
 }

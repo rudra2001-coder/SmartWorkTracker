@@ -50,7 +50,7 @@ import androidx.navigation.navArgument
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
 import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
-import com.rudra.smartworktracker.ui.screens.appearance.AppearanceScreen
+import com.rudra.smartworktracker.ui.screens.all_funsion.AllFunsionScreen
 import com.rudra.smartworktracker.ui.screens.backup.BackupScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
 import com.rudra.smartworktracker.ui.screens.calculation.CalculationScreen
@@ -105,7 +105,7 @@ fun MainApp() {
         NavigationItem.MealOvertime,
         NavigationItem.Calculation,
         NavigationItem.Backup,
-        NavigationItem.Appearance,
+        NavigationItem.AllFunsion,
         NavigationItem.Settings
     )
 
@@ -177,8 +177,8 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToAppearance = {
-                            navController.navigate(NavigationItem.Appearance.route)
+                        onNavigateToAllFunsion = {
+                            navController.navigate(NavigationItem.AllFunsion.route)
                         }
                     )
                 }
@@ -193,7 +193,7 @@ fun MainApp() {
                     CalendarScreen(
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToEditEntry = { workLogId ->
-                            navController.navigate("${'$'}{NavigationItem.AddEntry.route}?workLogId=$workLogId")
+                            navController.navigate("${NavigationItem.AddEntry.route}?workLogId=$workLogId")
                         }
                     )
                 }
@@ -360,13 +360,13 @@ fun MainApp() {
                 }
 
                 composable(
-                    route = NavigationItem.Appearance.route,
+                    route = NavigationItem.AllFunsion.route,
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    AppearanceScreen(navController = navController)
+                    AllFunsionScreen(navController = navController)
                 }
 
                 composable(
@@ -444,7 +444,7 @@ fun AppBottomNavigation(
         NavigationItem.Dashboard,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
-        NavigationItem.Appearance,
+        NavigationItem.AllFunsion,
         NavigationItem.Settings
     )
 
@@ -599,9 +599,9 @@ sealed class NavigationItem(
         icon = Icons.Default.Backup
     )
 
-    object Appearance : NavigationItem(
-        route = "appearance",
-        title = "Appearance",
+    object AllFunsion : NavigationItem(
+        route = "all_funsion",
+        title = "All Funsion",
         icon = Icons.Default.AddRoad
     )
 

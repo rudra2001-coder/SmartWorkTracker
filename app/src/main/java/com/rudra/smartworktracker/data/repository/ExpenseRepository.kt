@@ -6,6 +6,10 @@ import kotlinx.coroutines.flow.Flow
 
 class ExpenseRepository(private val expenseDao: ExpenseDao) {
 
+    fun getAllExpenses(): Flow<List<Expense>> {
+        return expenseDao.getAllExpenses()
+    }
+
     fun getExpensesBetween(startTime: Long, endTime: Long): Flow<List<Expense>> {
         return expenseDao.getExpensesBetween(startTime, endTime)
     }
@@ -32,5 +36,9 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
 
     suspend fun deleteExpenseById(expenseId: Long) {
         expenseDao.deleteExpenseById(expenseId)
+    }
+
+    suspend fun clearAll() {
+        expenseDao.deleteAll()
     }
 }

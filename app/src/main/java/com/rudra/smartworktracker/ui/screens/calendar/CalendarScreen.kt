@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,11 +74,26 @@ fun CalendarScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = { viewModel.toggleMultiSelectMode() }) {
+                        Icon(Icons.Default.SelectAll, contentDescription = "Select Multiple")
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
+        },
+        floatingActionButton = {
+            if (uiState.isMultiSelectMode) {
+                FloatingActionButton(
+                    onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
+                    modifier = Modifier.padding(bottom = 72.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Mark as Office Day")
+                }
+            }
         }
     ) { paddingValues ->
         Column(
@@ -126,6 +142,8 @@ fun CalendarScreen(
                         currentMonth = currentMonth,
                         workLogs = uiState.workLogs,
                         selectedDate = uiState.selectedDate,
+                        multiSelectedDates = uiState.multiSelectedDates,
+                        isMultiSelectMode = uiState.isMultiSelectMode,
                         onDateSelected = { viewModel.onDateSelected(it) }
                     )
                 }
@@ -133,7 +151,7 @@ fun CalendarScreen(
 
             // Work Log Details with smooth animation
             AnimatedVisibility(
-                visible = uiState.selectedWorkLog != null,
+                visible = uiState.selectedWorkLog != null && !uiState.isMultiSelectMode,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(animationSpec = tween(300)),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(animationSpec = tween(300))
             ) {
@@ -245,6 +263,8 @@ fun CalendarGrid(
     currentMonth: YearMonth,
     workLogs: List<WorkLogUi>,
     selectedDate: LocalDate,
+    multiSelectedDates: List<LocalDate>,
+    isMultiSelectMode: Boolean,
     onDateSelected: (LocalDate) -> Unit
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
@@ -265,11 +285,12 @@ fun CalendarGrid(
                 val workLogForDay = workLogs.find {
                     it.date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() == date
                 }
+                val isSelected = if (isMultiSelectMode) multiSelectedDates.contains(date) else date == selectedDate
 
                 CalendarDay(
                     date = date,
                     workType = workLogForDay?.workType,
-                    isSelected = date == selectedDate,
+                    isSelected = isSelected,
                     isToday = date == today,
                     onDateSelected = { onDateSelected(date) }
                 )
@@ -324,7 +345,7 @@ fun CalendarDay(
                     )
                 else Modifier
             )
-            .clickable(onClick = onDateSelected),
+            .clickable { onDateSelected() },
         contentAlignment = Alignment.Center
     ) {
         Column(

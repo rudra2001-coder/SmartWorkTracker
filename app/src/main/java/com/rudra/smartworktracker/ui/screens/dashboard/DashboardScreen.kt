@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Restaurant
@@ -41,7 +42,7 @@ import kotlin.math.sin
 @Composable
 fun DashboardScreen(
     onNavigateToAddEntry: () -> Unit,
-    onNavigateToAppearance: () -> Unit
+    onNavigateToAllFunsion: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
@@ -84,7 +85,7 @@ fun DashboardScreen(
                 FinancialSummaryCard(summary = uiState.financialSummary)
             }
             item {
-                AppearanceCard(onNavigateToAppearance = onNavigateToAppearance)
+                AllFunsionCard(onNavigateToAllFunsion = onNavigateToAllFunsion)
             }
             // Today's Status Card
             item {
@@ -164,7 +165,7 @@ fun FinancialSummaryCard(summary: FinancialSummary) {
                 FinancialSummaryItem(
                     label = "Expense",
                     amount = summary.totalExpense,
-                    icon = Icons.Default.TrendingDown,
+                    icon = Icons.AutoMirrored.Filled.TrendingDown,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
                 )
@@ -193,20 +194,20 @@ fun FinancialSummaryCard(summary: FinancialSummary) {
 }
 
 @Composable
-fun AppearanceCard(onNavigateToAppearance: () -> Unit) {
+fun AllFunsionCard(onNavigateToAllFunsion: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onNavigateToAppearance() },
+            .clickable { onNavigateToAllFunsion() },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.AddRoad, contentDescription = "Appearance")
+            Icon(Icons.Default.AddRoad, contentDescription = "All Funsion")
             Spacer(modifier = Modifier.width(16.dp))
-            Text("Appearance", style = MaterialTheme.typography.titleLarge)
+            Text("All Funsion", style = MaterialTheme.typography.titleLarge)
         }
     }
 }
