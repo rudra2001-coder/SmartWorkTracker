@@ -21,7 +21,7 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
     private fun loadLatestIncome() {
         viewModelScope.launch {
             val latestIncome = db.incomeDao().getLatestIncome()
-//            _income.value = latestIncome?.amount ?: 0.0
+ //           _income.value = latestIncome?.amount ?: 0.0
         }
     }
 

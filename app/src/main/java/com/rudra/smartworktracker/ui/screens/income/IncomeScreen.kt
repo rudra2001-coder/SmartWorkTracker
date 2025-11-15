@@ -63,6 +63,6 @@ fun IncomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Saved Income: $${String.format("%.2f", savedIncome)}")
+        Text("Saved Income: ৳${String.format("%.2f", savedIncome)}")
     }
 }

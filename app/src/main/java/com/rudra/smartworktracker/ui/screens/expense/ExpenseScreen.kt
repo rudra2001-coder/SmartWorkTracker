@@ -82,7 +82,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
             if (amount.isNotBlank()) {
                 viewModel.saveExpense(
                     amount = amount.toDouble(),
-                    currency = "USD", // Defaulting to USD for now
+                    currency = "BDT", // Defaulting to BDT for now
                     category = selectedCategory,
                     merchant = merchant.takeIf { it.isNotBlank() },
                     notes = notes.takeIf { it.isNotBlank() }
