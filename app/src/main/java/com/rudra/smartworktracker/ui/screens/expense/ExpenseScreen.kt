@@ -10,10 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,60 +48,91 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        TextField(
+        Text(
+            text = "Log Your Expense",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        OutlinedTextField(
             value = amount,
             onValueChange = { amount = it },
             label = { Text("Amount") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ShoppingCart,
+                    contentDescription = "Amount"
+                )
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            RadioButton(
-                selected = selectedCategory == ExpenseCategory.MEAL,
-                onClick = { selectedCategory = ExpenseCategory.MEAL }
-            )
-            Text("Meal", modifier = Modifier.align(Alignment.CenterVertically))
-            Spacer(modifier = Modifier.height(16.dp))
-            RadioButton(
-                selected = selectedCategory == ExpenseCategory.OTHER,
-                onClick = { selectedCategory = ExpenseCategory.OTHER }
-            )
-            Text("Other", modifier = Modifier.align(Alignment.CenterVertically))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExpenseCategory.values().forEach { category ->
+                InputChip(
+                    selected = selectedCategory == category,
+                    onClick = { selectedCategory = category },
+                    label = { Text(category.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        TextField(
+
+        OutlinedTextField(
             value = merchant,
             onValueChange = { merchant = it },
             label = { Text("Merchant (Optional)") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Merchant"
+                )
+            },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
-        TextField(
+
+        OutlinedTextField(
             value = notes,
             onValueChange = { notes = it },
             label = { Text("Notes (Optional)") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.List,
+                    contentDescription = "Notes"
+                )
+            },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = {
-            if (amount.isNotBlank()) {
-                viewModel.saveExpense(
-                    amount = amount.toDouble(),
-                    currency = "BDT", // Defaulting to BDT for now
-                    category = selectedCategory,
-                    merchant = merchant.takeIf { it.isNotBlank() },
-                    notes = notes.takeIf { it.isNotBlank() }
-                )
-                // Clear fields after saving
-                amount = ""
-                merchant = ""
-                notes = ""
-                Toast.makeText(context, "Expense Saved", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Please enter an amount", Toast.LENGTH_SHORT).show()
-            }
-        }, modifier = Modifier.fillMaxWidth()) {
+
+        Button(
+            onClick = {
+                if (amount.isNotBlank()) {
+                    viewModel.saveExpense(
+                        amount = amount.toDouble(),
+                        currency = "BDT", // Defaulting to BDT for now
+                        category = selectedCategory,
+                        merchant = merchant.ifBlank { null },
+                        notes = notes.ifBlank { null }
+                    )
+                    // Clear fields after saving
+                    amount = ""
+                    merchant = ""
+                    notes = ""
+                    Toast.makeText(context, "Expense Saved", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Please enter an amount", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Save Expense")
         }
     }
