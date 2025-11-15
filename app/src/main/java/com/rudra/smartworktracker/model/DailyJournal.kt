@@ -10,4 +10,5 @@ data class DailyJournal(
     val morningIntention: String = "",
     val eveningReflection: String = "",
     val gratitude: String = ""
+
 )

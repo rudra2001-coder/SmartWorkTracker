@@ -13,5 +13,7 @@ data class HealthMetric(
 
 enum class HealthMetricType {
     WEIGHT,
-    HEIGHT
+    HEIGHT,
+    WATER,
+    SLEEP
 }

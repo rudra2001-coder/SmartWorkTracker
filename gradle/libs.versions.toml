@@ -32,6 +32,7 @@ roomRuntime = "2.8.3"
 ui = "1.9.4"
 uiGraphics = "1.9.4"
 animation = "1.9.4"
+animationCore = "1.9.4"
 
 [libraries]
 accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
@@ -80,6 +81,7 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottieCompose" }
 ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
