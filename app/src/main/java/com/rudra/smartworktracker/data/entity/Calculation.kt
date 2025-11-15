@@ -7,5 +7,8 @@ import androidx.room.PrimaryKey
 data class Calculation(
     @PrimaryKey val id: Int = 1,
     val mealRate: Double = 0.0,
-    val overtimeRate: Double = 0.0
+    val overtimeRate: Double = 0.0,
+    val mealCost: Double = 0.0,
+    val totalWorkingDays: Int = 0,
+    val homeOfficeDays: Int = 0
 )

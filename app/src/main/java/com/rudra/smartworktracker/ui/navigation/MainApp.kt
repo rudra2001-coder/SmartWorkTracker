@@ -62,8 +62,6 @@ import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
 import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
 import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
-//import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeScreen
-//import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeViewModel
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
@@ -327,16 +325,7 @@ fun MainApp() {
                     WisdomScreen()
                 }
 
-//                composable(
-//                    route = NavigationItem.MealOvertime.route,
-//                    enterTransition = { defaultEnterTransition() },
-//                    exitTransition = { defaultExitTransition() },
-//                    popEnterTransition = { defaultPopEnterTransition() },
-//                    popExitTransition = { defaultPopExitTransition() }
-//                ) {
-//                    val viewModel: MealOvertimeViewModel = viewModel()
-//                    MealOvertimeScreen(viewModel = viewModel, navController = navController)
-//                }
+
 
                 composable(
                     route = NavigationItem.Calculation.route,
@@ -581,11 +570,6 @@ sealed class NavigationItem(
         icon = Icons.AutoMirrored.Filled.LibraryBooks
     )
 
-//    object MealOvertime : NavigationItem(
-//        route = "meal_overtime",
-//        title = "Meal & Overtime",
-//        icon = Icons.Default.Restaurant
-//    )
     object Calculation : NavigationItem(
         route = "calculation",
         title = "Calculation",
