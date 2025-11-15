@@ -1,14 +1,18 @@
 package com.rudra.smartworktracker.ui.screens.calendar
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,15 +20,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +62,11 @@ fun CalendarScreen(
     val uiState by viewModel.uiState.collectAsState()
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
+    // Enhanced color scheme usage
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -59,7 +74,8 @@ fun CalendarScreen(
                     Text(
                         "Work Calendar",
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 },
                 navigationIcon = {
@@ -70,28 +86,67 @@ fun CalendarScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleMultiSelectMode() }) {
-                        Icon(Icons.Default.SelectAll, contentDescription = "Select Multiple")
+                    AnimatedContent(
+                        targetState = uiState.isMultiSelectMode,
+                        transitionSpec = {
+                            fadeIn() with fadeOut()
+                        },
+                        label = "multi select icon"
+                    ) { isMultiSelect ->
+                        IconButton(
+                            onClick = { viewModel.toggleMultiSelectMode() },
+                            modifier = Modifier.animateContentSize()
+                        ) {
+                            Icon(
+                                if (isMultiSelect) Icons.Default.Done else Icons.Default.SelectAll,
+                                contentDescription = if (isMultiSelect) "Done Selection" else "Select Multiple",
+                                tint = if (isMultiSelect) primaryColor else onSurfaceColor
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    containerColor = surfaceColor,
+                    scrolledContainerColor = surfaceColor
                 )
             )
         },
         floatingActionButton = {
-            if (uiState.isMultiSelectMode) {
-                FloatingActionButton(
-                    onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
-                    modifier = Modifier.padding(bottom = 72.dp)
+            AnimatedVisibility(
+                visible = uiState.isMultiSelectMode && uiState.multiSelectedDates.isNotEmpty(),
+                enter = scaleIn() + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Mark as Office Day")
+                    // Selection count chip
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = primaryColor),
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            text = uiState.multiSelectedDates.size.toString(),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Mark as Office Day FAB
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
+                        icon = { Icon(Icons.Default.Edit, "Mark as Office Day") },
+                        text = { Text("Mark Office") },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
         }
@@ -100,34 +155,15 @@ fun CalendarScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            // Month Navigation Card
+            // Enhanced Month Navigation Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        clip = true
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                MonthNavigation(currentMonth) { newMonth -> currentMonth = newMonth }
-            }
-
-            // Calendar Content
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .shadow(
-                        elevation = 4.dp,
+                        elevation = 8.dp,
                         shape = RoundedCornerShape(20.dp),
                         clip = true
                     ),
@@ -136,7 +172,61 @@ fun CalendarScreen(
                 ),
                 shape = RoundedCornerShape(20.dp)
             ) {
+                Column {
+                    MonthNavigation(currentMonth) { newMonth -> currentMonth = newMonth }
+
+                    // Quick month navigation
+                    if (!uiState.isMultiSelectMode) {
+                        QuickMonthNavigation(
+                            currentMonth = currentMonth,
+                            onMonthChange = { currentMonth = it },
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+            }
+
+            // Enhanced Calendar Content
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        clip = true
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(24.dp)
+            ) {
                 Column(modifier = Modifier.fillMaxSize()) {
+                    // Enhanced header with selection mode indicator
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Select dates to mark work type",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        AnimatedVisibility(visible = uiState.isMultiSelectMode) {
+                            Text(
+                                "${uiState.multiSelectedDates.size} selected",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = primaryColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
                     DaysOfWeekHeader()
                     CalendarGrid(
                         currentMonth = currentMonth,
@@ -149,11 +239,11 @@ fun CalendarScreen(
                 }
             }
 
-            // Work Log Details with smooth animation
+            // Enhanced Work Log Details with smooth animation
             AnimatedVisibility(
                 visible = uiState.selectedWorkLog != null && !uiState.isMultiSelectMode,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(animationSpec = tween(300)),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(animationSpec = tween(300))
+                enter = slideInVertically(animationSpec = tween(400)) { it } + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(animationSpec = tween(400)) { it } + fadeOut(animationSpec = tween(400))
             ) {
                 uiState.selectedWorkLog?.let { workLog ->
                     WorkLogDetails(
@@ -163,6 +253,36 @@ fun CalendarScreen(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickMonthNavigation(
+    currentMonth: YearMonth,
+    onMonthChange: (YearMonth) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentYear = YearMonth.now().year
+    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(months) { month ->
+            val monthIndex = months.indexOf(month) + 1
+            val isSelected = currentMonth.monthValue == monthIndex
+
+            TextButton(
+                onClick = {
+                    onMonthChange(YearMonth.of(currentYear, monthIndex))
+                }
+            ) {
+                Text(month)
             }
         }
     }
@@ -268,7 +388,7 @@ fun CalendarGrid(
     onDateSelected: (LocalDate) -> Unit
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
-    val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value % 7
+    val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value - 1
     val today = LocalDate.now()
 
     LazyVerticalGrid(

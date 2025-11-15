@@ -16,4 +16,13 @@ interface DailyJournalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertJournal(journal: DailyJournal)
+
+    @Query("SELECT * FROM daily_journals WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun getJournalsBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<DailyJournal>>
+
+    @Query("SELECT * FROM daily_journals WHERE morningIntention LIKE :query OR eveningReflection LIKE :query OR gratitude LIKE :query ORDER BY date DESC")
+    fun searchJournals(query: String): Flow<List<DailyJournal>>
+
+    @Query("SELECT * FROM daily_journals ORDER BY date DESC")
+    fun getAllJournals(): List<DailyJournal>
 }

@@ -4,9 +4,9 @@ import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.D
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.NOTIFICATIONS
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.VIBRATION
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.HealthMetricType
 import com.rudra.smartworktracker.model.WorkType
 import java.time.LocalDate
-import java.util.Date
 
 data class DashboardUiState(
     val userName: String? = null,
@@ -39,44 +39,31 @@ data class FinancialSummary(
     val savingsPercentage: Double
         get() = if (totalIncome > 0) (netSavings / totalIncome) * 100 else 0.0
 }
+data class HealthData(
+    val currentWeight: Double? = null,
+    val currentHeight: Double? = null,
+    val currentBMI: Double? = null,
+    val weightGoal: Double? = null,
+    val weightProgress: List<Pair<LocalDate, Double>> = emptyList(),
+    val recentEntries: List<HealthMetricEntry> = emptyList()
+)
 
+data class HealthMetricEntry(
+    val type: HealthMetricType,
+    val value: Double,
+    val date: LocalDate = LocalDate.now()
+)
 data class CalendarUiState(
-    val selectedDates: List<LocalDate> = emptyList(),
-
-   // val workLogs: List<WorkLogUi> = emptyList(),
-   // val errorMessage: String? = null,
-   // val isLoading: Boolean = false,
-    val selectionMode: Boolean = false,
-  //  val selectedDate: LocalDate? = null,
-    val selectedWorkType: WorkType? = null,
-    val workTypes: List<WorkType> = WorkType.values().toList(),
-    val selectedMonth: LocalDate = LocalDate.now(),
-    val selectedYear: Int = LocalDate.now().year,
-    val selectedWeek: Int = LocalDate.now().get(java.time.temporal.WeekFields.ISO.weekOfYear()),
-    val selectedDay: Int = LocalDate.now().dayOfWeek.value,
-    val selectedDayOfMonth: Int = LocalDate.now().dayOfMonth,
-    val selectedDayOfYear: Int = LocalDate.now().dayOfYear,
-    val currentMonth: LocalDate = LocalDate.now(),
     val selectedDate: LocalDate = LocalDate.now(),
     val workLogs: List<WorkLogUi> = emptyList(),
     val selectedWorkLog: WorkLogUi? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isMultiSelectMode: Boolean = false,
-    val multiSelectedDates: List<LocalDate> = emptyList(),
-
-
+    val multiSelectedDates: List<LocalDate> = emptyList()
 )
 
 data class WorkLogUi(
-//    val id: Long,
-//    val date: Date,
-//    val workType: WorkType,
-//    val formattedDate: String,
-//    val duration: String,
-//    val startTime: String? = null,
-//    val endTime: String? = null,
-    val notes: String? = null ,
     val id: Long,
     val date: java.util.Date,
     val workType: com.rudra.smartworktracker.model.WorkType,
@@ -84,8 +71,8 @@ data class WorkLogUi(
     val duration: String,
     val startTime: String?,
     val endTime: String?,
-)
- {
+    val notes: String? = null
+) {
     val isCompleted: Boolean
         get() = startTime != null && endTime != null
 }
