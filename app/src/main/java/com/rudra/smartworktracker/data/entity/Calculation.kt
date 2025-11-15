@@ -6,9 +6,6 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "calculations")
 data class Calculation(
     @PrimaryKey val id: Int = 1,
-    val mealRate: Double = 0.0,
-    val overtimeRate: Double = 0.0,
-    val mealCost: Double = 0.0,
-    val totalWorkingDays: Int = 0,
-    val homeOfficeDays: Int = 0
+    val dailyMealRate: Double = 60.0, // Default meal rate is 60 Taka
+    val overtimeRate: Double = 0.0
 )
