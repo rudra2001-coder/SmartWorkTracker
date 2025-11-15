@@ -45,21 +45,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.rudra.smartworktracker.data.entity.MonthlyInput
 import com.rudra.smartworktracker.data.entity.MonthlySummary
 import com.rudra.smartworktracker.data.entity.Settings
 import com.rudra.smartworktracker.data.repository.FirstWeekData
-import com.rudra.smartworktracker.ui.screens.meal_overtime.MealOvertimeViewModel
 import java.time.LocalDate
 
 @Composable
-fun MealOvertimeScreen(viewModel: MealOvertimeViewModel) {
+fun MealOvertimeScreen(viewModel: MealOvertimeViewModel, navController: NavController) {
     val uiState by viewModel.uiState.collectAsState()
     val settings by viewModel.settings.collectAsState()
 
@@ -71,10 +70,16 @@ fun MealOvertimeScreen(viewModel: MealOvertimeViewModel) {
 
     Column(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Header()
+        Text(
+            text = "Meal & Overtime Tracker",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
         when (val currentState = uiState) {
             is MealOvertimeUiState.Loading -> {
@@ -102,38 +107,14 @@ fun MealOvertimeScreen(viewModel: MealOvertimeViewModel) {
                     input = currentState.input,
                     settings = settings,
                     onUpdateInput = viewModel::updateMonthlyInput,
-                    onUpdateSettings = viewModel::updateSettings
+                    onUpdateSettings = viewModel::updateSettings,
+                    navController = navController
                 )
             }
 
             is MealOvertimeUiState.Error -> {
                 ErrorScreen(message = currentState.message)
             }
-        }
-    }
-}
-
-@Composable
-fun Header() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primary)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "🍱 Meal & Overtime Tracker",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Auto-calculate from first week data",
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                fontSize = 14.sp
-            )
         }
     }
 }
@@ -217,7 +198,8 @@ fun SuccessScreen(
     input: MonthlyInput,
     settings: Settings?,
     onUpdateInput: (MonthlyInput) -> Unit,
-    onUpdateSettings: (Settings) -> Unit
+    onUpdateSettings: (Settings) -> Unit,
+    navController: NavController
 ) {
     var showSettings by remember { mutableStateOf(false) }
 

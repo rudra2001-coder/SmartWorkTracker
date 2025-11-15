@@ -58,6 +58,7 @@ fun AllFunsionScreen(navController: NavController) {
             NavigationItem.Calendar,
             NavigationItem.Analytics,
             NavigationItem.MonthlyReport,
+            NavigationItem.Settings,
             NavigationItem.Calculation,
             NavigationItem.Backup
         )
@@ -134,7 +135,7 @@ fun AllFunsionScreen(navController: NavController) {
                         FeatureCard(
                             feature = feature,
                             onClick = { navController.navigate(feature.route) },
-                          //  modifier = Modifier.animateItemPlacement()
+                      //      modifier = Modifier.animateItemPlacement()
                         )
                     }
                 }
