@@ -5,10 +5,13 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
@@ -25,8 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.WorkType
-import com.rudra.smartworktracker.di.DatabaseModule
+import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.delay
@@ -37,38 +41,33 @@ import kotlin.math.sin
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToCalendar: () -> Unit,
+    onNavigateToAddEntry: () -> Unit,
+    onNavigateToAllFunsion: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModel.factory(DatabaseModule.provideDatabase(context))
+        factory = DashboardViewModel.factory(AppDatabase.getDatabase(context), context)
     )
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Smart Work Tracker",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            TopAppBar(
+                title = { Text("Dashboard") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNavigateToCalendar,
+                onClick = onNavigateToAddEntry,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Default.Schedule, "Calendar")
+                Icon(Icons.Default.Add, "Add Entry")
             }
         }
     ) { paddingValues ->
@@ -79,6 +78,15 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(16.dp)
         ) {
+            item {
+                Header(userName = uiState.userName)
+            }
+            item {
+                FinancialSummaryCard(summary = uiState.financialSummary)
+            }
+            item {
+                AllFunsionCard(onNavigateToAllFunsion = onNavigateToAllFunsion)
+            }
             // Today's Status Card
             item {
                 TodayStatusCard(
@@ -103,6 +111,156 @@ fun DashboardScreen(
         }
     }
 }
+
+@Composable
+fun Header(userName: String?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Hello, ${userName ?: "there"}!",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Here's your dashboard for today.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FinancialSummaryCard(summary: FinancialSummary) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "Financial Summary",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                FinancialSummaryItem(
+                    label = "Income",
+                    amount = summary.totalIncome,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                FinancialSummaryItem(
+                    label = "Expense",
+                    amount = summary.totalExpense,
+                    icon = Icons.AutoMirrored.Filled.TrendingDown,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                FinancialSummaryItem(
+                    label = "Savings",
+                    amount = summary.netSavings,
+                    icon = Icons.Default.AccountBalanceWallet,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+                FinancialSummaryItem(
+                    label = "Meal Cost",
+                    amount = summary.totalMealCost,
+                    icon = Icons.Outlined.Restaurant,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AllFunsionCard(onNavigateToAllFunsion: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToAllFunsion() },
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.AddRoad, contentDescription = "All Funsion")
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("All Funsion", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+@Composable
+fun FinancialSummaryItem(
+    label: String,
+    amount: Double,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    var currentValue by remember { mutableStateOf(0.0) }
+
+    LaunchedEffect(amount) {
+        val animation = Animatable(0f)
+        animation.animateTo(amount.toFloat(), animationSpec = tween(durationMillis = 1000)) {
+            currentValue = this.value.toDouble()
+        }
+    }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = color,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "%.2f BDT".format(currentValue),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = color
+            )
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -503,263 +661,62 @@ fun RecentActivityItem(workLog: WorkLogUi) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Text(
-            text = workLog.duration,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
 @Composable
 fun WorkTypeAnimation(workType: WorkType?) {
-    val infiniteTransition = rememberInfiniteTransition(label = "work_animation")
-
-    // Pulsing animation
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "pulse"
-    )
-
-    // Rotation animation for extra work
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = "rotation"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(120.dp)
-            .graphicsLayer {
-                scaleX = pulse
-                scaleY = pulse
-                rotationZ = if (workType == WorkType.EXTRA_WORK) rotation else 0f
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        when (workType) {
-            WorkType.OFFICE -> OfficeAnimation()
-            WorkType.HOME_OFFICE -> HomeOfficeAnimation()
-            WorkType.OFF_DAY -> OffDayAnimation()
-            WorkType.EXTRA_WORK -> ExtraWorkAnimation()
-            null -> IdleAnimation()
-        }
-    }
-}
-
-@Composable
-fun OfficeAnimation() {
-    Icon(
-        imageVector = Icons.Filled.Work,
-        contentDescription = "Office",
-        modifier = Modifier.size(64.dp),
-        tint = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
-fun HomeOfficeAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "home_animation")
-    val wifiBars by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 1500
-                0.3f at 0
-                1f at 500
-                0.3f at 1000
-                1f at 1500
-            },
-            repeatMode = RepeatMode.Restart
-        ), label = "wifi"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Home,
-            contentDescription = "Home Office",
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.secondary
-        )
-
-        // Animated WiFi bars
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            listOf(0.3f, 0.6f, 1.0f).forEach { targetHeight ->
-                AnimatedWifiBar(
-                    progress = wifiBars,
-                    targetHeight = targetHeight,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AnimatedWifiBar(progress: Float, targetHeight: Float, color: Color) {
-    val animatedHeight by animateDpAsState(
-        targetValue = (16.dp * targetHeight) * progress,
-        label = "wifi_bar"
-    )
-
-    Box(
-        modifier = Modifier
-            .width(6.dp)
-            .height(animatedHeight)
-            .background(color, RoundedCornerShape(2.dp))
-    )
-}
-
-@Composable
-fun OffDayAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "Off_day_animation")
-    val sunRotation by infiniteTransition.animateFloat(
+    val infiniteTransition = rememberInfiniteTransition(label = "infinite_transition")
+    val angle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
-        ), label = "sun_rotation"
+        ),
+        label = "angle"
     )
 
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(80.dp)
-    ) {
-        // Sun with rays
-        Canvas(modifier = Modifier.size(60.dp)) {
-            // Sun center
+    // Color transition
+    val primaryColor by animateColorAsState(
+        targetValue = when (workType) {
+            WorkType.OFFICE -> MaterialTheme.colorScheme.primary
+            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
+            WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
+            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
+            null -> MaterialTheme.colorScheme.primary
+        },
+        label = "primary_color"
+    )
+    val secondaryColor by animateColorAsState(
+        targetValue = when (workType) {
+            WorkType.OFFICE -> MaterialTheme.colorScheme.secondary
+            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary
+            WorkType.OFF_DAY -> MaterialTheme.colorScheme.primary
+            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.secondary
+            null -> MaterialTheme.colorScheme.secondary
+        },
+        label = "secondary_color"
+    )
+
+    Canvas(modifier = Modifier.size(120.dp)) {
+        val radius = size.minDimension / 2f
+        val particleCount = 20
+
+        (0 until particleCount).forEach { i ->
+            val progress = (i.toFloat() / particleCount + angle / 360f) % 1f
+            val currentAngle = progress * 360f
+            val currentRadius = radius * (1 - progress * 0.5f)
+
+            val x = center.x + currentRadius * cos(Math.toRadians(currentAngle.toDouble())).toFloat()
+            val y = center.y + currentRadius * sin(Math.toRadians(currentAngle.toDouble())).toFloat()
+
             drawCircle(
-                color = Color(0xFFFFD700),
-                radius = 20f
+                color = if (i % 2 == 0) primaryColor else secondaryColor,
+                radius = (1 - progress) * 6f, // Particle size decreases over time
+                center = Offset(x, y),
+                alpha = 1 - progress // Fade out
             )
-
-            // Sun rays
-            for (i in 0 until 8) {
-                val angle = i * 45f + sunRotation
-                val rad = Math.toRadians(angle.toDouble()).toFloat()
-                val startX = center.x + 25f * cos(rad)
-                val startY = center.y + 25f * sin(rad)
-                val endX = center.x + 35f * cos(rad)
-                val endY = center.y + 35f * sin(rad)
-
-                drawLine(
-                    color = Color(0xFFFFA500),
-                    start = Offset(startX, startY),
-                    end = Offset(endX, endY),
-                    strokeWidth = 3f
-                )
-            }
         }
-
-        Icon(
-            imageVector = Icons.Filled.BeachAccess,
-            contentDescription = "Off Day",
-            modifier = Modifier.size(32.dp),
-            tint = Color.White
-        )
-    }
-}
-
-@Composable
-fun ExtraWorkAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "extra_work_animation")
-    val boltScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "bolt_scale"
-    )
-
-    val sparkleAlpha by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = "sparkle_alpha"
-    )
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(80.dp)
-    ) {
-        // Lightning bolt with animation
-        Icon(
-            imageVector = Icons.Filled.Bolt,
-            contentDescription = "Extra Work",
-            modifier = Modifier
-                .size(48.dp)
-                .graphicsLayer {
-                    scaleX = boltScale
-                    scaleY = boltScale
-                },
-            tint = MaterialTheme.colorScheme.error
-        )
-
-        // Sparkle effects
-        Canvas(modifier = Modifier.matchParentSize()) {
-            for (i in 0 until 6) {
-                val angle = i * 60f
-                val rad = Math.toRadians(angle.toDouble()).toFloat()
-                val distance = 25f
-                val x = center.x + distance * cos(rad)
-                val y = center.y + distance * sin(rad)
-
-                drawCircle(
-                    color = Color.Yellow.copy(alpha = sparkleAlpha),
-                    radius = 4f,
-                    center = Offset(x, y)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun IdleAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "idle_animation")
-    val questionMarkScale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "question_scale"
-    )
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(80.dp)
-    ) {
-        Text(
-            text = "?",
-            modifier = Modifier
-                .graphicsLayer {
-                    scaleX = questionMarkScale
-                    scaleY = questionMarkScale
-                },
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

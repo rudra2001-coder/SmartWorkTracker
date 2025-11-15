@@ -1,86 +1,71 @@
 package com.rudra.smartworktracker.ui.screens.calendar
 
-import android.annotation.SuppressLint
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rudra.smartworktracker.data.dao.WorkLogDao
-import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.WorkType
-import com.rudra.smartworktracker.data.repository.WorkLogRepository
-import com.rudra.smartworktracker.di.DatabaseModule
 import com.rudra.smartworktracker.ui.WorkLogUi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
-@OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalFoundationApi::class,
-    ExperimentalAnimationApi::class
-)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CalendarScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToEditEntry: (Long) -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: CalendarViewModel = viewModel(
-        factory = CalendarViewModel.factory(DatabaseModule.provideDatabase(context))
-    )
+    val viewModel: CalendarViewModel = viewModel(factory = CalendarViewModel.factory(AppDatabase.getDatabase(context)))
     val uiState by viewModel.uiState.collectAsState()
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
-    // Fixed pager state initialization
-    val pagerState = rememberPagerState(
-        initialPage = Int.MAX_VALUE / 2,
-        pageCount = { Int.MAX_VALUE }
-    )
-    val coroutineScope = rememberCoroutineScope()
+    // Enhanced color scheme usage
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
     Scaffold(
         topBar = {
@@ -88,77 +73,80 @@ fun CalendarScreen(
                 title = {
                     Text(
                         "Work Calendar",
+                        fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        color = MaterialTheme.colorScheme.primary
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                actions = {
+                    AnimatedContent(
+                        targetState = uiState.isMultiSelectMode,
+                        transitionSpec = {
+                            fadeIn() with fadeOut()
+                        },
+                        label = "multi select icon"
+                    ) { isMultiSelect ->
+                        IconButton(
+                            onClick = { viewModel.toggleMultiSelectMode() },
+                            modifier = Modifier.animateContentSize()
+                        ) {
+                            Icon(
+                                if (isMultiSelect) Icons.Default.Done else Icons.Default.SelectAll,
+                                contentDescription = if (isMultiSelect) "Done Selection" else "Select Multiple",
+                                tint = if (isMultiSelect) primaryColor else onSurfaceColor
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = surfaceColor,
+                    scrolledContainerColor = surfaceColor
                 )
             )
         },
         floatingActionButton = {
-            // Quick action FAB with animation
-            var expanded by remember { mutableStateOf(false) }
-
-            Box {
-                // Secondary FABs
-                AnimatedVisibility(
-                    visible = expanded,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+            AnimatedVisibility(
+                visible = uiState.isMultiSelectMode && uiState.multiSelectedDates.isNotEmpty(),
+                enter = scaleIn() + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.End
+                    // Selection count chip
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = primaryColor),
+                        shape = CircleShape
                     ) {
-                        listOf(
-                            WorkType.OFFICE to Icons.Default.Work,
-                            WorkType.HOME_OFFICE to Icons.Default.Home,
-                            WorkType.OFF_DAY to Icons.Default.BeachAccess,
-                            WorkType.EXTRA_WORK to Icons.Default.Bolt
-                        ).forEach { (workType, icon) ->
-                            SmallFloatingActionButton(
-                                onClick = {
-                                    viewModel.markSelectedDate(workType)
-                                    expanded = false
-                                },
-                                containerColor = when (workType) {
-                                    WorkType.OFFICE -> MaterialTheme.colorScheme.primary
-                                    WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
-                                    WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
-                                    WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
-                                }
-                            ) {
-                                Icon(icon, workType.name)
-                            }
-                        }
-                    }
-                }
-
-                // Main FAB
-                FloatingActionButton(
-                    onClick = { expanded = !expanded },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    AnimatedContent(
-                        targetState = expanded,
-                        transitionSpec = {
-                            (scaleIn() + fadeIn()).togetherWith(scaleOut() + fadeOut())
-                        }, label = "fab_icon"
-                    ) { isExpanded ->
-                        Icon(
-                            if (isExpanded) Icons.Default.Close else Icons.Default.Add,
-                            if (isExpanded) "Close" else "Add Work Type"
+                        Text(
+                            text = uiState.multiSelectedDates.size.toString(),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
+
+                    // Mark as Office Day FAB
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
+                        icon = { Icon(Icons.Default.Edit, "Mark as Office Day") },
+                        text = { Text("Mark Office") },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
         }
@@ -167,55 +155,102 @@ fun CalendarScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            // Month Navigation with smooth animations
-            MonthNavigationHeader(
-                pagerState = pagerState,
-                onMonthChange = { page ->
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(page)
+            // Enhanced Month Navigation Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        clip = true
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column {
+                    MonthNavigation(currentMonth) { newMonth -> currentMonth = newMonth }
+
+                    // Quick month navigation
+                    if (!uiState.isMultiSelectMode) {
+                        QuickMonthNavigation(
+                            currentMonth = currentMonth,
+                            onMonthChange = { currentMonth = it },
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
                 }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Infinite month pager
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                val currentMonth = remember(page) {
-                    YearMonth.now().plusMonths(page.toLong() - (Int.MAX_VALUE / 2))
-                }
-
-                AnimatedMonthCalendar(
-                    month = currentMonth,
-                    workLogs = uiState.workLogs,
-                    selectedDate = uiState.selectedDate,
-                    onDateSelected = viewModel::selectDate,
-                    modifier = Modifier.fillMaxSize()
-                )
             }
 
-            // Selected Date Details with animation
-            AnimatedVisibility(
-                visible = uiState.selectedDate != null,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
+            // Enhanced Calendar Content
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        clip = true
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                uiState.selectedDate?.let { selectedDate ->
-                    SelectedDateDetails(
-                        selectedDate = selectedDate,
-                        workLog = uiState.workLogs.find {
-                            it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == selectedDate
-                        },
-                        onWorkTypeChange = { workType ->
-                            viewModel.markDateWithWorkType(selectedDate, workType)
-                        },
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Enhanced header with selection mode indicator
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Select dates to mark work type",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        AnimatedVisibility(visible = uiState.isMultiSelectMode) {
+                            Text(
+                                "${uiState.multiSelectedDates.size} selected",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = primaryColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    DaysOfWeekHeader()
+                    CalendarGrid(
+                        currentMonth = currentMonth,
+                        workLogs = uiState.workLogs,
+                        selectedDate = uiState.selectedDate,
+                        multiSelectedDates = uiState.multiSelectedDates,
+                        isMultiSelectMode = uiState.isMultiSelectMode,
+                        onDateSelected = { viewModel.onDateSelected(it) }
+                    )
+                }
+            }
+
+            // Enhanced Work Log Details with smooth animation
+            AnimatedVisibility(
+                visible = uiState.selectedWorkLog != null && !uiState.isMultiSelectMode,
+                enter = slideInVertically(animationSpec = tween(400)) { it } + fadeIn(animationSpec = tween(400)),
+                exit = slideOutVertically(animationSpec = tween(400)) { it } + fadeOut(animationSpec = tween(400))
+            ) {
+                uiState.selectedWorkLog?.let { workLog ->
+                    WorkLogDetails(
+                        workLog = workLog,
+                        onEdit = onNavigateToEditEntry,
+                        onDelete = viewModel::deleteWorkLog,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
@@ -223,214 +258,214 @@ fun CalendarScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
 @Composable
-fun MonthNavigationHeader(
-    pagerState: androidx.compose.foundation.pager.PagerState,
-    onMonthChange: (Int) -> Unit
+fun QuickMonthNavigation(
+    currentMonth: YearMonth,
+    onMonthChange: (YearMonth) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val currentMonth = remember(pagerState.currentPage) {
-        YearMonth.now().plusMonths(pagerState.currentPage.toLong() - (Int.MAX_VALUE / 2))
+    val currentYear = YearMonth.now().year
+    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(months) { month ->
+            val monthIndex = months.indexOf(month) + 1
+            val isSelected = currentMonth.monthValue == monthIndex
+
+            TextButton(
+                onClick = {
+                    onMonthChange(YearMonth.of(currentYear, monthIndex))
+                }
+            ) {
+                Text(month)
+            }
+        }
     }
+}
 
-    val formatter = remember { DateTimeFormatter.ofPattern("MMMM yyyy") }
-
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun MonthNavigation(currentMonth: YearMonth, onMonthChange: (YearMonth) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Previous Month Button
         IconButton(
-            onClick = { onMonthChange(pagerState.currentPage - 1) },
-            modifier = Modifier
-                .size(48.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            onClick = { onMonthChange(currentMonth.minusMonths(1)) },
+            modifier = Modifier.size(40.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         ) {
-            Icon(Icons.Default.ChevronLeft, "Previous Month")
+            Icon(
+                Icons.Default.ChevronLeft,
+                contentDescription = "Previous Month",
+                modifier = Modifier.size(20.dp)
+            )
         }
 
-        // Month Title with animation
         AnimatedContent(
             targetState = currentMonth,
             transitionSpec = {
-                if (targetState > initialState) {
-                    (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> -width } + fadeOut()
-                    )
+                if (targetState.isAfter(initialState)) {
+                    slideInHorizontally(animationSpec = tween(300)) { width -> width } +
+                            fadeIn(animationSpec = tween(300)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(300)) { width -> -width } +
+                            fadeOut(animationSpec = tween(300))
                 } else {
-                    (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
-                        slideOutHorizontally { width -> width } + fadeOut()
-                    )
-                }.using(
-                    SizeTransform(clip = false)
-                )
-            }, label = "month_title"
+                    slideInHorizontally(animationSpec = tween(300)) { width -> -width } +
+                            fadeIn(animationSpec = tween(300)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(300)) { width -> width } +
+                            fadeOut(animationSpec = tween(300))
+                }.using(SizeTransform(clip = false))
+            },
+            label = "month name"
         ) { month ->
             Text(
-                text = month.format(formatter),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
         }
 
-        // Next Month Button
         IconButton(
-            onClick = { onMonthChange(pagerState.currentPage + 1) },
-            modifier = Modifier
-                .size(48.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            onClick = { onMonthChange(currentMonth.plusMonths(1)) },
+            modifier = Modifier.size(40.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         ) {
-            Icon(Icons.Default.ChevronRight, "Next Month")
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Next Month",
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-fun AnimatedMonthCalendar(
-    month: YearMonth,
-    workLogs: List<WorkLogUi>,
-    selectedDate: LocalDate?,
-    onDateSelected: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val daysInMonth = month.lengthOfMonth()
-    val firstDayOfMonth = month.atDay(1).dayOfWeek.value % 7 // Adjust for Sunday start
-
-    // Pinch to zoom animation
-    var scale by remember { mutableFloatStateOf(1f) }
-
-    Column(
-        modifier = modifier
-            .pointerInput(Unit) {
-                detectTransformGestures { _, _, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(0.8f, 1.5f)
-                }
-            }
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .padding(16.dp)
+fun DaysOfWeekHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceAround
     ) {
-        // Week day headers
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
-                Text(
-                    text = day,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
-            }
+        val days = DayOfWeek.values()
+        days.forEach { day ->
+            Text(
+                text = day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(8.dp))
+@Composable
+fun CalendarGrid(
+    currentMonth: YearMonth,
+    workLogs: List<WorkLogUi>,
+    selectedDate: LocalDate,
+    multiSelectedDates: List<LocalDate>,
+    isMultiSelectMode: Boolean,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    val daysInMonth = currentMonth.lengthOfMonth()
+    val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value - 1
+    val today = LocalDate.now()
 
-        // Calendar grid with staggered animation
-        LazyColumn {
-            items((0 until 42).chunked(7).size) { weekIndex ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(
-                        initialOffsetY = { it * 2 },
-                        animationSpec = tween(300, delayMillis = weekIndex * 50)
-                    ) + fadeIn()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        for (dayOffset in 0 until 7) {
-                            val dayIndex = weekIndex * 7 + dayOffset
-                            val dayNumber = dayIndex - firstDayOfMonth + 1
-
-                            if (dayNumber in 1..daysInMonth) {
-                                val date = month.atDay(dayNumber)
-                                val workLog = workLogs.find {
-                                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
-                                }
-
-                                AnimatedCalendarDay(
-                                    dayNumber = dayNumber,
-                                    date = date,
-                                    workLog = workLog,
-                                    isSelected = date == selectedDate,
-                                    onClick = { onDateSelected(date) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            } else {
-                                // Empty day
-                                Spacer(modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f))
-                            }
-                        }
-                    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(7),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(daysInMonth + firstDayOfMonth) { dayIndex ->
+            if (dayIndex >= firstDayOfMonth) {
+                val date = currentMonth.atDay(dayIndex - firstDayOfMonth + 1)
+                val workLogForDay = workLogs.find {
+                    it.date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() == date
                 }
+                val isSelected = if (isMultiSelectMode) multiSelectedDates.contains(date) else date == selectedDate
+
+                CalendarDay(
+                    date = date,
+                    workType = workLogForDay?.workType,
+                    isSelected = isSelected,
+                    isToday = date == today,
+                    onDateSelected = { onDateSelected(date) }
+                )
+            } else {
+                // Empty space for days before the first day of month
+                Spacer(modifier = Modifier.aspectRatio(1f))
             }
         }
     }
 }
 
 @Composable
-fun AnimatedCalendarDay(
-    dayNumber: Int,
+fun CalendarDay(
     date: LocalDate,
-    workLog: WorkLogUi?,
+    workType: WorkType?,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    isToday: Boolean,
+    onDateSelected: () -> Unit
 ) {
-    val isToday = date == LocalDate.now()
-
-    // Selection animation
-    val selectionScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.2f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f),
-        label = "selection_scale"
-    )
-
-    // Background color based on work type
     val backgroundColor by animateColorAsState(
-        targetValue = when (workLog?.workType) {
-            WorkType.OFFICE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-            WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-            null -> Color.Transparent
+        targetValue = when {
+            isSelected -> MaterialTheme.colorScheme.primary
+            isToday -> MaterialTheme.colorScheme.primaryContainer
+            else -> Color.Transparent
         },
-        label = "background_color"
+        animationSpec = tween(300),
+        label = "background color"
     )
 
-    // Border color for today
-    val borderColor = if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent
+    val textColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> MaterialTheme.colorScheme.onPrimary
+            isToday -> MaterialTheme.colorScheme.onPrimaryContainer
+            else -> MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = tween(300),
+        label = "text color"
+    )
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .aspectRatio(1f)
-            .padding(4.dp)
-            .border(
-                width = 2.dp,
-                color = borderColor,
-                shape = CircleShape
-            )
-            .background(backgroundColor, CircleShape)
+            .padding(2.dp)
             .clip(CircleShape)
-            // FIXED: Proper clickable modifier usage
-            .clickable(onClick = onClick)
-            .graphicsLayer {
-                scaleX = selectionScale
-                scaleY = selectionScale
-            },
+            .background(backgroundColor)
+            .then(
+                if (isToday && !isSelected)
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
+                        CircleShape
+                    )
+                else Modifier
+            )
+            .clickable { onDateSelected() },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -438,228 +473,175 @@ fun AnimatedCalendarDay(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = dayNumber.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurface
+                text = date.dayOfMonth.toString(),
+                color = textColor,
+                fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 14.sp
             )
 
-            // Work type indicator dot
-            workLog?.workType?.let { workType ->
-                Spacer(modifier = Modifier.height(2.dp))
+            workType?.let {
                 Box(
                     modifier = Modifier
                         .size(6.dp)
+                        .clip(CircleShape)
                         .background(
-                            color = when (workType) {
-                                WorkType.OFFICE -> MaterialTheme.colorScheme.primary
-                                WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
-                                WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
-                                WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
-                            },
-                            shape = CircleShape
+                            color = when (it) {
+                                WorkType.OFFICE -> MaterialTheme.colorScheme.secondary
+                                WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary
+                                WorkType.OFF_DAY -> MaterialTheme.colorScheme.error
+                                WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary
+                            }
                         )
                 )
             }
         }
-
-        // Selection ring animation
-        if (isSelected) {
-            val infiniteTransition = rememberInfiniteTransition(label = "selection_ring")
-            val ringAlpha by infiniteTransition.animateFloat(
-                initialValue = 1f,
-                targetValue = 0f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ), label = "ring_alpha"
-            )
-
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = ringAlpha),
-                        shape = CircleShape
-                    )
-            )
-        }
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun SelectedDateDetails(
-    selectedDate: LocalDate,
-    workLog: WorkLogUi?,
-    onWorkTypeChange: (WorkType) -> Unit,
+fun WorkLogDetails(
+    workLog: WorkLogUi,
+    onEdit: (Long) -> Unit,
+    onDelete: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val formatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy") }
-
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Text(
-                text = selectedDate.format(formatter),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Current work type with animation
-            AnimatedContent(
-                targetState = workLog?.workType,
-                transitionSpec = {
-                    (scaleIn() + fadeIn()).togetherWith(scaleOut() + fadeOut())
-                }, label = "work_type_display"
-            ) { currentWorkType ->
-                Text(
-                    text = currentWorkType?.let {
-                        when (it) {
-                            WorkType.OFFICE -> "🏢 Office Day"
-                            WorkType.HOME_OFFICE -> "🏠 Home Office"
-                            WorkType.OFF_DAY -> "🌴 Off Day"
-                            WorkType.EXTRA_WORK -> "⚡ Extra Work"
-                        }
-                    } ?: "📋 No work type set",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header with actions
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    Text(
+                        "Work Entry Details",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        workLog.formattedDate,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row {
+                    FilledTonalIconButton(
+                        onClick = { onEdit(workLog.id) },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.Edit, "Edit Entry")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilledTonalIconButton(
+                        onClick = { onDelete(workLog.id) },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, "Delete Entry")
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Work type selection buttons
-            Text(
-                text = "Mark as:",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Work type with colored chip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Work Type:",
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                WorkTypeChip(workLog.workType)
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            // Time information
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                listOf(
-                    WorkType.OFFICE to Icons.Default.Work,
-                    WorkType.HOME_OFFICE to Icons.Default.Home,
-                    WorkType.OFF_DAY to Icons.Default.BeachAccess,
-                    WorkType.EXTRA_WORK to Icons.Default.Bolt
-                ).forEach { (workType, icon) ->
-                    WorkTypeSelectionButton(
-                        workType = workType,
-                        icon = icon,
-                        isSelected = workLog?.workType == workType,
-                        onClick = { onWorkTypeChange(workType) },
-                        modifier = Modifier.weight(1f)
-                    )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    InfoRow("Start Time", workLog.startTime ?: "Not set")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    InfoRow("End Time", workLog.endTime ?: "Not set")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    InfoRow("Duration", workLog.duration, isHighlighted = true)
                 }
             }
-
-            // Time selection if needed
-            if (workLog?.workType in listOf(WorkType.OFFICE, WorkType.HOME_OFFICE, WorkType.EXTRA_WORK)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                // Add time picker components here
-            }
         }
     }
 }
 
 @Composable
-private fun WorkTypeSelectionButton(
-    workType: WorkType,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val buttonColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            when (workType) {
-                WorkType.OFFICE -> MaterialTheme.colorScheme.primary
-                WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
-                WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
-                WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
-            }
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
-        label = "button_color"
-    )
+fun WorkTypeChip(workType: WorkType) {
+    val (backgroundColor, textColor) = when (workType) {
+        WorkType.OFFICE -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
+        WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
+        WorkType.OFF_DAY -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
+        WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    }
 
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-        label = "content_color"
-    )
-
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = buttonColor,
-            contentColor = contentColor
-        ),
-        border = if (!isSelected) {
-            ButtonDefaults.outlinedButtonBorder
-        } else {
-            null
-        }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(
-                text = when (workType) {
-                    WorkType.OFFICE -> "Office"
-                    WorkType.HOME_OFFICE -> "Home"
-                    WorkType.OFF_DAY -> "Off"
-                    WorkType.EXTRA_WORK -> "Extra"
-                },
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
+        Text(
+            text = workType.name.replace("_", " "),
+            color = textColor,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp
+        )
     }
 }
 
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview
 @Composable
-fun CalendarScreenPreview() {
-    val fakeDao = object : WorkLogDao {
-        override fun getAllWorkLogs(): Flow<List<WorkLog>> = flowOf(emptyList())
-        override suspend fun insertWorkLog(workLog: WorkLog) {}
-        override suspend fun getWorkLogByDate(date: java.util.Date): WorkLog? = null
-        override suspend fun countByType(monthYear: String, workType: WorkType): Int = 0
-        override suspend fun getTotalExtraHours(monthYear: String, workType: WorkType): Double? = 0.0
-        override suspend fun clearAll() {}
-        override suspend fun deleteWorkLog(workLog: WorkLog) {}
-        override suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog> = emptyList()
+fun InfoRow(label: String, value: String, isHighlighted: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
+            color = if (isHighlighted) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End
+        )
     }
-    val fakeRepository = WorkLogRepository(fakeDao)
-
-    val viewModel = CalendarViewModel(fakeRepository)
-
-    CalendarScreen(
-        onNavigateBack = {}
-    )
 }

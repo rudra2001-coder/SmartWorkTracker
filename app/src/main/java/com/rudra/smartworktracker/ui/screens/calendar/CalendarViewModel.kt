@@ -23,22 +23,25 @@ import java.util.Locale
 
 class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel() {
 
-    private val _selectedDate = MutableStateFlow<LocalDate?>(null)
+    private val _selectedDate = MutableStateFlow<LocalDate>(LocalDate.now())
     private val _workLogs = MutableStateFlow<List<WorkLogUi>>(emptyList())
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    private val _isLoading = MutableStateFlow(false)
+    private val _selectedWorkLog = MutableStateFlow<WorkLogUi?>(null)
+    private val _multiSelectMode = MutableStateFlow(false)
+    private val _multiSelectedDates = MutableStateFlow<List<LocalDate>>(emptyList())
 
     val uiState: StateFlow<CalendarUiState> = combine(
         _selectedDate,
         _workLogs,
-        _errorMessage,
-        _isLoading
-    ) { selectedDate, workLogs, errorMessage, isLoading ->
+        _selectedWorkLog,
+        _multiSelectMode,
+        _multiSelectedDates
+    ) { selectedDate, workLogs, selectedWorkLog, multiSelectMode, multiSelectedDates ->
         CalendarUiState(
             selectedDate = selectedDate,
             workLogs = workLogs,
-            errorMessage = errorMessage,
-            isLoading = isLoading
+            selectedWorkLog = selectedWorkLog,
+            isMultiSelectMode = multiSelectMode,
+            multiSelectedDates = multiSelectedDates
         )
     }.stateIn(
         scope = viewModelScope,
@@ -48,115 +51,98 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
 
     init {
         loadWorkLogs()
+        observeSelectedDate()
     }
 
-    fun selectDate(date: LocalDate) {
-        if (canSelectDate(date)) {
-            _selectedDate.value = date
-            _errorMessage.value = null
+    fun onDateSelected(date: LocalDate) {
+        if (_multiSelectMode.value) {
+            val currentDates = _multiSelectedDates.value.toMutableList()
+            if (currentDates.contains(date)) {
+                currentDates.remove(date)
+            } else {
+                currentDates.add(date)
+            }
+            _multiSelectedDates.value = currentDates
         } else {
-            _errorMessage.value = "Cannot select future dates"
+            _selectedDate.value = date
         }
     }
 
-    fun markSelectedDate(workType: WorkType) {
-        _selectedDate.value?.let { date ->
-            updateWorkLog(date, workType)
-        }
+    fun toggleMultiSelectMode() {
+        _multiSelectMode.value = !_multiSelectMode.value
+        _multiSelectedDates.value = emptyList() // Clear selection on toggle
     }
 
-    fun markDateWithWorkType(date: LocalDate, workType: WorkType) {
-        updateWorkLog(date, workType)
-    }
-
-    fun updateWorkLog(date: LocalDate, workType: WorkType) {
+    fun markSelectedDates(workType: WorkType) {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                _errorMessage.value = null
+            _multiSelectedDates.value.forEach { date ->
+                updateWorkLog(date, workType, isMultiSelect = true)
+            }
+            toggleMultiSelectMode() // Exit multi-select mode after marking
+        }
+    }
 
-                val existingWorkLog = _workLogs.value.find {
+    private fun observeSelectedDate() {
+        viewModelScope.launch {
+            _selectedDate.collect { date ->
+                _selectedWorkLog.value = _workLogs.value.find {
                     it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
                 }
-
-                if (existingWorkLog != null) {
-                    // Update existing work log
-                    val updatedWorkLog = WorkLog(
-                        id = existingWorkLog.id,
-                        date = existingWorkLog.date,
-                        workType = workType,
-                        startTime = existingWorkLog.startTime.toString(),
-                        endTime = existingWorkLog.endTime.toString()
-                    )
-                    repository.insertWorkLog(updatedWorkLog)
-                } else {
-                    // Create new work log
-                    val workLog = WorkLog(
-                        date = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
-                        workType = workType,
-                        startTime = "09:00",
-                        endTime = "17:00"
-                    )
-                    repository.insertWorkLog(workLog)
-                }
-                loadWorkLogs()
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to save work log: ${e.message}"
-            } finally {
-                _isLoading.value = false
             }
         }
     }
 
-    fun deleteWorkLog(date: LocalDate) {
+    fun updateWorkLog(date: LocalDate, workType: WorkType, isMultiSelect: Boolean = false) {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                val workLog = _workLogs.value.find {
-                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
-                }
-                workLog?.let {
-                    repository.deleteWorkLog(WorkLog(it.id, it.date, it.workType, it.startTime, it.endTime))
-                    loadWorkLogs()
-                }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to delete work log: ${e.message}"
-            } finally {
-                _isLoading.value = false
+            val existingWorkLog = _workLogs.value.find {
+                it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == date
+            }
+
+            if (existingWorkLog != null) {
+                val updatedWorkLog = WorkLog(
+                    id = existingWorkLog.id,
+                    date = existingWorkLog.date,
+                    workType = workType,
+                    startTime = existingWorkLog.startTime,
+                    endTime = existingWorkLog.endTime
+                )
+                repository.updateWorkLog(updatedWorkLog)
+            } else {
+                val workLog = WorkLog(
+                    date = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
+                    workType = workType,
+                    startTime = "09:00",
+                    endTime = "17:00"
+                )
+                repository.insertWorkLog(workLog)
             }
         }
     }
 
-    fun clearError() {
-        _errorMessage.value = null
-    }
-
-    private fun canSelectDate(date: LocalDate): Boolean {
-        val today = LocalDate.now()
-        return !date.isAfter(today)
+    fun deleteWorkLog(id: Long) {
+        viewModelScope.launch {
+            repository.deleteWorkLogById(id)
+        }
     }
 
     private fun loadWorkLogs() {
         viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                repository.getAllWorkLogs().collect { workLogs ->
-                    _workLogs.value = workLogs.map { workLog ->
-                        WorkLogUi(
-                            id = workLog.id,
-                            date = workLog.date,
-                            workType = workLog.workType,
-                            formattedDate = formatDate(workLog.date),
-                            duration = calculateDuration(workLog.startTime, workLog.endTime),
-                            startTime = workLog.startTime,
-                            endTime = workLog.endTime
-                        )
-                    }
+            repository.getAllWorkLogs().collect { workLogs ->
+                _workLogs.value = workLogs.map { workLog ->
+                    WorkLogUi(
+                        id = workLog.id,
+                        date = workLog.date,
+                        workType = workLog.workType,
+                        formattedDate = formatDate(workLog.date),
+                        duration = calculateDuration(workLog.startTime, workLog.endTime),
+                        startTime = workLog.startTime,
+                        endTime = workLog.endTime
+                    )
                 }
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to load work logs: ${e.message}"
-            } finally {
-                _isLoading.value = false
+                // Refresh single-day selection as well
+                _selectedWorkLog.value = _workLogs.value.find {
+                    it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == _selectedDate.value
+                }
             }
         }
     }
@@ -166,9 +152,10 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     }
 
     private fun calculateDuration(startTime: String?, endTime: String?): String {
+        if (startTime == null || endTime == null) return "8h"
         return try {
-            val startParts = startTime!!.split(":")
-            val endParts = endTime!!.split(":")
+            val startParts = startTime.split(":")
+            val endParts = endTime.split(":")
             val startHour = startParts[0].toInt()
             val startMinute = startParts[1].toInt()
             val endHour = endParts[0].toInt()

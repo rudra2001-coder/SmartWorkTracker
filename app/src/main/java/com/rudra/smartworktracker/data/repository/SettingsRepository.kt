@@ -1,54 +1,67 @@
 package com.rudra.smartworktracker.data.repository
 
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
-import com.rudra.smartworktracker.data.dao.WorkLogDao
-import com.rudra.smartworktracker.ui.screens.settings.SettingsUiState
+import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class SettingsRepository(
-    private val dataStore: DataStore<Preferences>,
-    private val workLogDao: WorkLogDao
-) {
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-    companion object {
-        val NOTIFICATIONS = booleanPreferencesKey("notifications")
-        val DARK_THEME = booleanPreferencesKey("dark_theme")
-        val VIBRATION = booleanPreferencesKey("vibration")
+class SettingsRepository(private val context: Context) {
+
+    private val mealRateKey = doublePreferencesKey("meal_rate")
+    private val darkThemeKey = booleanPreferencesKey(DARK_THEME)
+    private val notificationsKey = booleanPreferencesKey(NOTIFICATIONS)
+    private val vibrationKey = booleanPreferencesKey(VIBRATION)
+
+    val mealRate: Flow<Double> = context.dataStore.data.map {
+        it[mealRateKey] ?: 60.0
     }
 
-    fun getSettings(): Flow<SettingsUiState> = dataStore.data.map {
-        SettingsUiState(
-            notificationsEnabled = it[NOTIFICATIONS] ?: true,
-            darkThemeEnabled = it[DARK_THEME] ?: false,
-            vibrationEnabled = it[VIBRATION] ?: true
-        )
-    }
-
-    suspend fun saveSettings(
-        notificationsEnabled: Boolean,
-        darkThemeEnabled: Boolean,
-        vibrationEnabled: Boolean
-    ) {
-        dataStore.edit {
-            it[NOTIFICATIONS] = notificationsEnabled
-            it[DARK_THEME] = darkThemeEnabled
-            it[VIBRATION] = vibrationEnabled
+    suspend fun setMealRate(rate: Double) {
+        context.dataStore.edit {
+            it[mealRateKey] = rate
         }
     }
 
-    suspend fun backupData() {
-        // Implement backup logic (e.g., export to file or cloud)
+    val darkTheme: Flow<Boolean> = context.dataStore.data.map {
+        it[darkThemeKey] ?: false
     }
 
-    suspend fun restoreData() {
-        // Implement restore logic
+    suspend fun setDarkTheme(isDark: Boolean) {
+        context.dataStore.edit {
+            it[darkThemeKey] = isDark
+        }
     }
 
-    suspend fun clearAllWorkLogs() {
-        workLogDao.clearAll()
+    val notifications: Flow<Boolean> = context.dataStore.data.map {
+        it[notificationsKey] ?: true
+    }
+
+    suspend fun setNotifications(enabled: Boolean) {
+        context.dataStore.edit {
+            it[notificationsKey] = enabled
+        }
+    }
+
+    val vibration: Flow<Boolean> = context.dataStore.data.map {
+        it[vibrationKey] ?: true
+    }
+
+    suspend fun setVibration(enabled: Boolean) {
+        context.dataStore.edit {
+            it[vibrationKey] = enabled
+        }
+    }
+
+    companion object {
+        const val NOTIFICATIONS = "notifications"
+        const val DARK_THEME = "dark_theme"
+        const val VIBRATION = "vibration"
     }
 }

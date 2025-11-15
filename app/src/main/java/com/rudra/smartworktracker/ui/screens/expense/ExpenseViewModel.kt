@@ -7,7 +7,6 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -22,7 +21,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     ) {
         viewModelScope.launch {
             val expense = Expense(
-                id = UUID.randomUUID().toString(),
                 amount = amount,
                 currency = currency,
                 category = category,

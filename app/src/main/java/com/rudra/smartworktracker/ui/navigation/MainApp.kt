@@ -7,18 +7,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddRoad
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
@@ -28,27 +35,39 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
+import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
 import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
+import com.rudra.smartworktracker.ui.screens.all_funsion.AllFunsionScreen
+import com.rudra.smartworktracker.ui.screens.backup.BackupScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
+import com.rudra.smartworktracker.ui.screens.calculation.CalculationScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
 import com.rudra.smartworktracker.ui.screens.dashboard.DashboardScreen
 import com.rudra.smartworktracker.ui.screens.expense.ExpenseScreen
 import com.rudra.smartworktracker.ui.screens.focus.FocusScreen
 import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
 import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
+import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
+import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
+import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileScreen
+import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileViewModelFactory
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
@@ -65,18 +84,25 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
+        NavigationItem.UserProfile,
+        NavigationItem.AddEntry,
+        NavigationItem.Reports,
         NavigationItem.Journal,
         NavigationItem.WorkTimer,
         NavigationItem.Focus,
         NavigationItem.MindfulBreak,
         NavigationItem.Habit,
         NavigationItem.Expense,
+        NavigationItem.Income,
         NavigationItem.Health,
         NavigationItem.Achievements,
         NavigationItem.Wisdom,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
+        NavigationItem.Calculation,
+        NavigationItem.Backup,
+        NavigationItem.AllFunsion,
         NavigationItem.Settings
     )
 
@@ -145,8 +171,11 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     DashboardScreen(
-                        onNavigateToCalendar = {
-                            navController.navigate(NavigationItem.Calendar.route)
+                        onNavigateToAddEntry = {
+                            navController.navigate(NavigationItem.AddEntry.route)
+                        },
+                        onNavigateToAllFunsion = {
+                            navController.navigate(NavigationItem.AllFunsion.route)
                         }
                     )
                 }
@@ -158,7 +187,12 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    CalendarScreen(onNavigateBack = { navController.popBackStack() })
+                    CalendarScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToEditEntry = { workLogId ->
+                            navController.navigate("${NavigationItem.AddEntry.route}?workLogId=$workLogId")
+                        }
+                    )
                 }
 
                 composable(
@@ -178,8 +212,9 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                    SettingsScreen(navController = navController)
                 }
+
                 composable(
                     route = NavigationItem.MonthlyReport.route,
                     enterTransition = { defaultEnterTransition() },
@@ -209,6 +244,16 @@ fun MainApp() {
                 ) {
                     ExpenseScreen()
                 }
+                 composable(
+                    route = NavigationItem.Income.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    IncomeScreen()
+                }
+
 
                 composable(
                     route = NavigationItem.Health.route,
@@ -279,6 +324,76 @@ fun MainApp() {
                 ) {
                     WisdomScreen()
                 }
+
+
+
+                composable(
+                    route = NavigationItem.Calculation.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    CalculationScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.Backup.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    BackupScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.AllFunsion.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AllFunsionScreen(navController = navController)
+                }
+
+                composable(
+                    route = NavigationItem.UserProfile.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    val context = LocalContext.current
+                    UserProfileScreen(
+                        viewModel = viewModel(factory = UserProfileViewModelFactory(context)),
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",
+                    arguments = listOf(navArgument("workLogId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    }),
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AddEntryScreen(onNavigateBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = NavigationItem.Reports.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    ReportsScreen(onNavigateBack = { navController.popBackStack() })
+                }
             }
         }
     }
@@ -317,8 +432,8 @@ fun AppBottomNavigation(
         NavigationItem.Dashboard,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
+        NavigationItem.AllFunsion,
         NavigationItem.Settings
-
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -364,85 +479,153 @@ fun AppBottomNavigation(
 sealed class NavigationItem(
     val route: String,
     val title: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val description: String? = null
 ) {
     object Dashboard : NavigationItem(
         route = "dashboard",
         title = "Dashboard",
-        icon = Icons.Default.Dashboard
+        icon = Icons.Default.Dashboard,
+        description = "Your daily summary"
     )
 
     object Calendar : NavigationItem(
         route = "calendar",
         title = "Calendar",
-        icon = Icons.Default.CalendarToday
+        icon = Icons.Default.CalendarToday,
+        description = "View your work logs"
     )
 
     object Analytics : NavigationItem(
         route = "analytics",
         title = "Analytics",
-        icon = Icons.Default.Analytics
+        icon = Icons.Default.Analytics,
+        description = "Visualize your progress"
     )
 
     object Settings : NavigationItem(
         route = "settings",
         title = "Settings",
-        icon = Icons.Default.Settings
+        icon = Icons.Default.Settings,
+        description = "Customize the app"
     )
 
     object MonthlyReport : NavigationItem(
         route = "monthly_report",
         title = "Monthly Report",
-        icon = Icons.Default.PieChart
+        icon = Icons.Default.PieChart,
+        description = "Detailed monthly summaries"
     )
 
     object WorkTimer : NavigationItem(
         route = "work_timer",
         title = "Work Timer",
-        icon = Icons.Default.Timer
+        icon = Icons.Default.Timer,
+        description = "Track your work sessions"
     )
 
     object Expense : NavigationItem(
         route = "expense",
         title = "Expense Log",
-        icon = Icons.Default.AttachMoney
+        icon = Icons.Default.AttachMoney,
+        description = "Log your expenses"
+    )
+    object Income : NavigationItem(
+        route = "income",
+        title = "Income",
+        icon = Icons.Default.AttachMoney,
+        description = "Track your income"
     )
 
     object Health : NavigationItem(
         route = "health",
         title = "Health Metrics",
-        icon = Icons.Default.Favorite
+        icon = Icons.Default.Favorite,
+        description = "Monitor your well-being"
     )
 
     object Focus : NavigationItem(
         route = "focus",
         title = "Focus Sessions",
-        icon = Icons.Default.FilterCenterFocus
+        icon = Icons.Default.FilterCenterFocus,
+        description = "Improve your concentration"
     )
+
     object Habit : NavigationItem(
         route = "habit",
         title = "Habit Tracker",
-        icon = Icons.Default.CheckCircle
+        icon = Icons.Default.CheckCircle,
+        description = "Build positive habits"
     )
+
     object Achievements : NavigationItem(
         route = "achievements",
         title = "Achievements",
-        icon = Icons.Default.EmojiEvents
+        icon = Icons.Default.EmojiEvents,
+        description = "Celebrate your milestones"
     )
+
     object Journal : NavigationItem(
         route = "journal",
         title = "Daily Journal",
-        icon = Icons.Default.Book
+        icon = Icons.Default.Book,
+        description = "Reflect on your day"
     )
+
     object MindfulBreak : NavigationItem(
         route = "mindful_break",
         title = "Mindful Break",
-        icon = Icons.Default.SelfImprovement
+        icon = Icons.Default.SelfImprovement,
+        description = "Relax and recharge"
     )
+
     object Wisdom : NavigationItem(
         route = "wisdom",
         title = "Wisdom Library",
-        icon = Icons.Default.LibraryBooks
+        icon = Icons.AutoMirrored.Filled.LibraryBooks,
+        description = "Get inspired"
+    )
+
+    object Calculation : NavigationItem(
+        route = "calculation",
+        title = "Calculation",
+        icon = Icons.Default.Calculate,
+        description = "Meal and overtime rates"
+    )
+
+    object Backup : NavigationItem(
+        route = "backup",
+        title = "Backup & Restore",
+        icon = Icons.Default.Backup,
+        description = "Secure your data"
+    )
+
+    object AllFunsion : NavigationItem(
+        route = "all_funsion",
+        title = "All Features",
+        icon = Icons.Default.AddRoad,
+        description = "Explore all app features"
+    )
+
+    object UserProfile : NavigationItem(
+        route = "user_profile",
+        title = "User Profile",
+        icon = Icons.Default.Person,
+        description = "Manage your profile"
+    )
+
+    object AddEntry : NavigationItem(
+        route = "add_entry",
+        title = "Add Entry",
+        icon = Icons.Default.Add,
+        description = "Log your work"
+    )
+
+    object Reports : NavigationItem(
+        route = "reports",
+        title = "Reports",
+        icon = Icons.Default.Assessment,
+        description = "Generate work reports"
     )
 }
 
