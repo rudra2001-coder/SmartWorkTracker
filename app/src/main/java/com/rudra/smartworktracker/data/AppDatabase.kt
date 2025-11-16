@@ -7,12 +7,17 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.rudra.smartworktracker.data.dao.AchievementDao
 import com.rudra.smartworktracker.data.dao.CalculationDao
+import com.rudra.smartworktracker.data.dao.CreditCardDao
+import com.rudra.smartworktracker.data.dao.CreditCardTransactionDao
 import com.rudra.smartworktracker.data.dao.DailyJournalDao
+import com.rudra.smartworktracker.data.dao.EmiDao
 import com.rudra.smartworktracker.data.dao.ExpenseDao
+import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.FocusSessionDao
 import com.rudra.smartworktracker.data.dao.HabitDao
 import com.rudra.smartworktracker.data.dao.HealthMetricDao
 import com.rudra.smartworktracker.data.dao.IncomeDao
+import com.rudra.smartworktracker.data.dao.LoanDao
 import com.rudra.smartworktracker.data.dao.MonthlyInputDao
 import com.rudra.smartworktracker.data.dao.SettingsDao
 import com.rudra.smartworktracker.data.dao.SummaryDao
@@ -21,7 +26,12 @@ import com.rudra.smartworktracker.data.dao.WorkDayDao
 import com.rudra.smartworktracker.data.dao.WorkLogDao
 import com.rudra.smartworktracker.data.dao.WorkSessionDao
 import com.rudra.smartworktracker.data.entity.Calculation
+import com.rudra.smartworktracker.data.entity.CreditCard
+import com.rudra.smartworktracker.data.entity.CreditCardTransaction
+import com.rudra.smartworktracker.data.entity.Emi
+import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Income
+import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.MonthlyInput
 import com.rudra.smartworktracker.data.entity.MonthlySummary
 import com.rudra.smartworktracker.data.entity.Settings
@@ -53,9 +63,14 @@ import com.rudra.smartworktracker.model.WorkSession
         MonthlyInput::class,
         UserProfile::class,
         Income::class,
-        Calculation::class
+        Calculation::class,
+        FinancialTransaction::class,
+        Loan::class,
+        Emi::class,
+        CreditCard::class,
+        CreditCardTransaction::class
     ],
-    version = 12, 
+    version = 16, 
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, com.rudra.smartworktracker.data.local.TypeConverters::class)
@@ -76,6 +91,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userProfileDao(): UserProfileDao
     abstract fun incomeDao(): IncomeDao
     abstract fun calculationDao(): CalculationDao
+    abstract fun financialTransactionDao(): FinancialTransactionDao
+    abstract fun loanDao(): LoanDao
+    abstract fun emiDao(): EmiDao
+    abstract fun creditCardDao(): CreditCardDao
+    abstract fun creditCardTransactionDao(): CreditCardTransactionDao
 
     companion object {
         @Volatile

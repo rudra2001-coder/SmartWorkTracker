@@ -189,20 +189,18 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
                 }
 
                 itemsIndexed(infoCardItems) { index, item ->
-                    val primaryColor = MaterialTheme.colorScheme.primary
-                    val errorColor = MaterialTheme.colorScheme.error
-                    val cardData = when (index) {
-                        0 -> InfoCardData(Icons.Default.Business, primaryColor)
-                        1 -> InfoCardData(Icons.Default.Home, Color(0xFF388E3C))
-                        2 -> InfoCardData(Icons.Default.ViewWeek, Color(0xFFF57C00))
-                        3 -> InfoCardData(Icons.Default.CalendarToday, Color(0xFF7B1FA2))
-                        else -> InfoCardData(Icons.AutoMirrored.Filled.TrendingUp, errorColor)
+                    val cardAppearance = when (index) {
+                        0 -> InfoCardAppearance(Icons.Default.Business, MaterialTheme.colorScheme.primary)
+                        1 -> InfoCardAppearance(Icons.Default.Home, Color(0xFF388E3C))
+                        2 -> InfoCardAppearance(Icons.Default.ViewWeek, Color(0xFFF57C00))
+                        3 -> InfoCardAppearance(Icons.Default.CalendarToday, Color(0xFF7B1FA2))
+                        else -> InfoCardAppearance(Icons.AutoMirrored.Filled.TrendingUp, MaterialTheme.colorScheme.error)
                     }
                     InfoCard(
                         title = item.first,
                         value = item.second,
-                        icon = cardData.icon,
-                        iconColor = cardData.color,
+                        icon = cardAppearance.icon,
+                        iconColor = cardAppearance.color,
                         animationDelay = index * 100
                     )
                 }
@@ -211,7 +209,7 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
     }
 }
 
-private data class InfoCardData(val icon: ImageVector, val color: Color)
+private data class InfoCardAppearance(val icon: ImageVector, val color: Color)
 
 @Composable
 fun MonthNavigator(month: String, onPrevious: () -> Unit, onNext: () -> Unit) {
