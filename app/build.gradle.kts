@@ -118,6 +118,8 @@ dependencies {
 
     // Test dependencies
     testImplementation(libs.junit)
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     androidTestImplementation(libs.androidx.junit.v115)
     androidTestImplementation(libs.androidx.espresso.core.v351)
     androidTestImplementation(platform(libs.androidx.compose.bom.v20251001))

@@ -4,5 +4,7 @@ enum class AccountType {
     BALANCE,
     SAVINGS,
     LOAN,
-    CREDIT_CARD
+    CREDIT_CARD,
+    CASH,
+    BANK
 }

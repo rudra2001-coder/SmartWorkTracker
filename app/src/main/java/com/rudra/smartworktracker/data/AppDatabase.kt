@@ -19,6 +19,7 @@ import com.rudra.smartworktracker.data.dao.HealthMetricDao
 import com.rudra.smartworktracker.data.dao.IncomeDao
 import com.rudra.smartworktracker.data.dao.LoanDao
 import com.rudra.smartworktracker.data.dao.MonthlyInputDao
+import com.rudra.smartworktracker.data.dao.SavingsDao
 import com.rudra.smartworktracker.data.dao.SettingsDao
 import com.rudra.smartworktracker.data.dao.SummaryDao
 import com.rudra.smartworktracker.data.dao.UserProfileDao
@@ -34,6 +35,7 @@ import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.MonthlyInput
 import com.rudra.smartworktracker.data.entity.MonthlySummary
+import com.rudra.smartworktracker.data.entity.Savings
 import com.rudra.smartworktracker.data.entity.Settings
 import com.rudra.smartworktracker.data.entity.UserProfile
 import com.rudra.smartworktracker.data.entity.WorkDay
@@ -59,7 +61,6 @@ import com.rudra.smartworktracker.model.WorkSession
         WorkLog::class,
         WorkDay::class,
         Settings::class,
-        MonthlySummary::class,
         MonthlyInput::class,
         UserProfile::class,
         Income::class,
@@ -68,9 +69,14 @@ import com.rudra.smartworktracker.model.WorkSession
         Loan::class,
         Emi::class,
         CreditCard::class,
-        CreditCardTransaction::class
+        CreditCardTransaction::class,
+        Savings::class
     ],
-    version = 16, 
+    views = [
+        MonthlySummary::class
+    
+    ],
+    version = 17, 
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, com.rudra.smartworktracker.data.local.TypeConverters::class)
@@ -96,6 +102,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun emiDao(): EmiDao
     abstract fun creditCardDao(): CreditCardDao
     abstract fun creditCardTransactionDao(): CreditCardTransactionDao
+    abstract fun savingsDao(): SavingsDao
 
     companion object {
         @Volatile

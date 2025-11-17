@@ -1,7 +1,9 @@
 package com.rudra.smartworktracker.ui.screens.loans
 
 import android.app.Application
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,16 +20,20 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,51 +59,66 @@ import java.util.Locale
 fun LoansScreen() {
     val context = LocalContext.current
     val viewModel: LoanViewModel = viewModel(factory = LoanViewModelFactory(context.applicationContext as Application))
-    val loans by viewModel.loans.collectAsState()
-    var showAddLoanDialog by remember { mutableStateOf(false) }
-    var showRepayDialog by remember { mutableStateOf<Loan?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Loan Management") })
+            TopAppBar(
+                title = { Text("Loan Management") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddLoanDialog = true }) {
+            FloatingActionButton(onClick = { viewModel.openAddLoanDialog() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Loan")
             }
         }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(it)
-        ) {
-            if (showAddLoanDialog) {
-                AddLoanDialog(
-                    onDismiss = { showAddLoanDialog = false },
-                    onConfirm = {
-                        viewModel.addLoan(it.personName, it.initialAmount, it.loanType, it.notes)
-                        showAddLoanDialog = false
-                    }
-                )
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-            showRepayDialog?.let { loan ->
-                RepayLoanDialog(
-                    loan = loan,
-                    onDismiss = { showRepayDialog = null },
-                    onConfirm = {
-                        if (loan.loanType == LoanType.BORROWED) {
-                            viewModel.repayLoan(loan, it)
-                        } else {
-                            viewModel.receiveLoanRepayment(loan, it)
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it)
+            ) {
+                if (uiState.showAddLoanDialog) {
+                    AddLoanDialog(
+                        onDismiss = { viewModel.closeAddLoanDialog() },
+                        onConfirm = {
+                            viewModel.addLoan(it.personName, it.initialAmount, it.loanType, it.notes)
+                            viewModel.closeAddLoanDialog()
                         }
-                        showRepayDialog = null
+                    )
+                }
+                uiState.showRepayDialogForLoan?.let { loan ->
+                    RepayLoanDialog(
+                        loan = loan,
+                        onDismiss = { viewModel.closeRepayDialog() },
+                        onConfirm = {
+                            if (loan.loanType == LoanType.BORROWED) {
+                                viewModel.repayLoan(loan, it)
+                            } else {
+                                viewModel.receiveLoanRepayment(loan, it)
+                            }
+                            viewModel.closeRepayDialog()
+                        }
+                    )
+                }
+                if (uiState.loans.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No loans to display.")
                     }
-                )
-            }
-            LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
-                items(loans) { loan ->
-                    LoanItem(loan = loan, onRepayClick = { showRepayDialog = loan })
+                } else {
+                    LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+                        items(uiState.loans) { loan ->
+                            LoanItem(loan = loan, onRepayClick = { viewModel.openRepayDialog(loan) })
+                        }
+                    }
                 }
             }
         }
@@ -118,17 +138,29 @@ fun LoanItem(loan: Loan, onRepayClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "${loan.loanType.name}: ${loan.personName}",
+                text = loan.personName,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            LoanDetailRow("Initial Amount:", "${loan.initialAmount}")
+            Text(
+                text = loan.loanType.name,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            LoanDetailRow("Total Amount:", "${loan.initialAmount}")
             LoanDetailRow("Remaining:", "${loan.remainingAmount}", isRemaining = true)
             LoanDetailRow("Date:", dateFormat.format(Date(loan.date)))
-            loan.notes?.let { LoanDetailRow("Notes:", it) }
+            AnimatedVisibility(visible = loan.notes?.isNotBlank() == true) {
+                loan.notes?.let { LoanDetailRow("Notes:", it) }
+            }
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onRepayClick, modifier = Modifier.fillMaxWidth()) {
+            LinearProgressIndicator(
+                progress = { (loan.initialAmount - loan.remainingAmount).toFloat() / loan.initialAmount.toFloat() },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onRepayClick, modifier = Modifier.fillMaxWidth()) {
                 Text(if (loan.loanType == LoanType.BORROWED) "Make a Repayment" else "Receive a Payment")
             }
         }
@@ -137,12 +169,13 @@ fun LoanItem(loan: Loan, onRepayClick: () -> Unit) {
 
 @Composable
 fun LoanDetailRow(label: String, value: String, isRemaining: Boolean = false) {
-    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+    Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         Text(value, fontWeight = if (isRemaining) FontWeight.Bold else FontWeight.Normal)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddLoanDialog(onDismiss: () -> Unit, onConfirm: (Loan) -> Unit) {
     var personName by remember { mutableStateOf("") }
@@ -151,7 +184,7 @@ fun AddLoanDialog(onDismiss: () -> Unit, onConfirm: (Loan) -> Unit) {
     var notes by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.medium) {
+        Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -159,7 +192,9 @@ fun AddLoanDialog(onDismiss: () -> Unit, onConfirm: (Loan) -> Unit) {
                 Text("Add New Loan", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(value = personName, onValueChange = { personName = it }, label = { Text("Person's Name") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     TextButton(onClick = { loanType = LoanType.BORROWED }, enabled = loanType != LoanType.BORROWED) { Text("I Borrowed") }
                     TextButton(onClick = { loanType = LoanType.LENT }, enabled = loanType != LoanType.LENT) { Text("I Lent") }
@@ -192,7 +227,7 @@ fun RepayLoanDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: (Double) -> Un
     var amount by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.medium) {
+        Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally

@@ -13,4 +13,9 @@ interface SettingsDao {
 
     @Query("SELECT * FROM settings WHERE id = 1")
     suspend fun getSettings(): Settings?
+
+
+
+
+
 }

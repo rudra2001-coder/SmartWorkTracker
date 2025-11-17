@@ -7,6 +7,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.rudra.smartworktracker.model.Expense
+import com.rudra.smartworktracker.model.ExpenseByCategory
+import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +24,9 @@ interface ExpenseDao {
 
     @Query("SELECT SUM(amount) FROM expenses WHERE category = 'MEAL' AND timestamp BETWEEN :startTime AND :endTime")
     fun getMealExpensesBetween(startTime: Long, endTime: Long): Flow<Double?>
+
+    @Query("SELECT category, SUM(amount) as total FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime GROUP BY category")
+    fun getExpensesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<ExpenseByCategory>>
 
     @Query("SELECT SUM(amount) FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?>

@@ -14,6 +14,7 @@ data class DashboardUiState(
     val monthlyStats: MonthlyStats = MonthlyStats(),
     val recentActivities: List<WorkLogUi> = emptyList(),
     val financialSummary: FinancialSummary = FinancialSummary(),
+    val expensesByCategory: Map<ExpenseCategory, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )

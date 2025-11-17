@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.data.repository
 
 import com.rudra.smartworktracker.data.dao.ExpenseDao
 import com.rudra.smartworktracker.model.Expense
+import com.rudra.smartworktracker.model.ExpenseByCategory
 import kotlinx.coroutines.flow.Flow
 
 class ExpenseRepository(private val expenseDao: ExpenseDao) {
@@ -20,6 +21,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
 
     fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?> {
         return expenseDao.getTotalExpensesBetween(startTime, endTime)
+    }
+
+    fun getExpensesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<ExpenseByCategory>> {
+        return expenseDao.getExpensesByCategoryBetween(startTime, endTime)
     }
 
     suspend fun insertExpense(expense: Expense) {

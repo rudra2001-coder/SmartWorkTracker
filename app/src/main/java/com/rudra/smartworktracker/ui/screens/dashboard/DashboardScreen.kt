@@ -1,40 +1,104 @@
 package com.rudra.smartworktracker.ui.screens.dashboard
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddRoad
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
+import com.rudra.smartworktracker.ui.hasFinancialData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -82,7 +146,10 @@ fun DashboardScreen(
                 Header(userName = uiState.userName)
             }
             item {
-                FinancialSummaryCard(summary = uiState.financialSummary)
+                FinancialSummaryCard(
+                    summary = uiState.financialSummary,
+                    expensesByCategory = uiState.expensesByCategory
+                )
             }
             item {
                 AllFunsionCard(onNavigateToAllFunsion = onNavigateToAllFunsion)
@@ -137,58 +204,231 @@ fun Header(userName: String?) {
 }
 
 @Composable
-fun FinancialSummaryCard(summary: FinancialSummary) {
+fun FinancialSummaryCard(
+    summary: FinancialSummary,
+    expensesByCategory: Map<ExpenseCategory, Double>
+) {
+    var selectedCategory by remember { mutableStateOf<ExpenseCategory?>(null) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 "Financial Summary",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                FinancialSummaryItem(
-                    label = "Income",
-                    amount = summary.totalIncome,
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                FinancialSummaryItem(
-                    label = "Expense",
-                    amount = summary.totalExpense,
-                    icon = Icons.AutoMirrored.Filled.TrendingDown,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.weight(1f)
-                )
+                // Pie Chart
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FinancialPieChart(
+                        expensesByCategory = expensesByCategory,
+                        onSliceSelected = { selectedCategory = it }
+                    )
+                }
+
+                // Summary Items
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FinancialSummaryItem(
+                        label = "Income",
+                        amount = summary.totalIncome,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FinancialSummaryItem(
+                        label = "Expense",
+                        amount = summary.totalExpense,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    FinancialSummaryItem(
+                        label = "Savings",
+                        amount = summary.netSavings,
+                        color = Color(0xFF004D40)
+
+
+                    )
+                    FinancialSummaryItem(
+                        label = "Meal_Amount",
+                        amount = summary.totalMealCost,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+//                    FinancialSummaryItem(
+//                        label = "Savings Percentage",
+//                        amount = summary.savingsPercentage,
+//                        color = MaterialTheme.colorScheme.tertiary
+//                    )
+
+                    selectedCategory?.let {
+                        FinancialSummaryItem(
+                            label = it.name,
+                            amount = expensesByCategory[it] ?: 0.0,
+                            color = it.color
+                        )
+                    }
+                }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                FinancialSummaryItem(
-                    label = "Savings",
-                    amount = summary.netSavings,
-                    icon = Icons.Default.AccountBalanceWallet,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.weight(1f)
+        }
+    }
+}
+
+@Composable
+fun FinancialPieChart(
+    expensesByCategory: Map<ExpenseCategory, Double>,
+    onSliceSelected: (ExpenseCategory) -> Unit
+) {
+    val totalExpenses = expensesByCategory.values.sum()
+    if (totalExpenses == 0.0) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = "No expense data")
+        }
+        return
+    }
+    val proportions = expensesByCategory.map { (it.value / totalExpenses).toFloat() }
+    val categories = expensesByCategory.keys.toList()
+    val colors = categories.map { it.color }
+
+    // Animation for each slice
+    val animatedProportions = proportions.map { proportion ->
+        val animatedValue = remember { Animatable(0f) }
+        LaunchedEffect(proportion) {
+            animatedValue.animateTo(
+                targetValue = proportion,
+                animationSpec = tween(durationMillis = 1000)
+            )
+        }
+        animatedValue.value
+    }
+
+    Box(
+        modifier = Modifier
+            .size(150.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val canvasSize = size
+                    val centerX = canvasSize.width / 2f
+                    val centerY = canvasSize.height / 2f
+                    val dx = offset.x - centerX
+                    val dy = offset.y - centerY
+                    var touchAngle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+                    if (touchAngle < 0) {
+                        touchAngle += 360f
+                    }
+                    touchAngle = (touchAngle + 90) % 360 // Adjust for start angle
+
+                    var currentAngle = 0f
+                    animatedProportions.forEachIndexed { index, proportion ->
+                        val sweepAngle = proportion * 360f
+                        if (touchAngle in currentAngle..(currentAngle + sweepAngle)) {
+                            onSliceSelected(categories[index])
+                            return@detectTapGestures
+                        }
+                        currentAngle += sweepAngle
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 20.dp.toPx()
+            var startAngle = -90f
+
+            animatedProportions.forEachIndexed { index, proportion ->
+                val sweepAngle = proportion * 360f
+                drawArc(
+                    color = colors[index],
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+                    size = Size(size.width, size.height)
                 )
-                FinancialSummaryItem(
-                    label = "Meal Cost",
-                    amount = summary.totalMealCost,
-                    icon = Icons.Outlined.Restaurant,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.weight(1f)
-                )
+                startAngle += sweepAngle
             }
+        }
+
+        // Center text
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Total",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "%.2f".format(totalExpenses),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+val ExpenseCategory.color: Color
+    @Composable
+    get() = when (this) {
+        ExpenseCategory.MEAL -> MaterialTheme.colorScheme.secondary
+        ExpenseCategory.TRANSPORT -> Color(0xFFD63DB8)
+        ExpenseCategory.SHOPPING -> Color(0xFF6200EE)
+        ExpenseCategory.BILLS -> Color(0xFF03DAC5)
+        ExpenseCategory.ENTERTAINMENT -> Color(0xFF00C853)
+        ExpenseCategory.OTHER -> Color.Gray
+    }
+
+
+@Composable
+fun FinancialSummaryItem(
+    label: String,
+    amount: Double,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    var currentValue by remember { mutableDoubleStateOf(0.0) }
+
+    LaunchedEffect(amount) {
+        val animation = Animatable(0f)
+        animation.animateTo(amount.toFloat(), animationSpec = tween(durationMillis = 1000)) {
+            currentValue = this.value.toDouble()
+        }
+    }
+
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        // Colored dot
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, shape = CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Text
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "%.2f BDT".format(currentValue),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = color
+            )
         }
     }
 }
@@ -208,55 +448,6 @@ fun AllFunsionCard(onNavigateToAllFunsion: () -> Unit) {
             Icon(Icons.Default.AddRoad, contentDescription = "All Funsion")
             Spacer(modifier = Modifier.width(16.dp))
             Text("All Funsion", style = MaterialTheme.typography.titleLarge)
-        }
-    }
-}
-
-@Composable
-fun FinancialSummaryItem(
-    label: String,
-    amount: Double,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    var currentValue by remember { mutableStateOf(0.0) }
-
-    LaunchedEffect(amount) {
-        val animation = Animatable(0f)
-        animation.animateTo(amount.toFloat(), animationSpec = tween(durationMillis = 1000)) {
-            currentValue = this.value.toDouble()
-        }
-    }
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = color,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "%.2f BDT".format(currentValue),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = color
-            )
         }
     }
 }
@@ -380,42 +571,6 @@ fun TodayStatusCard(
 }
 
 @Composable
-fun MealCountCard(mealCount: Int, onAddMeal: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = "Today's Meals",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "$mealCount meals recorded",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Button(onClick = onAddMeal) {
-                Icon(Icons.Outlined.Restaurant, contentDescription = "Add Meal")
-            }
-        }
-    }
-}
-
-
-@Composable
 fun RowScope.AnimatedWorkTypeButton(
     workType: WorkType,
     icon: ImageVector,
@@ -467,7 +622,7 @@ fun RowScope.AnimatedWorkTypeButton(
                 }
             ),
             border = if (!selected) {
-                ButtonDefaults.outlinedButtonBorder
+                ButtonDefaults.outlinedButtonBorder(true)
             } else {
                 null
             }
@@ -563,9 +718,9 @@ fun AnimatedStatItem(value: Int, label: String, color: Color, visible: Boolean, 
     LaunchedEffect(visible, value) {
         if (visible) {
             // Animate number counting
-            for (i in 0..value) {
-                currentValue = i
-                delay(20L)
+            val animation = Animatable(0f)
+            animation.animateTo(value.toFloat(), animationSpec = tween(durationMillis = 1000, delayMillis = delay)) {
+                currentValue = this.value.toInt()
             }
         }
     }
@@ -607,7 +762,8 @@ fun AnimatedStatItem(value: Int, label: String, color: Color, visible: Boolean, 
 @Composable
 fun RecentActivityCard(activities: List<WorkLogUi>) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
