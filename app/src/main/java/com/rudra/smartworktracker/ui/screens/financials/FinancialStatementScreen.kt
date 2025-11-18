@@ -173,7 +173,7 @@ fun SummaryHeader(totalIncome: Double, totalExpenses: Double, netFlow: Double) {
             ) {
                 Text("Net Flow", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = currencyFormat.format(netFlow),
+                    text = currencyFormat.format(netFlow).replace("$", "৳"),
                     style = MaterialTheme.typography.headlineSmall,
                     color = if (netFlow >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
@@ -225,7 +225,7 @@ fun SummaryItem(title: String, amount: Double, color: Color, currencyFormat: Num
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(
-            currencyFormat.format(amount),
+            currencyFormat.format(amount).replace("$", "৳"),
             style = MaterialTheme.typography.headlineSmall,
             color = color,
             fontWeight = FontWeight.Bold
@@ -278,7 +278,8 @@ fun TransactionItem(transaction: FinancialTransaction) {
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = currencyFormat.format(transaction.amount),
+                            text = currencyFormat.format(transaction.amount).replace("$", "৳"),
+
                             style = MaterialTheme.typography.titleMedium,
                             color = transaction.type.getColorScheme(),
                             fontWeight = FontWeight.Bold
@@ -302,7 +303,7 @@ fun TransactionItem(transaction: FinancialTransaction) {
                     Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    KeyValueText("Amount", currencyFormat.format(transaction.amount))
+                    KeyValueText("Amount", currencyFormat.format(transaction.amount).replace("$", "৳"))
                     KeyValueText("Type", transaction.type.getDisplayName())
                     if (transaction.note.isNotEmpty()) {
                         KeyValueText("Note", transaction.note)
