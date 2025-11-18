@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.data.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -14,6 +15,9 @@ interface LoanDao {
 
     @Update
     suspend fun updateLoan(loan: Loan)
+
+    @Delete
+    suspend fun deleteLoan(loan: Loan)
 
     @Query("SELECT * FROM loans ORDER BY date DESC")
     fun getAllLoans(): Flow<List<Loan>>

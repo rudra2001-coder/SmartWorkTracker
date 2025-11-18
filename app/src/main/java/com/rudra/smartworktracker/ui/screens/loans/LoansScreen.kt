@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,7 +26,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -75,7 +79,7 @@ fun LoansScreen() {
                 Icon(Icons.Default.Add, contentDescription = "Add Loan")
             }
         }
-    ) {
+    ) { paddingValues ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -84,7 +88,7 @@ fun LoansScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(it)
+                    .padding(paddingValues)
             ) {
                 if (uiState.showAddLoanDialog) {
                     AddLoanDialog(
@@ -95,6 +99,15 @@ fun LoansScreen() {
                         }
                     )
                 }
+
+                uiState.showDeleteConfirmationForLoan?.let { loan ->
+                    DeleteConfirmationDialog(
+                        loan = loan,
+                        onDismiss = { viewModel.closeDeleteConfirmationDialog() },
+                        onConfirm = { viewModel.deleteLoan(loan) }
+                    )
+                }
+
                 uiState.showRepayDialogForLoan?.let { loan ->
                     RepayLoanDialog(
                         loan = loan,
@@ -116,7 +129,11 @@ fun LoansScreen() {
                 } else {
                     LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
                         items(uiState.loans) { loan ->
-                            LoanItem(loan = loan, onRepayClick = { viewModel.openRepayDialog(loan) })
+                            LoanItem(
+                                loan = loan,
+                                onRepayClick = { viewModel.openRepayDialog(loan) },
+                                onDeleteClick = { viewModel.openDeleteConfirmationDialog(loan) }
+                            )
                         }
                     }
                 }
@@ -126,7 +143,7 @@ fun LoansScreen() {
 }
 
 @Composable
-fun LoanItem(loan: Loan, onRepayClick: () -> Unit) {
+fun LoanItem(loan: Loan, onRepayClick: () -> Unit, onDeleteClick: () -> Unit) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val cardColor = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
 
@@ -136,35 +153,56 @@ fun LoanItem(loan: Loan, onRepayClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.2f))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = loan.personName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+        Column {
+            ListItem(
+                headlineContent = { Text(loan.personName, fontWeight = FontWeight.Bold) },
+                supportingContent = { Text(loan.loanType.name) },
+                trailingContent = {
+                    IconButton(onClick = onDeleteClick) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Loan", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
             )
-            Text(
-                text = loan.loanType.name,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            LoanDetailRow("Total Amount:", "${loan.initialAmount}")
-            LoanDetailRow("Remaining:", "${loan.remainingAmount}", isRemaining = true)
-            LoanDetailRow("Date:", dateFormat.format(Date(loan.date)))
-            AnimatedVisibility(visible = loan.notes?.isNotBlank() == true) {
-                loan.notes?.let { LoanDetailRow("Notes:", it) }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            LinearProgressIndicator(
-                progress = { (loan.initialAmount - loan.remainingAmount).toFloat() / loan.initialAmount.toFloat() },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = onRepayClick, modifier = Modifier.fillMaxWidth()) {
-                Text(if (loan.loanType == LoanType.BORROWED) "Make a Repayment" else "Receive a Payment")
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                LoanDetailRow("Total Amount:", "${loan.initialAmount}")
+                LoanDetailRow("Remaining:", "${loan.remainingAmount}", isRemaining = true)
+                LoanDetailRow("Date:", dateFormat.format(Date(loan.date)))
+                AnimatedVisibility(visible = loan.notes?.isNotBlank() == true) {
+                    loan.notes?.let { LoanDetailRow("Notes:", it) }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { (loan.initialAmount - loan.remainingAmount).toFloat() / loan.initialAmount.toFloat() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(onClick = onRepayClick, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (loan.loanType == LoanType.BORROWED) "Make a Repayment" else "Receive a Payment")
+                }
             }
         }
     }
+}
+
+@Composable
+fun DeleteConfirmationDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Loan") },
+        text = { Text("Are you sure you want to delete the loan with ${loan.personName}? This will also delete all associated transactions.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

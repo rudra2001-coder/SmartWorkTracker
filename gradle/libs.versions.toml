@@ -34,6 +34,7 @@ uiGraphics = "1.9.4"
 animation = "1.9.4"
 animationCore = "1.9.4"
 foundationLayout = "1.9.4"
+litertSupportApi = "1.4.1"
 
 [libraries]
 accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
@@ -84,6 +85,7 @@ ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+litert-support-api = { group = "com.google.ai.edge.litert", name = "litert-support-api", version.ref = "litertSupportApi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

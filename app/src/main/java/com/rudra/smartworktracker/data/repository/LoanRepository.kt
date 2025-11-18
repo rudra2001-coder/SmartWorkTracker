@@ -28,6 +28,11 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
         transactionDao.insertTransaction(transaction)
     }
 
+    suspend fun deleteLoan(loan: Loan) {
+        loanDao.deleteLoan(loan)
+        transactionDao.deleteTransactionsByLoanId(loan.id)
+    }
+
     suspend fun repayLoan(loan: Loan, amount: Double) {
         val updatedLoan = loan.copy(remainingAmount = loan.remainingAmount - amount)
         loanDao.updateLoan(updatedLoan)

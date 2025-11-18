@@ -20,7 +20,8 @@ data class LoansUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val showAddLoanDialog: Boolean = false,
-    val showRepayDialogForLoan: Loan? = null
+    val showRepayDialogForLoan: Loan? = null,
+    val showDeleteConfirmationForLoan: Loan? = null
 )
 
 class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
@@ -63,6 +64,13 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
         }
     }
 
+    fun deleteLoan(loan: Loan) {
+        viewModelScope.launch {
+            loanRepository.deleteLoan(loan)
+            closeDeleteConfirmationDialog()
+        }
+    }
+
     fun repayLoan(loan: Loan, amount: Double) {
         viewModelScope.launch {
             loanRepository.repayLoan(loan, amount)
@@ -89,5 +97,13 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
 
     fun closeRepayDialog() {
         _uiState.value = _uiState.value.copy(showRepayDialogForLoan = null)
+    }
+
+    fun openDeleteConfirmationDialog(loan: Loan) {
+        _uiState.value = _uiState.value.copy(showDeleteConfirmationForLoan = loan)
+    }
+
+    fun closeDeleteConfirmationDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteConfirmationForLoan = null)
     }
 }
