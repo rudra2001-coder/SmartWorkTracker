@@ -59,6 +59,12 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    suspend fun clearAll() {
+        context.dataStore.edit {
+            it.clear()
+        }
+    }
+
     companion object {
         const val NOTIFICATIONS = "notifications"
         const val DARK_THEME = "dark_theme"

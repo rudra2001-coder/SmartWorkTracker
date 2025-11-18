@@ -14,15 +14,12 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
 
     private val journalDao = AppDatabase.getDatabase(application).dailyJournalDao()
 
-    // Current date state
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    // UI state
     private val _uiState = MutableStateFlow(JournalUiState())
     val uiState: StateFlow<JournalUiState> = _uiState
 
-    // Current journal entry for the selected date
     val todayJournal: StateFlow<DailyJournal?> = _selectedDate
         .flatMapLatest { date ->
             journalDao.getJournalForDate(date)
@@ -33,7 +30,9 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
             null
         )
 
-    // Journal entries for the current month
+    val journalHistory: StateFlow<List<DailyJournal>> = journalDao.getAllJournals()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val monthlyJournals: StateFlow<List<DailyJournal>> = _selectedDate
         .flatMapLatest { date ->
             val firstDayOfMonth = date.withDayOfMonth(1)
@@ -46,7 +45,6 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
             emptyList()
         )
 
-    // Statistics
     val journalStats: StateFlow<JournalStats> = monthlyJournals
         .map { journals ->
             calculateJournalStats(journals)
@@ -59,20 +57,19 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
 
     init {
         viewModelScope.launch {
-            // Load any unsaved changes if app was killed
             loadDraftIfExists()
         }
     }
 
-    fun saveJournal(journal: DailyJournal) {
+    fun saveOrUpdateJournal(journal: DailyJournal) {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, error = null) }
 
-                // Validate journal entry
                 if (journal.morningIntention.isBlank() &&
                     journal.eveningReflection.isBlank() &&
-                    journal.gratitude.isBlank()) {
+                    journal.gratitude.isBlank()
+                ) {
                     _uiState.update { it.copy(error = "Journal entry cannot be completely empty") }
                     return@launch
                 }
@@ -88,7 +85,6 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
 
-                // Reset success state after 2 seconds
                 launch {
                     kotlinx.coroutines.delay(2000)
                     _uiState.update { it.copy(saveSuccess = false) }
@@ -99,6 +95,23 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
                     it.copy(
                         isLoading = false,
                         error = "Failed to save journal: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteJournal(journal: DailyJournal) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+                journalDao.deleteJournal(journal)
+                _uiState.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Failed to delete journal: ${e.message}"
                     )
                 }
             }
@@ -125,8 +138,6 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
     fun saveDraft(journal: DailyJournal) {
         viewModelScope.launch {
             try {
-                // In a real app, you'd save to SharedPreferences or a draft table
-                // For now, we'll just update the state
                 _uiState.update { it.copy(hasUnsavedChanges = true) }
             } catch (e: Exception) {
                 // Silent fail for drafts
@@ -144,49 +155,29 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
 
     private suspend fun loadDraftIfExists() {
         // Implementation for loading drafts from persistent storage
-        // This could use SharedPreferences, Room, or DataStore
-        // For now, it's a placeholder
     }
 
     private suspend fun clearDraft() {
-        // Clear any saved drafts for the current date
         _uiState.update { it.copy(hasUnsavedChanges = false) }
     }
 
     private fun calculateJournalStats(journals: List<DailyJournal>): JournalStats {
         val totalEntries = journals.size
-        val completedEntries = journals.count { journal ->
-            journal.morningIntention.isNotBlank() ||
-                    journal.eveningReflection.isNotBlank() ||
-                    journal.gratitude.isNotBlank()
+        val completedEntries = journals.count {
+            it.morningIntention.isNotBlank() || it.eveningReflection.isNotBlank() || it.gratitude.isNotBlank()
         }
 
         val completionRate = if (totalEntries > 0) {
             (completedEntries.toDouble() / totalEntries.toDouble() * 100).toInt()
         } else 0
 
-        val averageIntentionLength = journals
-            .map { it.morningIntention.length }
-            .average()
-            .toInt()
-
-        val averageReflectionLength = journals
-            .map { it.eveningReflection.length }
-            .average()
-            .toInt()
-
-        val averageGratitudeLength = journals
-            .map { it.gratitude.length }
-            .average()
-            .toInt()
+        val averageIntentionLength = journals.map { it.morningIntention.length }.average().toInt()
+        val averageReflectionLength = journals.map { it.eveningReflection.length }.average().toInt()
+        val averageGratitudeLength = journals.map { it.gratitude.length }.average().toInt()
 
         val mostFrequentWords = journals
-            .flatMap { journal ->
-                listOf(
-                    journal.morningIntention,
-                    journal.eveningReflection,
-                    journal.gratitude
-                )
+            .flatMap { 
+                listOf(it.morningIntention, it.eveningReflection, it.gratitude)
             }
             .joinToString(" ")
             .split("\\s+".toRegex())
@@ -211,11 +202,7 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
 
     private fun calculateStreak(journals: List<DailyJournal>): Int {
         val journalDates = journals
-            .filter { journal ->
-                journal.morningIntention.isNotBlank() ||
-                        journal.eveningReflection.isNotBlank() ||
-                        journal.gratitude.isNotBlank()
-            }
+            .filter { it.morningIntention.isNotBlank() || it.eveningReflection.isNotBlank() || it.gratitude.isNotBlank() }
             .map { it.date }
             .toSet()
             .sortedDescending()
@@ -231,20 +218,21 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
         return streak
     }
 
-    fun exportJournalData(): Flow<String> = flow {
-        val allJournals = journalDao.getAllJournals()
-        val csvData = buildString {
-            appendLine("Date,Morning Intention,Evening Reflection,Gratitude")
-            allJournals.forEach { journal ->
-                appendLine(
-                    "\"${journal.date}\"," +
-                            "\"${journal.morningIntention.replace("\"", "\"\"")}\"," +
-                            "\"${journal.eveningReflection.replace("\"", "\"\"")}\"," +
-                            "\"${journal.gratitude.replace("\"", "\"\"")}\""
-                )
+    fun exportJournalData(): Flow<String> = channelFlow {
+        journalHistory.collectLatest {
+            val csvData = buildString {
+                appendLine("Date,Morning Intention,Evening Reflection,Gratitude")
+                it.forEach { journal ->
+                    appendLine(
+                        "\"${journal.date}\"," +
+                                "\"${journal.morningIntention.replace("\"", "\"\"")}\"," +
+                                "\"${journal.eveningReflection.replace("\"", "\"\"")}\"," +
+                                "\"${journal.gratitude.replace("\"", "\"\"")}\""
+                    )
+                }
             }
+            send(csvData)
         }
-        emit(csvData)
     }
 
     fun searchJournals(query: String): Flow<List<DailyJournal>> {
@@ -261,7 +249,8 @@ data class JournalUiState(
     val error: String? = null,
     val saveSuccess: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
-    val lastSavedDate: LocalDate? = null
+    val lastSavedDate: LocalDate? = null,
+    val selectedJournal: DailyJournal? = null
 )
 
 data class JournalStats(
@@ -274,7 +263,6 @@ data class JournalStats(
     val mostFrequentWords: List<String> = emptyList()
 )
 
-// Extension functions for better date handling
 fun LocalDate.toDisplayFormat(): String {
     return format(DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
 }

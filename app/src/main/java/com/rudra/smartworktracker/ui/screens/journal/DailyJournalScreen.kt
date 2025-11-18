@@ -6,55 +6,163 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.DailyJournal
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
-    val todayJournal by viewModel.todayJournal.collectAsState(initial = null)
-    val context = LocalContext.current
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Journal", "History")
 
-    var intention by remember { mutableStateOf("") }
-    var reflection by remember { mutableStateOf("") }
-    var gratitude by remember { mutableStateOf("") }
-    var currentSection by remember { mutableStateOf(0) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Daily Journal",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+            // Custom Tab Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    CustomTab(
+                        title = title,
+                        isSelected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
-    LaunchedEffect(todayJournal) {
-        todayJournal?.let {
-            intention = it.morningIntention
-            reflection = it.eveningReflection
-            gratitude = it.gratitude
+            when (selectedTab) {
+                0 -> JournalEditor(
+                    viewModel = viewModel,
+                    onSave = { editedJournal ->
+                        viewModel.saveOrUpdateJournal(editedJournal)
+                    }
+                )
+                1 -> JournalHistory(
+                    viewModel = viewModel,
+                    onEdit = { journal ->
+                        viewModel.updateSelectedDate(journal.date)
+                        selectedTab = 0
+                    },
+                    onDelete = { journal ->
+                        viewModel.deleteJournal(journal)
+                    }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun CustomTab(
+    title: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceVariant,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = ""
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        label = ""
+    )
+
+    Card(
+        modifier = modifier
+            .height(48.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 2.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = title,
+                color = contentColor,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun JournalEditor(viewModel: DailyJournalViewModel, onSave: (DailyJournal) -> Unit) {
+    val todayJournal by viewModel.todayJournal.collectAsState()
+    val selectedDate by viewModel.selectedDate.collectAsState()
+    val context = LocalContext.current
+
+    var intention by remember(todayJournal, selectedDate) {
+        mutableStateOf(todayJournal?.morningIntention ?: "")
+    }
+    var reflection by remember(todayJournal, selectedDate) {
+        mutableStateOf(todayJournal?.eveningReflection ?: "")
+    }
+    var gratitude by remember(todayJournal, selectedDate) {
+        mutableStateOf(todayJournal?.gratitude ?: "")
+    }
+    var currentSection by remember { mutableIntStateOf(0) }
 
     val sections = listOf("Morning Intention", "Evening Reflection", "Gratitude")
     val sectionIcons = listOf(Icons.Default.LightMode, Icons.Default.Nightlight, Icons.Default.Favorite)
@@ -64,110 +172,27 @@ fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
         MaterialTheme.colorScheme.tertiary
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
-    ) {
-        // Header with date
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(20.dp),
-                    clip = true
-                ),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "Daily Journal",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+    val autoSaveJob = remember { mutableStateOf<Job?>(null) }
+    var autoSaveTrigger by remember { mutableIntStateOf(0) }
 
-                Spacer(modifier = Modifier.height(8.dp))
+    val coroutineScope = rememberCoroutineScope()
 
-                Text(
-                    LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+    LaunchedEffect(intention, reflection, gratitude, autoSaveTrigger) {
+        autoSaveJob.value?.cancel()
+        if (intention.isNotBlank() || reflection.isNotBlank() || gratitude.isNotBlank()) {
+            autoSaveJob.value = coroutineScope.launch {
+                kotlinx.coroutines.delay(2000) // 2 second delay
+                val journalEntry = (todayJournal ?: DailyJournal(date = selectedDate)).copy(
+                    morningIntention = intention,
+                    eveningReflection = reflection,
+                    gratitude = gratitude
                 )
+                onSave(journalEntry)
             }
         }
+    }
 
-        // Section Navigation
-        PrimaryTabRow(
-            selectedTabIndex = currentSection,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = {}
-        ) {
-            sections.forEachIndexed { index, section ->
-                val isSelected = currentSection == index
-                val backgroundColor by animateColorAsState(
-                    targetValue = if (isSelected) sectionColors[index] else Color.Transparent,
-                    label = "tab color"
-                )
-
-                Tab(
-                    selected = isSelected,
-                    onClick = { currentSection = index },
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(backgroundColor)
-                        .weight(1f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            sectionIcons[index],
-                            contentDescription = section,
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            section,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Content Area
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -175,13 +200,33 @@ fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                DateHeader(
+                    date = selectedDate,
+                    onDateChange = { viewModel.updateSelectedDate(it) }
+                )
+            }
+
+            item {
+                SectionTabRow(
+                    sections = sections,
+                    sectionIcons = sectionIcons,
+                    currentSection = currentSection,
+                    onSectionChange = { currentSection = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
                 AnimatedVisibility(visible = currentSection == 0) {
                     JournalSection(
                         title = "Morning Intention",
                         subtitle = "What I want to focus on today",
-                        placeholder = "My main goal for today is...\n\nI will achieve this by...\n\nMy energy will be focused on...",
+                        placeholder = "My main goal for today is...\nWhat will make today successful?\nHow do I want to show up today?",
                         value = intention,
-                        onValueChange = { intention = it },
+                        onValueChange = {
+                            intention = it
+                            autoSaveTrigger++
+                        },
                         icon = Icons.Default.LightMode,
                         color = sectionColors[0],
                         characterLimit = 500
@@ -194,9 +239,12 @@ fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
                     JournalSection(
                         title = "Evening Reflection",
                         subtitle = "How did today go?",
-                        placeholder = "Today went well...\n\nI learned that...\n\nWhat could I improve...",
+                        placeholder = "Today went well...\nWhat did I learn today?\nWhat could I improve tomorrow?",
                         value = reflection,
-                        onValueChange = { reflection = it },
+                        onValueChange = {
+                            reflection = it
+                            autoSaveTrigger++
+                        },
                         icon = Icons.Default.Nightlight,
                         color = sectionColors[1],
                         characterLimit = 500
@@ -209,9 +257,12 @@ fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
                     JournalSection(
                         title = "Gratitude Journal",
                         subtitle = "What I am grateful for today",
-                        placeholder = "I am grateful for...\n\nI appreciate...\n\nToday's blessings...",
+                        placeholder = "I am grateful for...\nThe small joys in life\nPeople who supported me\nLessons learned",
                         value = gratitude,
-                        onValueChange = { gratitude = it },
+                        onValueChange = {
+                            gratitude = it
+                            autoSaveTrigger++
+                        },
                         icon = Icons.Default.Favorite,
                         color = sectionColors[2],
                         characterLimit = 300
@@ -220,67 +271,383 @@ fun DailyJournalScreen(viewModel: DailyJournalViewModel = viewModel()) {
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
 
-        // Save Button - Sticky at bottom
-        Box(
+        val isFormEmpty = intention.isBlank() && reflection.isBlank() && gratitude.isBlank()
+        val hasChanges = todayJournal?.let {
+            it.morningIntention != intention ||
+                    it.eveningReflection != reflection ||
+                    it.gratitude != gratitude
+        } ?: !isFormEmpty
+
+        val buttonScale = remember { Animatable(1f) }
+
+        LaunchedEffect(hasChanges) {
+            if (hasChanges) {
+                buttonScale.animateTo(
+                    1.02f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+                buttonScale.animateTo(1f)
+            }
+        }
+
+        Surface(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(16.dp),
-            contentAlignment = Alignment.BottomCenter
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = 8.dp,
+            shadowElevation = 4.dp
         ) {
-            val isFormEmpty = intention.isBlank() && reflection.isBlank() && gratitude.isBlank()
-            val buttonScale = remember { Animatable(1f) }
-
-            LaunchedEffect(isFormEmpty) {
-                if (!isFormEmpty) {
-                    buttonScale.animateTo(
-                        1.05f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                    buttonScale.animateTo(1f)
-                }
-            }
-
             Button(
                 onClick = {
-                    val journalEntry = DailyJournal(
-                        date = todayJournal?.date ?: LocalDate.now(),
+                    val journalEntry = (todayJournal ?: DailyJournal(date = selectedDate)).copy(
                         morningIntention = intention,
                         eveningReflection = reflection,
                         gratitude = gratitude
                     )
-                    viewModel.saveJournal(journalEntry)
+                    onSave(journalEntry)
                     Toast.makeText(context, "✨ Journal Saved Successfully!", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .scale(buttonScale.value)
                     .height(60.dp),
                 shape = RoundedCornerShape(16.dp),
+                enabled = hasChanges && !isFormEmpty,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                enabled = !isFormEmpty
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Icon(
+                    Icons.Default.Save,
+                    contentDescription = "Save",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (todayJournal != null) "Update Journal" else "Save Journal",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionTabRow(
+    sections: List<String>,
+    sectionIcons: List<ImageVector>,
+    currentSection: Int,
+    onSectionChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            sections.forEachIndexed { index, section ->
+                val isSelected = currentSection == index
+                val backgroundColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else Color.Transparent, label = ""
+                )
+                val contentColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant, label = ""
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(backgroundColor)
+                        .clickable { onSectionChange(index) }
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = "Save", modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            sectionIcons[index],
+                            contentDescription = section,
+                            tint = contentColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = section.split(" ")[0], // Show only first word
+                            color = contentColor,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun JournalHistory(
+    viewModel: DailyJournalViewModel,
+    onEdit: (DailyJournal) -> Unit,
+    onDelete: (DailyJournal) -> Unit
+) {
+    val journalHistory by viewModel.journalHistory.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<DailyJournal?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredJournals = journalHistory.filter { journal ->
+        searchQuery.isEmpty() ||
+                journal.morningIntention.contains(searchQuery, ignoreCase = true) ||
+                journal.eveningReflection.contains(searchQuery, ignoreCase = true) ||
+                journal.gratitude.contains(searchQuery, ignoreCase = true) ||
+                journal.date.toDisplayFormat().contains(searchQuery, ignoreCase = true)
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Search Bar
+        if (journalHistory.isNotEmpty()) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = { Text("Search journal entries...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+        }
+
+        if (filteredJournals.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Book,
+                        contentDescription = "No entries",
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
-                        "Save Journal Entry",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        if (journalHistory.isEmpty()) "No journal entries yet."
+                        else "No matching entries found.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredJournals, key = { it.id }) { journal ->
+                    JournalHistoryItem(
+                        journal = journal,
+                        onEdit = onEdit,
+                        onDelete = { showDeleteDialog = it }
+                    )
+                }
+            }
+        }
+    }
+
+    // Delete Confirmation Dialog
+    showDeleteDialog?.let { journal ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = {
+                Text(
+                    "Delete Journal Entry",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text("Are you sure you want to delete the journal for ${journal.date.toDisplayFormat()}?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete(journal)
+                        showDeleteDialog = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun JournalHistoryItem(
+    journal: DailyJournal,
+    onEdit: (DailyJournal) -> Unit,
+    onDelete: (DailyJournal) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit(journal) },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    journal.date.toDisplayFormat(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row {
+                    IconButton(
+                        onClick = { onEdit(journal) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = { onDelete(journal) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Preview of content
+            val previewText = buildString {
+                if (journal.morningIntention.isNotBlank()) {
+                    append("🌅 ${journal.morningIntention.take(60)}")
+                    if (journal.morningIntention.length > 60) append("...")
+                }
+                if (journal.eveningReflection.isNotBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append("🌙 ${journal.eveningReflection.take(60)}")
+                    if (journal.eveningReflection.length > 60) append("...")
+                }
+                if (journal.gratitude.isNotBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append("❤️ ${journal.gratitude.take(60)}")
+                    if (journal.gratitude.length > 60) append("...")
+                }
+            }.ifBlank { "No content" }
+
+            Text(
+                text = previewText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun DateHeader(date: LocalDate, onDateChange: (LocalDate) -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(
+                onClick = { onDateChange(date.minusDays(1)) },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Previous Day",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = date.toDisplayFormat(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (date == LocalDate.now()) "Today"
+                    else if (date == LocalDate.now().minusDays(1)) "Yesterday"
+                    else if (date == LocalDate.now().plusDays(1)) "Tomorrow"
+                    else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            IconButton(
+                onClick = { onDateChange(date.plusDays(1)) },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Next Day",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -293,7 +660,7 @@ fun JournalSection(
     placeholder: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     color: Color,
     characterLimit: Int
 ) {
@@ -303,20 +670,15 @@ fun JournalSection(
 
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = if (isFocused) 12.dp else 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                clip = true
-            ),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isFocused) 8.dp else 4.dp
         ),
         border = if (isFocused) BorderStroke(2.dp, color) else null
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -325,9 +687,9 @@ fun JournalSection(
                     icon,
                     contentDescription = title,
                     tint = color,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(28.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
                         title,
@@ -343,9 +705,8 @@ fun JournalSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Text Field
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -365,24 +726,25 @@ fun JournalSection(
                         lineHeight = 24.sp
                     ),
                     decorationBox = { innerTextField ->
-                        if (value.isEmpty()) {
-                            Text(
-                                placeholder,
-                                style = TextStyle(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 16.sp,
-                                    lineHeight = 24.sp
+                        Box {
+                            if (value.isEmpty()) {
+                                Text(
+                                    placeholder,
+                                    style = TextStyle(
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 16.sp,
+                                        lineHeight = 24.sp
+                                    )
                                 )
-                            )
+                            }
+                            innerTextField()
                         }
-                        innerTextField()
                     }
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Character Counter
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -392,14 +754,12 @@ fun JournalSection(
                     progress = { progress },
                     modifier = Modifier
                         .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
                     color = color,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-
                 Spacer(modifier = Modifier.width(12.dp))
-
                 Text(
                     "$characterCount/$characterLimit",
                     style = MaterialTheme.typography.bodySmall,
@@ -409,13 +769,5 @@ fun JournalSection(
                 )
             }
         }
-    }
-}
-
-// Preview helper for development
-@Composable
-fun JournalPreview() {
-    MaterialTheme {
-        DailyJournalScreen()
     }
 }
