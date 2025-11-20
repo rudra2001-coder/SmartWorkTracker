@@ -23,12 +23,12 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.RealEstateAgent
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
@@ -40,10 +40,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -77,8 +75,6 @@ import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileViewModelFactory
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
@@ -191,9 +187,15 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-
+                        onNavigateToColleagues = {
+                            navController.navigate(NavigationItem.Colleagues.route)
+                        },
+                        onNavigateToIncome = { navController.navigate(NavigationItem.Income.route) },
+                        onNavigateToExpense = { navController.navigate(NavigationItem.Expense.route) },
+                        onNavigateToLoan = { navController.navigate(NavigationItem.Loans.route) }
                     )
                 }
+
 
                 composable(
                     route = NavigationItem.Calendar.route,
@@ -372,19 +374,6 @@ fun MainApp() {
                     AllFunsionScreen(navController = navController)
                 }
 
-                composable(
-                    route = NavigationItem.UserProfile.route,
-                    enterTransition = { defaultEnterTransition() },
-                    exitTransition = { defaultExitTransition() },
-                    popEnterTransition = { defaultPopEnterTransition() },
-                    popExitTransition = { defaultPopExitTransition() }
-                ) {
-                    val context = LocalContext.current
-                    UserProfileScreen(
-                        viewModel = viewModel(factory = UserProfileViewModelFactory(context)),
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
 
                 composable(
                     route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",
@@ -558,6 +547,27 @@ sealed class NavigationItem(
         description = "Your daily summary"
     )
 
+    object Colleagues : NavigationItem(
+        route = "colleagues",
+        title = "Colleagues",
+        icon = Icons.Default.Group,
+        description = "Manage your colleagues"
+    )
+
+    object AddColleague : NavigationItem(
+        route = "add_colleague",
+        title = "Add Colleague",
+        icon = Icons.Default.Add
+    )
+
+    object ColleagueDetail : NavigationItem(
+        route = "colleague_detail/{colleagueId}",
+        title = "Colleague Detail",
+        icon = Icons.Default.Person
+    ) {
+        fun routeWithId(id: Int) = "colleague_detail/$id"
+    }
+
     object Calendar : NavigationItem(
         route = "calendar",
         title = "Calendar",
@@ -661,6 +671,8 @@ sealed class NavigationItem(
         icon = Icons.Default.Calculate,
         description = "Meal and overtime rates"
     )
+
+
 
     object Backup : NavigationItem(
         route = "backup",

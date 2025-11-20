@@ -100,7 +100,8 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Health,
                     NavigationItem.Achievements,
                     NavigationItem.MindfulBreak,
-                    NavigationItem.Wisdom
+                    NavigationItem.Wisdom ,
+
                 )
             ),
             FeatureSection(
@@ -120,7 +121,6 @@ fun AllFunsionScreen(navController: NavController) {
             ),
             FeatureSection(
                 "General", listOf(
-                    NavigationItem.UserProfile,
                     NavigationItem.Backup,
                     NavigationItem.Settings
                 )

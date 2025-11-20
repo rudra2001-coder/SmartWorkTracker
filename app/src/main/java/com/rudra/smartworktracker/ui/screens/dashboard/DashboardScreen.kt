@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
@@ -67,6 +69,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
+
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
@@ -90,12 +93,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
@@ -115,7 +120,11 @@ import kotlin.math.sin
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToAddEntry: () -> Unit
+    onNavigateToAddEntry: () -> Unit,
+    onNavigateToColleagues: () -> Unit,
+    onNavigateToIncome: () -> Unit,
+    onNavigateToExpense: () -> Unit,
+    onNavigateToLoan: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
@@ -135,7 +144,13 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            QuickActionMenu(onNavigateToAddEntry = onNavigateToAddEntry)
+            QuickActionMenu(
+                onNavigateToAddEntry = onNavigateToAddEntry,
+                onNavigateToColleagues = onNavigateToColleagues,
+                onNavigateToIncome = onNavigateToIncome,
+                onNavigateToExpense = onNavigateToExpense,
+                onNavigateToLoan = onNavigateToLoan
+            )
         }
     ) { paddingValues ->
         LazyColumn(
@@ -301,6 +316,8 @@ fun FinancialSummaryCard(
                         .weight(1f)
                         .heightIn(min = cardMinHeight)
                 )
+
+
             }
         }
     }
@@ -554,7 +571,13 @@ fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
  * A floating action button menu for quick actions like adding income, expenses, or loans.
  */
 @Composable
-fun QuickActionMenu(onNavigateToAddEntry: () -> Unit) {
+fun QuickActionMenu(
+    onNavigateToAddEntry: () -> Unit,
+    onNavigateToColleagues: () -> Unit,
+    onNavigateToIncome: () -> Unit,
+    onNavigateToExpense: () -> Unit,
+    onNavigateToLoan: () -> Unit
+) {
     var isExpanded by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 45f else 0f, label = "rotation")
 
@@ -574,17 +597,22 @@ fun QuickActionMenu(onNavigateToAddEntry: () -> Unit) {
                 QuickActionItem(
                     icon = Icons.Outlined.AttachMoney,
                     text = "New Income",
-                    onClick = onNavigateToAddEntry
+                    onClick = onNavigateToIncome
                 )
                 QuickActionItem(
                     icon = Icons.Outlined.MoneyOff,
                     text = "New Expense",
-                    onClick = onNavigateToAddEntry
+                    onClick = onNavigateToExpense
                 )
                 QuickActionItem(
                     icon = Icons.Outlined.AccountBalance,
                     text = "New Loan",
-                    onClick = onNavigateToAddEntry
+                    onClick = onNavigateToLoan
+                )
+                 QuickActionItem(
+                    icon = Icons.Default.Group,
+                    text = "Colleagues",
+                    onClick = onNavigateToColleagues
                 )
             }
         }

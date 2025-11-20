@@ -5,6 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import com.rudra.smartworktracker.model.Colleague
 import com.rudra.smartworktracker.model.DailyJournal
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -30,3 +32,4 @@ interface DailyJournalDao {
     @Query("SELECT * FROM daily_journals ORDER BY date DESC")
     fun getAllJournals(): Flow<List<DailyJournal>>
 }
+
