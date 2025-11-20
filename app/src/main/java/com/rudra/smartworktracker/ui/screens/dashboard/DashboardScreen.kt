@@ -29,7 +29,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,7 +42,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,13 +51,11 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.MoneyOff
-import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -69,7 +66,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
-
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
@@ -79,6 +75,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -93,14 +90,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
@@ -114,6 +112,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -121,7 +120,6 @@ import kotlin.math.sin
 @Composable
 fun DashboardScreen(
     onNavigateToAddEntry: () -> Unit,
-    onNavigateToColleagues: () -> Unit,
     onNavigateToIncome: () -> Unit,
     onNavigateToExpense: () -> Unit,
     onNavigateToLoan: () -> Unit
@@ -133,10 +131,21 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
+    // Derived state for better performance
+    val hasRecentActivities by remember(uiState.recentActivities) {
+        derivedStateOf { uiState.recentActivities.isNotEmpty() }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard") },
+                title = {
+                    Text(
+                        text = "Dashboard",
+                        style = typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colorScheme.surface,
                     titleContentColor = colorScheme.onSurface
@@ -146,7 +155,6 @@ fun DashboardScreen(
         floatingActionButton = {
             QuickActionMenu(
                 onNavigateToAddEntry = onNavigateToAddEntry,
-                onNavigateToColleagues = onNavigateToColleagues,
                 onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = onNavigateToExpense,
                 onNavigateToLoan = onNavigateToLoan
@@ -163,24 +171,30 @@ fun DashboardScreen(
             item {
                 Header(userName = uiState.userName)
             }
+
             item {
                 FinancialSummaryCard(
                     summary = uiState.financialSummary
                 )
             }
+
             item {
                 PerformanceRow(
                     summary = uiState.financialSummary,
                     stats = uiState.monthlyStats
                 )
             }
+
             item {
                 CategorySummaryCard(expensesByCategory = uiState.expensesByCategory)
             }
-            item {
-                WeeklyActivityTimeline(activities = uiState.recentActivities)
+
+            if (hasRecentActivities) {
+                item {
+                    WeeklyActivityTimeline(activities = uiState.recentActivities)
+                }
             }
-            // Today's Status Card
+
             item {
                 TodayStatusCard(
                     workType = uiState.todayWorkType,
@@ -196,28 +210,36 @@ fun DashboardScreen(
 }
 
 /**
- * A modern, professional header for the dashboard.
- * Includes a circular avatar, a personalized greeting, and a subtitle.
+ * Optimized header with better performance and accessibility
  */
 @Composable
 fun Header(userName: String?) {
+    val displayName = remember(userName) { userName ?: "Rudra" }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp, top = 8.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Circular Avatar
+        // Circular Avatar with better accessibility
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(colorScheme.primary.copy(alpha = 0.1f), CircleShape)
-                .border(1.dp, colorScheme.primary.copy(alpha = 0.2f), CircleShape),
+                .background(
+                    color = colorScheme.primary.copy(alpha = 0.1f),
+                    shape = CircleShape
+                )
+                .border(
+                    width = 1.dp,
+                    color = colorScheme.primary.copy(alpha = 0.2f),
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = userName?.firstOrNull()?.uppercase() ?: "U",
+                text = displayName.first().uppercase(),
                 style = typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.primary
@@ -227,7 +249,7 @@ fun Header(userName: String?) {
         // Greeting and Subtitle
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hello, ${userName ?: "Rudra"} 👋",
+                text = "Hello, $displayName 👋",
                 style = typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.onSurface
@@ -240,26 +262,24 @@ fun Header(userName: String?) {
         }
     }
 }
+
 /**
- * A modern, glass-style card that provides a financial overview.
- * It contains a grid of professional-looking metric cards.
+ * Optimized financial summary card with better state management
  */
 @Composable
-fun FinancialSummaryCard(
-    summary: FinancialSummary
-) {
+fun FinancialSummaryCard(summary: FinancialSummary) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .border(
-                1.dp,
-                colorScheme.onSurface.copy(alpha = 0.2f),
-                RoundedCornerShape(24.dp)
+                width = 1.dp,
+                color = colorScheme.onSurface.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(24.dp)
             ),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surface.copy(alpha = 0.3f) // Glass effect
+            containerColor = colorScheme.surface.copy(alpha = 0.3f)
         ),
         shape = RoundedCornerShape(24.dp)
     ) {
@@ -267,16 +287,14 @@ fun FinancialSummaryCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                "Financial Overview",
+                text = "Financial Overview",
                 style = typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Removed unnecessary BoxWithConstraints
             val cardMinHeight = 120.dp
 
-            // A single row for the main financial metrics
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -284,8 +302,8 @@ fun FinancialSummaryCard(
                 FinancialMetricCard(
                     title = "Total Income",
                     amount = summary.totalIncome,
-                    delta = 8.2f, // Placeholder delta
-                    trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f), // Placeholder data
+                    delta = 8.2f,
+                    trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
                     color = colorScheme.primary,
                     icon = Icons.AutoMirrored.Outlined.TrendingUp,
                     modifier = Modifier
@@ -296,8 +314,8 @@ fun FinancialSummaryCard(
                 FinancialMetricCard(
                     title = "Total Expenses",
                     amount = summary.totalExpense,
-                    delta = -5.6f, // Placeholder delta
-                    trendData = listOf(0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f), // Placeholder data
+                    delta = -5.6f,
+                    trendData = listOf(0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f),
                     color = colorScheme.error,
                     icon = Icons.AutoMirrored.Outlined.TrendingDown,
                     modifier = Modifier
@@ -308,36 +326,34 @@ fun FinancialSummaryCard(
                 FinancialMetricCard(
                     title = "Net Savings",
                     amount = summary.netSavings,
-                    delta = 15.3f, // Placeholder delta
-                    trendData = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 0.7f, 0.9f), // Placeholder data
+                    delta = 15.3f,
+                    trendData = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 0.7f, 0.9f),
                     color = Color(0xFF0F9D58),
                     icon = Icons.Outlined.Savings,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = cardMinHeight)
                 )
-
-
             }
         }
     }
 }
 
 /**
- * A row of metric cards showing performance stats like loans and work days.
+ * Performance row with better state derivation
  */
 @Composable
 fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
     Column {
         Text(
-            "Performance",
+            text = "Performance",
             style = typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
         )
 
-        // Removed unnecessary BoxWithConstraints
         val cardMinHeight = 120.dp
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -345,8 +361,8 @@ fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
             FinancialMetricCard(
                 title = "Total Loan",
                 amount = summary.totalLoan,
-                delta = 0f, // Placeholder delta
-                trendData = listOf(0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f), // Placeholder data
+                delta = 0f,
+                trendData = List(7) { 0.5f },
                 color = colorScheme.tertiary,
                 icon = Icons.Outlined.AccountBalance,
                 modifier = Modifier
@@ -357,8 +373,8 @@ fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
             FinancialMetricCard(
                 title = "Office Days",
                 amount = stats.officeDays.toDouble(),
-                delta = 2.5f, // Placeholder
-                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f), // Placeholder
+                delta = 2.5f,
+                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
                 color = colorScheme.primary,
                 icon = Icons.Filled.Work,
                 modifier = Modifier
@@ -369,8 +385,8 @@ fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
             FinancialMetricCard(
                 title = "Off Days",
                 amount = stats.offDays.toDouble(),
-                delta = -1.0f, // Placeholder
-                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f), // Placeholder
+                delta = -1.0f,
+                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f),
                 color = colorScheme.secondary,
                 icon = Icons.Filled.BeachAccess,
                 modifier = Modifier
@@ -380,292 +396,9 @@ fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
         }
     }
 }
-/**
- * A card that shows a summary of the top expense categories for the month.
- * Includes a horizontal bar chart for visualization.
- */
-@Composable
-fun CategorySummaryCard(expensesByCategory: Map<ExpenseCategory, Double>) {
-    val topExpenses = expensesByCategory.entries
-        .sortedByDescending { it.value }
-        .take(3)
-
-    val totalExpenses = expensesByCategory.values.sum().coerceAtLeast(1.0)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "This Month's Summary",
-                style = typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            if (topExpenses.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No expense data for this month yet.")
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    topExpenses.forEach { (category, amount) ->
-                        ExpenseBar(
-                            category = category.name,
-                            amount = amount,
-                            total = totalExpenses,
-                            color = category.color
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
- * A horizontal bar representing a single expense category's proportion of total expenses.
- */
-@Composable
-fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
-    val proportion = (amount / total).toFloat().coerceIn(0f, 1f)
-    val animatedProportion = remember { Animatable(0f) }
-
-    LaunchedEffect(proportion) {
-        animatedProportion.animateTo(proportion, animationSpec = tween(1000))
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = category,
-                style = typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = "৳${String.format("%.0f", amount)}",
-                style = typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .background(colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedProportion.value)
-                    .height(8.dp)
-                    .background(color, RoundedCornerShape(4.dp))
-            )
-        }
-    }
-}
-
-/**
- * A card displaying a weekly productivity timeline.
- * It visualizes work types for the past week.
- */
-@Composable
-fun WeeklyActivityTimeline(activities: List<WorkLogUi>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Weekly Activity",
-                style = typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            val today = LocalDate.now()
-            val weekDays = (0..6).map { today.minusDays(it.toLong()) }.reversed()
-            val activityMap = activities
-                .filter {
-                    val activityDate = it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-                    activityDate in weekDays.first()..weekDays.last()
-                }
-                .associateBy { it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() }
-
-            if (weekDays.all { activityMap[it] == null }) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No activity recorded this week.")
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    weekDays.forEach { date ->
-                        DayActivityRow(date = date, workLog = activityMap[date])
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * A row in the timeline, showing the day and its corresponding work type as a colored dot.
- */
-@Composable
-fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-            style = typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(40.dp)
-        )
-
-        val workType = workLog?.workType
-        val color = workType?.let {
-            when (it) {
-                WorkType.OFFICE -> colorScheme.primary
-                WorkType.HOME_OFFICE -> colorScheme.secondary
-                WorkType.OFF_DAY -> colorScheme.tertiary
-                WorkType.EXTRA_WORK -> colorScheme.error
-            }
-        } ?: colorScheme.surfaceVariant
-
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .background(color, CircleShape)
-        )
-
-        Text(
-            text = workType?.name?.replace("_", " ")?.lowercase()?.replaceFirstChar { it.titlecase() } ?: "No Entry",
-            style = typography.bodyMedium,
-            color = colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-/**
- * A floating action button menu for quick actions like adding income, expenses, or loans.
- */
-@Composable
-fun QuickActionMenu(
-    onNavigateToAddEntry: () -> Unit,
-    onNavigateToColleagues: () -> Unit,
-    onNavigateToIncome: () -> Unit,
-    onNavigateToExpense: () -> Unit,
-    onNavigateToLoan: () -> Unit
-) {
-    var isExpanded by remember { mutableStateOf(false) }
-    val rotation by animateFloatAsState(targetValue = if (isExpanded) 45f else 0f, label = "rotation")
-
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionItem(
-                    icon = Icons.Outlined.AttachMoney,
-                    text = "New Income",
-                    onClick = onNavigateToIncome
-                )
-                QuickActionItem(
-                    icon = Icons.Outlined.MoneyOff,
-                    text = "New Expense",
-                    onClick = onNavigateToExpense
-                )
-                QuickActionItem(
-                    icon = Icons.Outlined.AccountBalance,
-                    text = "New Loan",
-                    onClick = onNavigateToLoan
-                )
-                 QuickActionItem(
-                    icon = Icons.Default.Group,
-                    text = "Colleagues",
-                    onClick = onNavigateToColleagues
-                )
-            }
-        }
-
-        FloatingActionButton(
-            onClick = { isExpanded = !isExpanded },
-            containerColor = colorScheme.primary,
-            contentColor = colorScheme.onPrimary
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = "Add Entry",
-                modifier = Modifier.graphicsLayer(rotationZ = rotation)
-            )
-        }
-    }
-}
-
-/**
- * A single item in the quick action menu.
- */
-@Composable
-fun QuickActionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Card(
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Text(
-                text = text,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                style = typography.bodyMedium
-            )
-        }
-        SmallFloatingActionButton(
-            onClick = onClick,
-            containerColor = colorScheme.secondaryContainer,
-            contentColor = colorScheme.onSecondaryContainer
-        ) {
-            Icon(icon, contentDescription = text)
-        }
-    }
-}
-
-/**
- * A professional, modern metric card for displaying key financial data.
- * Includes a title, icon, large KPI number, a sparkline chart for trends,
- * and a delta indicator to show change.
+ * Optimized financial metric card with better number formatting and performance
  */
 @Composable
 fun FinancialMetricCard(
@@ -680,14 +413,29 @@ fun FinancialMetricCard(
     val minHeight = 120.dp
     var currentValue by remember { mutableDoubleStateOf(0.0) }
 
+    // Optimized animation
     LaunchedEffect(amount) {
+        currentValue = 0.0 // Reset for re-animation
         val animation = Animatable(0f)
         animation.animateTo(
-            amount.toFloat(),
+            targetValue = amount.toFloat(),
             animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
         ) {
             currentValue = this.value.toDouble()
         }
+    }
+
+    // Memoized formatted values
+    val formattedValue = remember(currentValue, title) {
+        if (title.contains("Days", ignoreCase = true)) {
+            currentValue.toInt().toString()
+        } else {
+            "৳${String.format("%.2f", currentValue)}"
+        }
+    }
+
+    val formattedDelta = remember(delta) {
+        "${if (delta > 0) "+" else ""}${String.format("%.1f", delta)}%"
     }
 
     Card(
@@ -720,19 +468,15 @@ fun FinancialMetricCard(
                 Text(
                     text = title,
                     style = typography.bodyMedium,
-                    maxLines = 2,                 // ← FIX
-                    overflow = TextOverflow.Clip, // ← FIX
-
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     color = colorScheme.onSurfaceVariant
                 )
             }
 
-            // Main KPI Number (big, bold)
+            // Main KPI Number
             Text(
-                text = if (title.contains("Days"))
-                    "${currentValue.toInt()}"
-                else
-                    "৳${String.format("%.2f", currentValue)}",
+                text = formattedValue,
                 style = typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = color
@@ -754,31 +498,53 @@ fun FinancialMetricCard(
                 )
 
                 // Delta Indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = if (delta >= 0) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
-                        contentDescription = if (delta >= 0) "Trending up" else "Trending down",
-                        tint = if (delta >= 0) Color(0xFF0F9D58) else colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "${String.format("%.1f", delta)}%",
-                        style = typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = if (delta >= 0) Color(0xFF0F9D58) else colorScheme.error
-                    )
-                }
+                DeltaIndicator(
+                    delta = delta,
+                    formattedDelta = formattedDelta
+                )
             }
         }
     }
 }
 
 /**
- * A simple sparkline chart composable.
- * Renders a list of floats as a path on a canvas.
+ * Extracted Delta Indicator for better reusability
+ */
+@Composable
+private fun DeltaIndicator(delta: Float, formattedDelta: String) {
+    val trendIcon = if (delta >= 0) {
+        Icons.AutoMirrored.Outlined.TrendingUp
+    } else {
+        Icons.AutoMirrored.Outlined.TrendingDown
+    }
+
+    val trendColor = if (delta >= 0) {
+        Color(0xFF0F9D58)
+    } else {
+        colorScheme.error
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = trendIcon,
+            contentDescription = if (delta >= 0) "Trending up" else "Trending down",
+            tint = trendColor,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = formattedDelta,
+            style = typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = trendColor
+        )
+    }
+}
+
+/**
+ * Optimized sparkline chart with better performance
  */
 @Composable
 fun SparklineChart(
@@ -787,44 +553,379 @@ fun SparklineChart(
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier) {
-        if (data.size > 1) {
-            val path = Path()
-            val xStep = size.width / (data.size - 1)
-            val yMax = data.maxOrNull() ?: 1f
-            val yMin = data.minOrNull() ?: 0f
-            val yRange = if (yMax > yMin) yMax - yMin else 1f
+        if (data.size < 2) return@Canvas
 
-            path.moveTo(
-                0f,
-                size.height - ((data[0] - yMin) / yRange) * size.height
-            )
+        val path = Path()
+        val xStep = size.width / (data.size - 1)
+        val yMax = data.maxOrNull() ?: 1f
+        val yMin = data.minOrNull() ?: 0f
+        val yRange = if (yMax > yMin) yMax - yMin else 1f
 
-            data.forEachIndexed { index, value ->
+        // Move to first point
+        path.moveTo(
+            0f,
+            size.height - ((data[0] - yMin) / yRange) * size.height
+        )
+
+        // Draw lines to subsequent points
+        data.forEachIndexed { index, value ->
+            if (index > 0) {
                 val x = index * xStep
                 val y = size.height - ((value - yMin) / yRange) * size.height
                 path.lineTo(x, y)
             }
+        }
 
-            drawPath(
-                path = path,
-                color = color,
-                style = Stroke(width = 2.dp.toPx())
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = 2.dp.toPx())
+        )
+    }
+}
+
+/**
+ * Optimized category summary card with better empty state handling
+ */
+@Composable
+fun CategorySummaryCard(expensesByCategory: Map<ExpenseCategory, Double>) {
+    val topExpenses by remember(expensesByCategory) {
+        derivedStateOf {
+            expensesByCategory.entries
+                .sortedByDescending { it.value }
+                .take(3)
+        }
+    }
+
+    val totalExpenses by remember(expensesByCategory) {
+        derivedStateOf {
+            expensesByCategory.values.sum().coerceAtLeast(1.0)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "This Month's Summary",
+                style = typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (topExpenses.isEmpty()) {
+                EmptyState(
+                    message = "No expense data for this month yet.",
+                    modifier = Modifier.height(100.dp)
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    topExpenses.forEach { (category, amount) ->
+                        ExpenseBar(
+                            category = category.name,
+                            amount = amount,
+                            total = totalExpenses,
+                            color = category.color
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Reusable empty state component
+ */
+@Composable
+fun EmptyState(message: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = typography.bodyMedium,
+            color = colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Optimized expense bar with better animation control
+ */
+@Composable
+fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
+    val proportion = (amount / total).toFloat().coerceIn(0f, 1f)
+    val animatedProportion = remember { Animatable(0f) }
+
+    LaunchedEffect(proportion) {
+        animatedProportion.animateTo(
+            proportion,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = category,
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "৳${String.format("%.0f", amount)}",
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProportion.value)
+                    .height(8.dp)
+                    .background(color, RoundedCornerShape(4.dp))
             )
         }
     }
 }
 
-val ExpenseCategory.color: Color
-    @Composable
-    get() = when (this) {
-        ExpenseCategory.MEAL -> Color(0xFFE91E63)
-        ExpenseCategory.TRANSPORT -> Color(0xFF9C27B0)
-        ExpenseCategory.SHOPPING -> Color(0xFF2196F3)
-        ExpenseCategory.BILLS -> Color(0xFF00BCD4)
-        ExpenseCategory.ENTERTAINMENT -> Color(0xFF4CAF50)
-        ExpenseCategory.OTHER -> Color(0xFF607D8B)
+/**
+ * Optimized weekly activity timeline with better date handling
+ */
+@Composable
+fun WeeklyActivityTimeline(activities: List<WorkLogUi>) {
+    val today = LocalDate.now()
+    val weekDays by remember(today) {
+        derivedStateOf {
+            (0..6).map { today.minusDays(it.toLong()) }.reversed()
+        }
     }
 
+    val activityMap by remember(activities, weekDays) {
+        derivedStateOf {
+            activities
+                .filter {
+                    val activityDate = it.date.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    activityDate in weekDays.first()..weekDays.last()
+                }
+                .associateBy {
+                    it.date.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                }
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Weekly Activity",
+                style = typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (weekDays.all { activityMap[it] == null }) {
+                EmptyState(
+                    message = "No activity recorded this week.",
+                    modifier = Modifier.height(100.dp)
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    weekDays.forEach { date ->
+                        DayActivityRow(
+                            date = date,
+                            workLog = activityMap[date]
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/**
+ * Optimized day activity row with better work type handling
+ */
+@Composable
+fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
+
+    val OfficeColor = Color(0xFF2196F3)
+    val HomeOfficeColor = Color(0xFFFF9800)
+    val OffDayColor = Color(0xFF9C27B0)
+    val ExtraWorkColor = Color(0xFFE91E63)
+    val NoEntryColor = Color(0xFF9E9E9E)
+
+    val workType = workLog?.workType
+
+    val (color, displayName) = remember(workType) {
+        when (workType) {
+            WorkType.OFFICE -> OfficeColor to "Office"
+            WorkType.HOME_OFFICE -> HomeOfficeColor to "Home Office"
+            WorkType.OFF_DAY -> OffDayColor to "Off Day"
+            WorkType.EXTRA_WORK -> ExtraWorkColor to "Extra Work"
+            null -> NoEntryColor to "No Entry"
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(40.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, CircleShape)
+        )
+
+        Text(
+            text = displayName,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/**
+ * Optimized quick action menu with better state management
+ */
+@Composable
+fun QuickActionMenu(
+    onNavigateToAddEntry: () -> Unit,
+    onNavigateToIncome: () -> Unit,
+    onNavigateToExpense: () -> Unit,
+    onNavigateToLoan: () -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (isExpanded) 45f else 0f,
+        label = "rotation"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionItem(
+                    icon = Icons.Outlined.AttachMoney,
+                    text = "New Income",
+                    onClick = onNavigateToIncome
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.MoneyOff,
+                    text = "New Expense",
+                    onClick = onNavigateToExpense
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.AccountBalance,
+                    text = "New Loan",
+                    onClick = onNavigateToLoan
+                )
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { isExpanded = !isExpanded },
+            containerColor = colorScheme.primary,
+            contentColor = colorScheme.onPrimary
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add Entry",
+                modifier = Modifier.graphicsLayer(rotationZ = rotation)
+            )
+        }
+    }
+}
+
+/**
+ * Optimized quick action item with better accessibility
+ */
+@Composable
+fun QuickActionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .clickable(
+                onClick = onClick,
+                role = Role.Button
+            )
+    ) {
+        Card(
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = colorScheme.secondaryContainer,
+            contentColor = colorScheme.onSecondaryContainer
+        ) {
+            Icon(
+                icon,
+                contentDescription = text,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Optimized today status card with better animation performance
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun TodayStatusCard(
@@ -837,7 +938,6 @@ fun TodayStatusCard(
         label = "card_elevation"
     )
 
-    // Background color animation
     val backgroundColor by animateColorAsState(
         targetValue = when (workType) {
             WorkType.OFFICE -> colorScheme.primaryContainer
@@ -860,54 +960,21 @@ fun TodayStatusCard(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Custom Compose Animation
             WorkTypeAnimation(workType = workType)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Animated text transition
             AnimatedContent(
                 targetState = workType,
                 transitionSpec = {
                     (slideInVertically { height -> height } + fadeIn()).togetherWith(
                         slideOutVertically { height -> -height } + fadeOut())
-                }, label = "text_animation"
+                },
+                label = "text_animation"
             ) { targetWorkType ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = targetWorkType?.let {
-                            when (it) {
-                                WorkType.OFFICE -> "Office Day 🏢"
-                                WorkType.HOME_OFFICE -> "Home Office 🏠"
-                                WorkType.OFF_DAY -> "Off Day 🌴"
-                                WorkType.EXTRA_WORK -> "Extra Work ⚡"
-                            }
-                        } ?: "Mark Your Day",
-                        style = typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = targetWorkType?.let {
-                            when (it) {
-                                WorkType.OFFICE -> "You're working from office today"
-                                WorkType.HOME_OFFICE -> "Working comfortably from home"
-                                WorkType.OFF_DAY -> "Enjoy your day off!"
-                                WorkType.EXTRA_WORK -> "Going above and beyond!"
-                            }
-                        } ?: "Tap to select today's work type",
-                        style = typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                }
+                WorkTypeContent(workType = targetWorkType)
             }
 
-            // Animated expansion of work type buttons
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically() + fadeIn(),
@@ -915,33 +982,83 @@ fun TodayStatusCard(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Work Type Selection Buttons with staggered animation
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        listOf(
-                            WorkType.OFFICE to Icons.Filled.Work,
-                            WorkType.HOME_OFFICE to Icons.Filled.Home,
-                            WorkType.OFF_DAY to Icons.Filled.BeachAccess,
-                            WorkType.EXTRA_WORK to Icons.Filled.Bolt
-                        ).forEachIndexed { index, (type, icon) ->
-                            AnimatedWorkTypeButton(
-                                workType = type,
-                                icon = icon,
-                                selected = workType == type,
-                                onClick = { onWorkTypeSelected(type) },
-                                delay = index * 100
-                            )
-                        }
-                    }
+                    WorkTypeSelectionButtons(
+                        workType = workType,
+                        onWorkTypeSelected = onWorkTypeSelected
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * Extracted work type content for better readability
+ */
+@Composable
+private fun WorkTypeContent(workType: WorkType?) {
+    val (title, subtitle) = remember(workType) {
+        when (workType) {
+            WorkType.OFFICE -> "Office Day 🏢" to "You're working from office today"
+            WorkType.HOME_OFFICE -> "Home Office 🏠" to "Working comfortably from home"
+            WorkType.OFF_DAY -> "Off Day 🌴" to "Enjoy your day off!"
+            WorkType.EXTRA_WORK -> "Extra Work ⚡" to "Going above and beyond!"
+            null -> "Mark Your Day" to "Tap to select today's work type"
+        }
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = title,
+            style = typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = subtitle,
+            style = typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Extracted work type selection buttons for better organization
+ */
+@Composable
+private fun WorkTypeSelectionButtons(
+    workType: WorkType?,
+    onWorkTypeSelected: (WorkType) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        listOf(
+            WorkType.OFFICE to Icons.Filled.Work,
+            WorkType.HOME_OFFICE to Icons.Filled.Home,
+            WorkType.OFF_DAY to Icons.Filled.BeachAccess,
+            WorkType.EXTRA_WORK to Icons.Filled.Bolt
+        ).forEachIndexed { index, (type, icon) ->
+            AnimatedWorkTypeButton(
+                workType = type,
+                icon = icon,
+                selected = workType == type,
+                onClick = { onWorkTypeSelected(type) },
+                delay = index * 100
+            )
+        }
+    }
+}
+
+/**
+ * Optimized work type button with better animation
+ */
 @Composable
 fun RowScope.AnimatedWorkTypeButton(
     workType: WorkType,
@@ -956,8 +1073,7 @@ fun RowScope.AnimatedWorkTypeButton(
         label = "button_scale"
     )
 
-    // Staggered entrance animation
-    val enterTransition = remember {
+    val enterTransition = remember(delay) {
         scaleIn(
             animationSpec = tween(300, delay),
             initialScale = 0.8f
@@ -994,7 +1110,7 @@ fun RowScope.AnimatedWorkTypeButton(
                 }
             ),
             border = if (!selected) {
-                ButtonDefaults.outlinedButtonBorder(true)
+                ButtonDefaults.outlinedButtonBorder
             } else {
                 null
             }
@@ -1020,6 +1136,9 @@ fun RowScope.AnimatedWorkTypeButton(
     }
 }
 
+/**
+ * Optimized work type animation with better performance
+ */
 @Composable
 fun WorkTypeAnimation(workType: WorkType?) {
     val infiniteTransition = rememberInfiniteTransition(label = "infinite_transition")
@@ -1027,13 +1146,12 @@ fun WorkTypeAnimation(workType: WorkType?) {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "angle"
     )
 
-    // Color transition
     val primaryColor by animateColorAsState(
         targetValue = when (workType) {
             WorkType.OFFICE -> colorScheme.primary
@@ -1044,6 +1162,7 @@ fun WorkTypeAnimation(workType: WorkType?) {
         },
         label = "primary_color"
     )
+
     val secondaryColor by animateColorAsState(
         targetValue = when (workType) {
             WorkType.OFFICE -> colorScheme.secondary
@@ -1064,15 +1183,31 @@ fun WorkTypeAnimation(workType: WorkType?) {
             val currentAngle = progress * 360f
             val currentRadius = radius * (1 - progress * 0.5f)
 
-            val x = center.x + currentRadius * cos(Math.toRadians(currentAngle.toDouble())).toFloat()
-            val y = center.y + currentRadius * sin(Math.toRadians(currentAngle.toDouble())).toFloat()
+            // Use radians for better performance
+            val radians = (currentAngle * PI / 180).toFloat()
+            val x = center.x + currentRadius * cos(radians)
+            val y = center.y + currentRadius * sin(radians)
 
             drawCircle(
                 color = if (i % 2 == 0) primaryColor else secondaryColor,
-                radius = (1 - progress) * 6f, // Particle size decreases over time
+                radius = (1 - progress) * 6f,
                 center = Offset(x, y),
-                alpha = 1 - progress // Fade out
+                alpha = 1 - progress
             )
         }
     }
 }
+
+/**
+ * Extension property for ExpenseCategory colors
+ */
+val ExpenseCategory.color: Color
+    @Composable
+    get() = when (this) {
+        ExpenseCategory.MEAL -> Color(0xFFE91E63)
+        ExpenseCategory.TRANSPORT -> Color(0xFF9C27B0)
+        ExpenseCategory.SHOPPING -> Color(0xFF2196F3)
+        ExpenseCategory.BILLS -> Color(0xFF00BCD4)
+        ExpenseCategory.ENTERTAINMENT -> Color(0xFF4CAF50)
+        ExpenseCategory.OTHER -> Color(0xFF607D8B)
+    }

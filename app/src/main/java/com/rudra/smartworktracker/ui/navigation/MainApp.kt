@@ -40,8 +40,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -187,15 +189,11 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToColleagues = {
-                            navController.navigate(NavigationItem.Colleagues.route)
-                        },
                         onNavigateToIncome = { navController.navigate(NavigationItem.Income.route) },
                         onNavigateToExpense = { navController.navigate(NavigationItem.Expense.route) },
                         onNavigateToLoan = { navController.navigate(NavigationItem.Loans.route) }
                     )
                 }
-
 
                 composable(
                     route = NavigationItem.Calendar.route,
@@ -547,27 +545,6 @@ sealed class NavigationItem(
         description = "Your daily summary"
     )
 
-    object Colleagues : NavigationItem(
-        route = "colleagues",
-        title = "Colleagues",
-        icon = Icons.Default.Group,
-        description = "Manage your colleagues"
-    )
-
-    object AddColleague : NavigationItem(
-        route = "add_colleague",
-        title = "Add Colleague",
-        icon = Icons.Default.Add
-    )
-
-    object ColleagueDetail : NavigationItem(
-        route = "colleague_detail/{colleagueId}",
-        title = "Colleague Detail",
-        icon = Icons.Default.Person
-    ) {
-        fun routeWithId(id: Int) = "colleague_detail/$id"
-    }
-
     object Calendar : NavigationItem(
         route = "calendar",
         title = "Calendar",
@@ -671,8 +648,6 @@ sealed class NavigationItem(
         icon = Icons.Default.Calculate,
         description = "Meal and overtime rates"
     )
-
-
 
     object Backup : NavigationItem(
         route = "backup",
