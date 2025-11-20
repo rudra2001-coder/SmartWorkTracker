@@ -191,9 +191,7 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToAllFunsion = {
-                            navController.navigate(NavigationItem.AllFunsion.route)
-                        }
+
                     )
                 }
 

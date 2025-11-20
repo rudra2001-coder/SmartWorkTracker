@@ -35,7 +35,10 @@ data class FinancialSummary(
     val totalExpense: Double = 0.0,
     val netSavings: Double = 0.0,
     val totalMealCost: Double = 0.0,
-    val expenseBreakdown: Map<String, Double> = emptyMap()
+    val expenseBreakdown: Map<String, Double> = emptyMap(),
+    val totalLoan: Double = 0.0,
+    val totalOfficeDays: Int = 0,
+    val totalOffDays: Int = 0
 ) {
     val savingsPercentage: Double
         get() = if (totalIncome > 0) (netSavings / totalIncome) * 100 else 0.0

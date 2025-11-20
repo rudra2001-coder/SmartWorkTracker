@@ -25,19 +25,20 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,28 +49,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddRoad
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.PieChart
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.MoneyOff
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -78,25 +78,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
@@ -105,30 +104,18 @@ import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
-import com.rudra.smartworktracker.ui.hasFinancialData
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.tensorflow.lite.support.label.Category
-import kotlin.math.atan2
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToAddEntry: () -> Unit,
-    onNavigateToAllFunsion: () -> Unit
+    onNavigateToAddEntry: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: DashboardViewModel = viewModel(
@@ -142,19 +129,13 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("Dashboard") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = colorScheme.surface,
+                    titleContentColor = colorScheme.onSurface
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNavigateToAddEntry,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, "Add Entry")
-            }
+            QuickActionMenu(onNavigateToAddEntry = onNavigateToAddEntry)
         }
     ) { paddingValues ->
         LazyColumn(
@@ -169,12 +150,20 @@ fun DashboardScreen(
             }
             item {
                 FinancialSummaryCard(
-                    summary = uiState.financialSummary,
-                    expensesByCategory = uiState.expensesByCategory
+                    summary = uiState.financialSummary
                 )
             }
             item {
-                AllFunsionCard(onNavigateToAllFunsion = onNavigateToAllFunsion)
+                PerformanceRow(
+                    summary = uiState.financialSummary,
+                    stats = uiState.monthlyStats
+                )
+            }
+            item {
+                CategorySummaryCard(expensesByCategory = uiState.expensesByCategory)
+            }
+            item {
+                WeeklyActivityTimeline(activities = uiState.recentActivities)
             }
             // Today's Status Card
             item {
@@ -187,532 +176,613 @@ fun DashboardScreen(
                     }
                 )
             }
-
-            // Quick Stats
-            item {
-                MonthlyStatsCard(stats = uiState.monthlyStats)
-            }
-
-            // Recent Activity
-            item {
-                RecentActivityCard(activities = uiState.recentActivities)
-            }
         }
     }
 }
 
+/**
+ * A modern, professional header for the dashboard.
+ * Includes a circular avatar, a personalized greeting, and a subtitle.
+ */
 @Composable
 fun Header(userName: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(bottom = 16.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Circular Avatar
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                .border(1.dp, colorScheme.primary.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = userName?.firstOrNull()?.uppercase() ?: "U",
+                style = typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+        }
+
+        // Greeting and Subtitle
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hello, ${userName ?: "there"}!",
-                style = MaterialTheme.typography.headlineMedium,
+                text = "Hello, ${userName ?: "Rudra"} 👋",
+                style = typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = colorScheme.onSurface
             )
             Text(
-                text = "Here's your dashboard for today.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Today is a good day to stay productive.",
+                style = typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
             )
         }
     }
 }
-
+/**
+ * A modern, glass-style card that provides a financial overview.
+ * It contains a grid of professional-looking metric cards.
+ */
 @Composable
 fun FinancialSummaryCard(
-    summary: FinancialSummary,
-    expensesByCategory: Map<ExpenseCategory, Double>
+    summary: FinancialSummary
 ) {
-    var selectedCategory by remember { mutableStateOf<ExpenseCategory?>(null) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        elevation = CardDefaults.cardElevation(8.dp),
+            .clip(RoundedCornerShape(24.dp))
+            .border(
+                1.dp,
+                colorScheme.onSurface.copy(alpha = 0.2f),
+                RoundedCornerShape(24.dp)
+            ),
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = colorScheme.surface.copy(alpha = 0.3f) // Glass effect
         ),
-        shape = MaterialTheme.shapes.large
+        shape = RoundedCornerShape(24.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Header with title and date
+            Text(
+                "Financial Overview",
+                style = typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Removed unnecessary BoxWithConstraints
+            val cardMinHeight = 120.dp
+
+            // A single row for the main financial metrics
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Financial Overview",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    "Current Month",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 1st Row: Total Income and Total Expenses
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FinancialMetricCard(
-                    title = "Total   Income",
+                    title = "Total Income",
                     amount = summary.totalIncome,
-                    color = MaterialTheme.colorScheme.primary,
+                    delta = 8.2f, // Placeholder delta
+                    trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f), // Placeholder data
+                    color = colorScheme.primary,
                     icon = Icons.AutoMirrored.Outlined.TrendingUp,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = cardMinHeight)
                 )
 
                 FinancialMetricCard(
                     title = "Total Expenses",
                     amount = summary.totalExpense,
-                    color = MaterialTheme.colorScheme.error,
+                    delta = -5.6f, // Placeholder delta
+                    trendData = listOf(0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f), // Placeholder data
+                    color = colorScheme.error,
                     icon = Icons.AutoMirrored.Outlined.TrendingDown,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = cardMinHeight)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 2nd Row: Net Savings and Meal Expenses
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
                 FinancialMetricCard(
-                    title = "Net   Savings",
+                    title = "Net Savings",
                     amount = summary.netSavings,
+                    delta = 15.3f, // Placeholder delta
+                    trendData = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 0.7f, 0.9f), // Placeholder data
                     color = Color(0xFF0F9D58),
                     icon = Icons.Outlined.Savings,
-                    modifier = Modifier.weight(1f)
-                )
-
-                FinancialMetricCard(
-                    title = "Meal Expenses",
-                    amount = summary.totalMealCost,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    icon = Icons.Outlined.Restaurant,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = cardMinHeight)
                 )
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Savings Rate Progress Bar
-            SavingsProgressBar(
-                savingsPercentage = summary.savingsPercentage,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Pie Chart Section
-            Column {
-                Text(
-                    "Expense Distribution",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Pie Chart
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FinancialPieChart(
-                            expensesByCategory = expensesByCategory,
-                            onSliceSelected = { selectedCategory = it }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(24.dp))
-
-                    // Category Legend and Details
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Category Legend
-                        expensesByCategory.forEach { (category, amount) ->
-                            CategoryLegendItem(
-                                category = category,
-                                amount = amount,
-                                totalExpenses = expensesByCategory.values.sum(),
-                                isSelected = selectedCategory == category,
-                                onClick = { selectedCategory = if (selectedCategory == category) null else category }
-                            )
-                        }
-
-                        // Selected Category Details
-                        AnimatedContent(
-                            targetState = selectedCategory,
-                            transitionSpec = {
-                                fadeIn() + expandVertically() togetherWith fadeOut() + shrinkVertically()
-                            },
-                            label = "categoryDetails"
-                        ) { category ->
-                            if (category != null) {
-                                val categoryAmount = expensesByCategory[category] ?: 0.0
-                                val totalExpenses = expensesByCategory.values.sum()
-                                val percentage = if (totalExpenses > 0) (categoryAmount / totalExpenses) * 100 else 0.0
-
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            color = category.color.copy(alpha = 0.08f),
-                                            shape = MaterialTheme.shapes.medium
-                                        )
-                                        .padding(12.dp)
-                                ) {
-                                    Text(
-                                        text = "${category.name} Details",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = category.color
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "৳${"%.2f".format(categoryAmount)} • ${"%.1f%%".format(percentage)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.height(0.dp))
-                            }
-                        }
-                    }
-                }
-            }
-
-            // You can add your graph component here after the pie chart
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Placeholder for graph - replace with your actual graph component
-            Text(
-                "Expense Trend Graph",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            // Add your graph composable here
-            // ExpenseGraph(data = yourGraphData)
         }
     }
 }
 
+/**
+ * A row of metric cards showing performance stats like loans and work days.
+ */
+@Composable
+fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
+    Column {
+        Text(
+            "Performance",
+            style = typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
+        )
+
+        // Removed unnecessary BoxWithConstraints
+        val cardMinHeight = 120.dp
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FinancialMetricCard(
+                title = "Total Loan",
+                amount = summary.totalLoan,
+                delta = 0f, // Placeholder delta
+                trendData = listOf(0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f), // Placeholder data
+                color = colorScheme.tertiary,
+                icon = Icons.Outlined.AccountBalance,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = cardMinHeight)
+            )
+
+            FinancialMetricCard(
+                title = "Office Days",
+                amount = stats.officeDays.toDouble(),
+                delta = 2.5f, // Placeholder
+                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f), // Placeholder
+                color = colorScheme.primary,
+                icon = Icons.Filled.Work,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = cardMinHeight)
+            )
+
+            FinancialMetricCard(
+                title = "Off Days",
+                amount = stats.offDays.toDouble(),
+                delta = -1.0f, // Placeholder
+                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f), // Placeholder
+                color = colorScheme.secondary,
+                icon = Icons.Filled.BeachAccess,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = cardMinHeight)
+            )
+        }
+    }
+}
+/**
+ * A card that shows a summary of the top expense categories for the month.
+ * Includes a horizontal bar chart for visualization.
+ */
+@Composable
+fun CategorySummaryCard(expensesByCategory: Map<ExpenseCategory, Double>) {
+    val topExpenses = expensesByCategory.entries
+        .sortedByDescending { it.value }
+        .take(3)
+
+    val totalExpenses = expensesByCategory.values.sum().coerceAtLeast(1.0)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "This Month's Summary",
+                style = typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (topExpenses.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No expense data for this month yet.")
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    topExpenses.forEach { (category, amount) ->
+                        ExpenseBar(
+                            category = category.name,
+                            amount = amount,
+                            total = totalExpenses,
+                            color = category.color
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A horizontal bar representing a single expense category's proportion of total expenses.
+ */
+@Composable
+fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
+    val proportion = (amount / total).toFloat().coerceIn(0f, 1f)
+    val animatedProportion = remember { Animatable(0f) }
+
+    LaunchedEffect(proportion) {
+        animatedProportion.animateTo(proportion, animationSpec = tween(1000))
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = category,
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "৳${String.format("%.0f", amount)}",
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProportion.value)
+                    .height(8.dp)
+                    .background(color, RoundedCornerShape(4.dp))
+            )
+        }
+    }
+}
+
+/**
+ * A card displaying a weekly productivity timeline.
+ * It visualizes work types for the past week.
+ */
+@Composable
+fun WeeklyActivityTimeline(activities: List<WorkLogUi>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Weekly Activity",
+                style = typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val today = LocalDate.now()
+            val weekDays = (0..6).map { today.minusDays(it.toLong()) }.reversed()
+            val activityMap = activities
+                .filter {
+                    val activityDate = it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+                    activityDate in weekDays.first()..weekDays.last()
+                }
+                .associateBy { it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() }
+
+            if (weekDays.all { activityMap[it] == null }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No activity recorded this week.")
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    weekDays.forEach { date ->
+                        DayActivityRow(date = date, workLog = activityMap[date])
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A row in the timeline, showing the day and its corresponding work type as a colored dot.
+ */
+@Composable
+fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+            style = typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(40.dp)
+        )
+
+        val workType = workLog?.workType
+        val color = workType?.let {
+            when (it) {
+                WorkType.OFFICE -> colorScheme.primary
+                WorkType.HOME_OFFICE -> colorScheme.secondary
+                WorkType.OFF_DAY -> colorScheme.tertiary
+                WorkType.EXTRA_WORK -> colorScheme.error
+            }
+        } ?: colorScheme.surfaceVariant
+
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, CircleShape)
+        )
+
+        Text(
+            text = workType?.name?.replace("_", " ")?.lowercase()?.replaceFirstChar { it.titlecase() } ?: "No Entry",
+            style = typography.bodyMedium,
+            color = colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * A floating action button menu for quick actions like adding income, expenses, or loans.
+ */
+@Composable
+fun QuickActionMenu(onNavigateToAddEntry: () -> Unit) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(targetValue = if (isExpanded) 45f else 0f, label = "rotation")
+
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionItem(
+                    icon = Icons.Outlined.AttachMoney,
+                    text = "New Income",
+                    onClick = onNavigateToAddEntry
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.MoneyOff,
+                    text = "New Expense",
+                    onClick = onNavigateToAddEntry
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.AccountBalance,
+                    text = "New Loan",
+                    onClick = onNavigateToAddEntry
+                )
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { isExpanded = !isExpanded },
+            containerColor = colorScheme.primary,
+            contentColor = colorScheme.onPrimary
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add Entry",
+                modifier = Modifier.graphicsLayer(rotationZ = rotation)
+            )
+        }
+    }
+}
+
+/**
+ * A single item in the quick action menu.
+ */
+@Composable
+fun QuickActionItem(icon: ImageVector, text: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Card(
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                style = typography.bodyMedium
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = colorScheme.secondaryContainer,
+            contentColor = colorScheme.onSecondaryContainer
+        ) {
+            Icon(icon, contentDescription = text)
+        }
+    }
+}
+
+/**
+ * A professional, modern metric card for displaying key financial data.
+ * Includes a title, icon, large KPI number, a sparkline chart for trends,
+ * and a delta indicator to show change.
+ */
 @Composable
 fun FinancialMetricCard(
     title: String,
     amount: Double,
+    delta: Float,
+    trendData: List<Float>,
     color: Color,
     icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
+    val minHeight = 120.dp
     var currentValue by remember { mutableDoubleStateOf(0.0) }
 
     LaunchedEffect(amount) {
         val animation = Animatable(0f)
         animation.animateTo(
             amount.toFloat(),
-            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
         ) {
             currentValue = this.value.toDouble()
         }
     }
 
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .heightIn(min = minHeight)
+            .clip(RoundedCornerShape(18.dp)),
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.08f),
+            containerColor = color.copy(alpha = 0.1f),
             contentColor = color
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(14.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Top row: Icon + Title
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = title,
                     tint = color,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = typography.bodyMedium,
+                    maxLines = 2,                 // ← FIX
+                    overflow = TextOverflow.Clip, // ← FIX
+
+                    color = colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+
+            // Main KPI Number (big, bold)
             Text(
-                text = "৳${"%.2f".format(currentValue)}",
-                style = MaterialTheme.typography.headlineSmall,
+                text = if (title.contains("Days"))
+                    "${currentValue.toInt()}"
+                else
+                    "৳${String.format("%.2f", currentValue)}",
+                style = typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = color
             )
-        }
-    }
-}
 
-@Composable
-fun CategoryLegendItem(
-    category: ExpenseCategory,
-    amount: Double,
-    totalExpenses: Double,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val percentage = if (totalExpenses > 0) (amount / totalExpenses) * 100 else 0.0
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) category.color.copy(alpha = 0.1f)
-            else MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = if (isSelected) CardDefaults.cardElevation(4.dp)
-        else CardDefaults.cardElevation(1.dp),
-        border = if (isSelected) BorderStroke(1.dp, category.color.copy(alpha = 0.3f))
-        else null
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
+            // Bottom row: Sparkline + Delta Indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Sparkline Trend Chart
+                SparklineChart(
+                    data = trendData,
+                    color = color,
                     modifier = Modifier
-                        .size(12.dp)
-                        .background(category.color, shape = CircleShape)
+                        .weight(1f)
+                        .height(40.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "৳${"%.2f".format(amount)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${"%.1f".format(percentage)}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
 
-// Keep your existing FinancialPieChart, SavingsProgressBar, and other composables the same
-@Composable
-fun FinancialPieChart(
-    expensesByCategory: Map<ExpenseCategory, Double>,
-    onSliceSelected: (ExpenseCategory) -> Unit
-) {
-    val totalExpenses = expensesByCategory.values.sum()
-    if (totalExpenses == 0.0) {
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Outlined.PieChart,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "No Data",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        return
-    }
-
-    val proportions = expensesByCategory.map { (it.value / totalExpenses).toFloat() }
-    val categories = expensesByCategory.keys.toList()
-    val colors = categories.map { it.color }
-    var selectedIndex by remember { mutableStateOf<Int?>(null) }
-
-    // Animation for each slice
-    val animatedProportions = proportions.map { proportion ->
-        val animatedValue = remember { Animatable(0f) }
-        LaunchedEffect(proportion) {
-            animatedValue.animateTo(
-                targetValue = proportion,
-                animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
-            )
-        }
-        animatedValue.value
-    }
-
-    Box(
-        modifier = Modifier
-            .size(200.dp)
-            .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    val canvasSize = size
-                    val centerX = canvasSize.width / 2f
-                    val centerY = canvasSize.height / 2f
-                    val dx = offset.x - centerX
-                    val dy = offset.y - centerY
-                    var touchAngle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                    if (touchAngle < 0) touchAngle += 360f
-                    touchAngle = (touchAngle + 90) % 360
-
-                    var currentAngle = 0f
-                    animatedProportions.forEachIndexed { index, proportion ->
-                        val sweepAngle = proportion * 360f
-                        if (touchAngle in currentAngle..(currentAngle + sweepAngle)) {
-                            selectedIndex = index
-                            onSliceSelected(categories[index])
-                            return@detectTapGestures
-                        }
-                        currentAngle += sweepAngle
-                    }
+                // Delta Indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (delta >= 0) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
+                        contentDescription = if (delta >= 0) "Trending up" else "Trending down",
+                        tint = if (delta >= 0) Color(0xFF0F9D58) else colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "${String.format("%.1f", delta)}%",
+                        style = typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = if (delta >= 0) Color(0xFF0F9D58) else colorScheme.error
+                    )
                 }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 24.dp.toPx()
-            var startAngle = -90f
-
-            animatedProportions.forEachIndexed { index, proportion ->
-                val sweepAngle = proportion * 360f
-                val isSelected = selectedIndex == index
-                val arcColor = if (isSelected) colors[index].copy(alpha = 0.8f) else colors[index]
-
-                drawArc(
-                    color = arcColor,
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    style = Stroke(
-                        width = if (isSelected) strokeWidth * 1.2f else strokeWidth,
-                        cap = StrokeCap.Round
-                    ),
-                    size = Size(size.width, size.height)
-                )
-                startAngle += sweepAngle
             }
-        }
-
-        // Enhanced center content
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Total Expenses",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "%.0f".format(totalExpenses),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "BDT",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
 
+/**
+ * A simple sparkline chart composable.
+ * Renders a list of floats as a path on a canvas.
+ */
 @Composable
-fun SavingsProgressBar(
-    savingsPercentage: Double,
+fun SparklineChart(
+    data: List<Float>,
+    color: Color,
     modifier: Modifier = Modifier
 ) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = (savingsPercentage / 100).coerceIn(0.0, 1.0).toFloat(),
-        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-        label = "savings progress"
-    )
+    Canvas(modifier = modifier) {
+        if (data.size > 1) {
+            val path = Path()
+            val xStep = size.width / (data.size - 1)
+            val yMax = data.maxOrNull() ?: 1f
+            val yMin = data.minOrNull() ?: 0f
+            val yRange = if (yMax > yMin) yMax - yMin else 1f
 
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "Savings Rate",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            path.moveTo(
+                0f,
+                size.height - ((data[0] - yMin) / yRange) * size.height
             )
-            Text(
-                "%.1f%%".format(savingsPercentage),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (savingsPercentage >= 20) Color(0xFF0F9D58)
-                else MaterialTheme.colorScheme.error
+
+            data.forEachIndexed { index, value ->
+                val x = index * xStep
+                val y = size.height - ((value - yMin) / yRange) * size.height
+                path.lineTo(x, y)
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 2.dp.toPx())
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp),
-            color = if (savingsPercentage >= 20) Color(0xFF0F9D58)
-            else MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-        )
     }
 }
 
@@ -726,25 +796,6 @@ val ExpenseCategory.color: Color
         ExpenseCategory.ENTERTAINMENT -> Color(0xFF4CAF50)
         ExpenseCategory.OTHER -> Color(0xFF607D8B)
     }
-@Composable
-fun AllFunsionCard(onNavigateToAllFunsion: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToAllFunsion() },
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.AddRoad, contentDescription = "All Funsion")
-            Spacer(modifier = Modifier.width(16.dp))
-            Text("All Funsion", style = MaterialTheme.typography.titleLarge)
-        }
-    }
-}
-
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -761,11 +812,11 @@ fun TodayStatusCard(
     // Background color animation
     val backgroundColor by animateColorAsState(
         targetValue = when (workType) {
-            WorkType.OFFICE -> MaterialTheme.colorScheme.primaryContainer
-            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondaryContainer
-            WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiaryContainer
-            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.errorContainer
-            null -> MaterialTheme.colorScheme.surfaceVariant
+            WorkType.OFFICE -> colorScheme.primaryContainer
+            WorkType.HOME_OFFICE -> colorScheme.secondaryContainer
+            WorkType.OFF_DAY -> colorScheme.tertiaryContainer
+            WorkType.EXTRA_WORK -> colorScheme.errorContainer
+            null -> colorScheme.surfaceVariant
         },
         label = "background_color"
     )
@@ -804,10 +855,10 @@ fun TodayStatusCard(
                                 WorkType.EXTRA_WORK -> "Extra Work ⚡"
                             }
                         } ?: "Mark Your Day",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -821,9 +872,9 @@ fun TodayStatusCard(
                                 WorkType.EXTRA_WORK -> "Going above and beyond!"
                             }
                         } ?: "Tap to select today's work type",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -900,18 +951,18 @@ fun RowScope.AnimatedWorkTypeButton(
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (selected) {
                     when (workType) {
-                        WorkType.OFFICE -> MaterialTheme.colorScheme.primary
-                        WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
-                        WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
-                        WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
+                        WorkType.OFFICE -> colorScheme.primary
+                        WorkType.HOME_OFFICE -> colorScheme.secondary
+                        WorkType.OFF_DAY -> colorScheme.tertiary
+                        WorkType.EXTRA_WORK -> colorScheme.error
                     }
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    colorScheme.surface
                 },
                 contentColor = if (selected) {
-                    MaterialTheme.colorScheme.onPrimary
+                    colorScheme.onPrimary
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    colorScheme.onSurface
                 }
             ),
             border = if (!selected) {
@@ -934,181 +985,9 @@ fun RowScope.AnimatedWorkTypeButton(
                         WorkType.OFF_DAY -> "Off"
                         WorkType.EXTRA_WORK -> "Extra"
                     },
-                    style = MaterialTheme.typography.labelSmall
+                    style = typography.labelSmall
                 )
             }
-        }
-    }
-}
-
-
-@Composable
-fun MonthlyStatsCard(stats: MonthlyStats) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isVisible = true
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Monthly Summary",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                AnimatedStatItem(
-                    value = stats.officeDays,
-                    label = "Office Days",
-                    color = MaterialTheme.colorScheme.primary,
-                    visible = isVisible,
-                    delay = 0
-                )
-                AnimatedStatItem(
-                    value = stats.homeOfficeDays,
-                    label = "Home Days",
-                    color = MaterialTheme.colorScheme.secondary,
-                    visible = isVisible,
-                    delay = 100
-                )
-                AnimatedStatItem(
-                    value = stats.offDays,
-                    label = "Off Days",
-                    color = MaterialTheme.colorScheme.tertiary,
-                    visible = isVisible,
-                    delay = 200
-                )
-                AnimatedStatItem(
-                    value = stats.extraHours.toInt(),
-                    label = "Extra Hours",
-                    color = MaterialTheme.colorScheme.error,
-                    visible = isVisible,
-                    delay = 300
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AnimatedStatItem(value: Int, label: String, color: Color, visible: Boolean, delay: Int) {
-    var currentValue by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(visible, value) {
-        if (visible) {
-            // Animate number counting
-            val animation = Animatable(0f)
-            animation.animateTo(value.toFloat(), animationSpec = tween(durationMillis = 1000, delayMillis = delay)) {
-                currentValue = this.value.toInt()
-            }
-        }
-    }
-
-    val animationSpec = remember {
-        tween<Float>(durationMillis = 600, delayMillis = delay, easing = FastOutSlowInEasing)
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = animationSpec,
-        label = "stat_item"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.graphicsLayer {
-            alpha = animatedProgress
-            scaleX = 0.5f + animatedProgress * 0.5f
-            scaleY = 0.5f + animatedProgress * 0.5f
-        }
-    ) {
-        Text(
-            text = currentValue.toString(),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-
-@Composable
-fun RecentActivityCard(activities: List<WorkLogUi>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Recent Activity",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            activities.forEach { activity ->
-                RecentActivityItem(workLog = activity)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun RecentActivityItem(workLog: WorkLogUi) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = when (workLog.workType) {
-                    WorkType.OFFICE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
-                    WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-                    WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                },
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                text = workLog.formattedDate,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = workLog.workType.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -1129,21 +1008,21 @@ fun WorkTypeAnimation(workType: WorkType?) {
     // Color transition
     val primaryColor by animateColorAsState(
         targetValue = when (workType) {
-            WorkType.OFFICE -> MaterialTheme.colorScheme.primary
-            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.secondary
-            WorkType.OFF_DAY -> MaterialTheme.colorScheme.tertiary
-            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.error
-            null -> MaterialTheme.colorScheme.primary
+            WorkType.OFFICE -> colorScheme.primary
+            WorkType.HOME_OFFICE -> colorScheme.secondary
+            WorkType.OFF_DAY -> colorScheme.tertiary
+            WorkType.EXTRA_WORK -> colorScheme.error
+            null -> colorScheme.primary
         },
         label = "primary_color"
     )
     val secondaryColor by animateColorAsState(
         targetValue = when (workType) {
-            WorkType.OFFICE -> MaterialTheme.colorScheme.secondary
-            WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary
-            WorkType.OFF_DAY -> MaterialTheme.colorScheme.primary
-            WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.secondary
-            null -> MaterialTheme.colorScheme.secondary
+            WorkType.OFFICE -> colorScheme.secondary
+            WorkType.HOME_OFFICE -> colorScheme.tertiary
+            WorkType.OFF_DAY -> colorScheme.primary
+            WorkType.EXTRA_WORK -> colorScheme.secondary
+            null -> colorScheme.secondary
         },
         label = "secondary_color"
     )
