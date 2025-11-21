@@ -60,12 +60,14 @@ import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.MoneyOff
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -603,48 +605,60 @@ fun Divider(
     color: Color = MaterialTheme.colorScheme.outline,
     thickness: Dp = 1.dp
 ) {
-    androidx.compose.material3.Divider(
-        modifier = modifier,
-        color = color,
-        thickness = thickness
-    )
+    HorizontalDivider(modifier = modifier, thickness = thickness, color = color)
 }
 
 ///**
 // * Extracted Delta Indicator for better reusability
 // */
-//@Composable
-//private fun DeltaIndicator(delta: Float, formattedDelta: String) {
-//    val trendIcon = if (delta >= 0) {
-//        Icons.AutoMirrored.Outlined.TrendingUp
-//    } else {
-//        Icons.AutoMirrored.Outlined.TrendingDown
-//    }
-//
-//    val trendColor = if (delta >= 0) {
-//        Color(0xFF0F9D58)
-//    } else {
-//        colorScheme.error
-//    }
-//
-//    Row(
-//        verticalAlignment = Alignment.CenterVertically,
-//        horizontalArrangement = Arrangement.spacedBy(4.dp)
-//    ) {
-//        Icon(
-//            imageVector = trendIcon,
-//            contentDescription = if (delta >= 0) "Trending up" else "Trending down",
-//            tint = trendColor,
-//            modifier = Modifier.size(16.dp)
-//        )
-//        Text(
-//            text = formattedDelta,
-//            style = typography.bodySmall,
-//            fontWeight = FontWeight.Medium,
-//            color = trendColor
-//        )
-//    }
-//}
+@Composable
+fun DeltaIndicator(
+    delta: Float,
+    formattedDelta: String,
+    modifier: Modifier = Modifier
+) {
+
+    val isPositive = delta > 0f
+    val isNeutral = delta == 0f
+
+    val trendIcon = when {
+        isPositive -> Icons.AutoMirrored.Outlined.TrendingUp
+        !isPositive && !isNeutral -> Icons.AutoMirrored.Outlined.TrendingDown
+        else -> Icons.Outlined.Remove  // Neutral icon
+    }
+
+    val trendColor = when {
+        isPositive -> Color(0xFF0F9D58)          // Google Green
+        isNeutral -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = trendIcon,
+            contentDescription = when {
+                isPositive -> "Increasing trend"
+                isNeutral -> "No change"
+                else -> "Decreasing trend"
+            },
+            tint = trendColor,
+            modifier = Modifier.size(16.dp)
+        )
+
+        Text(
+            text = formattedDelta,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium
+            ),
+            color = trendColor
+        )
+    }
+}
+
 
 /**
  * Optimized sparkline chart with better performance
