@@ -93,7 +93,6 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
-        NavigationItem.UserProfile,
         NavigationItem.AddEntry,
         NavigationItem.Reports,
         NavigationItem.Journal,
