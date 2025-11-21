@@ -83,6 +83,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -187,13 +188,15 @@ fun DashboardScreen(
                     expenses = uiState.expenses
                 )
             }
-//
-//            item {
-//                PerformanceRow(
-//                    summary = uiState.financialSummary,
-//                    stats = uiState.monthlyStats
-//                )
-//            }
+
+            item {
+                MonthlyStatsCard(
+                  //  MonthlyStats= uiState.monthlyStats,
+                  //  monthlyStats = uiState.monthlyStats ,
+                   // summary = uiState.financialSummary,
+                    stats = uiState.monthlyStats,
+               )
+            }
 
             item {
                 CategorySummaryCard(expensesByCategory = uiState.expensesByCategory)
@@ -423,172 +426,190 @@ fun Header(userName: String?) {
  */
 
 
-//@Composable
-//fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
-//    Column {
-//        Text(
-//            text = "Performance",
-//            style = typography.titleLarge,
-//            fontWeight = FontWeight.SemiBold,
-//            modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
-//        )
-//
-//        val cardMinHeight = 120.dp
-//
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            horizontalArrangement = Arrangement.spacedBy(12.dp)
-//        ) {
-//            FinancialMetricCard2(
-//                title = "Savings Percentage",
-//                amount = summary.savingsPercentage,
-//                delta = 0f,
-//                trendData = List(7) { 0.5f },
-//                color = colorScheme.tertiary,
-//                icon = Icons.Outlined.AccountBalance,
-//                modifier = Modifier
-//                    .weight(1f)
-//                    .heightIn(min = cardMinHeight)
-//            )
-//
-//            FinancialMetricCard2(
-//                title = "Office Days",
-//                amount = stats.officeDays.toDouble(),
-//                delta = 2.5f,
-//                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
-//                color = colorScheme.primary,
-//                icon = Icons.Filled.Work,
-//                modifier = Modifier
-//                    .weight(1f)
-//                    .heightIn(min = cardMinHeight)
-//            )
-//
-////            FinancialMetricCard2(
-////                title = "Off Days",
-////                amount = stats.offDays.toDouble(),
-////                delta = -1.0f,
-////                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f),
-////                color = colorScheme.secondary,
-////                icon = Icons.Filled.BeachAccess,
-////                modifier = Modifier
-////                    .weight(1f)
-////                    .heightIn(min = cardMinHeight)
-////            )
-//        }
-//    }
-//}
+@Composable
+fun MonthlyStatsCard(stats: MonthlyStats) {
+    var isVisible by remember { mutableStateOf(false) }
 
-/**
- * Optimized financial metric card with better number formatting and performance
- * Renamed to avoid conflict with your FinancialMetricCard
- */
-//@Composable
-//fun FinancialMetricCard2(
-//    title: String,
-//    amount: Double,
-//    delta: Float,
-//    trendData: List<Float>,
-//    color: Color,
-//    icon: ImageVector,
-//    modifier: Modifier = Modifier
-//) {
-//    val minHeight = 120.dp
-//    var currentValue by remember { mutableDoubleStateOf(0.0) }
-//
-//    // Optimized animation
-//    LaunchedEffect(amount) {
-//        currentValue = 0.0 // Reset for re-animation
-//        val animation = Animatable(0f)
-//        animation.animateTo(
-//            targetValue = amount.toFloat(),
-//            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
-//        ) {
-//            currentValue = this.value.toDouble()
-//        }
-//    }
-//
-//    // Memoized formatted values
-//    val formattedValue = remember(currentValue, title) {
-//        if (title.contains("Days", ignoreCase = true)) {
-//            currentValue.toInt().toString()
-//        } else {
-//            "৳${String.format("%.2f", currentValue)}"
-//        }
-//    }
-//
-//    val formattedDelta = remember(delta) {
-//        "${if (delta > 0) "+" else ""}${String.format("%.1f", delta)}%"
-//    }
-//
-//    Card(
-//        modifier = modifier
-//            .heightIn(min = minHeight)
-//            .clip(RoundedCornerShape(18.dp)),
-//        colors = CardDefaults.cardColors(
-//            containerColor = color.copy(alpha = 0.1f),
-//            contentColor = color
-//        ),
-//        elevation = CardDefaults.cardElevation(0.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier
-//                .padding(14.dp)
-//                .fillMaxSize(),
-//            verticalArrangement = Arrangement.SpaceBetween
-//        ) {
-//            // Top row: Icon + Title
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                horizontalArrangement = Arrangement.spacedBy(6.dp)
-//            ) {
-//                Icon(
-//                    imageVector = icon,
-//                    contentDescription = title,
-//                    tint = color,
-//                    modifier = Modifier.size(20.dp)
-//                )
-//                Text(
-//                    text = title,
-//                    style = typography.bodyMedium,
-//                    maxLines = 2,
-//                    overflow = TextOverflow.Ellipsis,
-//                    color = colorScheme.onSurfaceVariant
-//                )
-//            }
-//
-//            // Main KPI Number
-//            Text(
-//                text = formattedValue,
-//                style = typography.headlineSmall,
-//                fontWeight = FontWeight.Bold,
-//                color = color
-//            )
-//
-//            // Bottom row: Sparkline + Delta Indicator
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                verticalAlignment = Alignment.CenterVertically,
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//                // Sparkline Trend Chart
-//                SparklineChart(
-//                    data = trendData,
-//                    color = color,
-//                    modifier = Modifier
-//                        .weight(1f)
-//                        .height(40.dp)
-//                )
-//
-//                // Delta Indicator
-//                DeltaIndicator(
-//                    delta = delta,
-//                    formattedDelta = formattedDelta
-//                )
-//            }
-//        }
-//    }
-//}
-//
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.BarChart,
+                    contentDescription = "Monthly Stats",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.padding(8.dp))
+                Text(
+                    "Monthly Summary",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                AnimatedStatItem(
+                    value = stats.officeDays,
+                    label = "Office Days",
+                    color = MaterialTheme.colorScheme.primary,
+                    visible = isVisible,
+                    delay = 0
+                )
+                AnimatedStatItem(
+                    value = stats.homeOfficeDays,
+                    label = "Home Days",
+                    color = MaterialTheme.colorScheme.secondary,
+                    visible = isVisible,
+                    delay = 100
+                )
+                AnimatedStatItem(
+                    value = stats.offDays,
+                    label = "Off Days",
+                    color = MaterialTheme.colorScheme.tertiary,
+                    visible = isVisible,
+                    delay = 200
+                )
+                AnimatedStatItem(
+                    value = stats.extraHours.toInt(),
+                    label = "Extra Hours",
+                    color = MaterialTheme.colorScheme.error,
+                    visible = isVisible,
+                    delay = 300
+                )
+            }
+
+            // Total work days summary
+            Spacer(modifier = Modifier.height(16.dp))
+            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Total Work Days",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "${stats.totalWorkDays} days",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimatedStatItem(
+    value: Int,
+    label: String,
+    color: Color,
+    visible: Boolean,
+    delay: Int = 0
+) {
+    var animatedValue by remember { mutableIntStateOf(0) }
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_animation")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_alpha"
+    )
+
+    LaunchedEffect(visible, value) {
+        if (visible) {
+            delay(delay.toLong())
+            animatedValue = 0
+            for (i in 0..value) {
+                animatedValue = i
+                delay(20) // Smooth counting animation
+            }
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = pulseAlpha)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (visible) animatedValue.toString() else "0",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            modifier = Modifier.width(70.dp)
+        )
+    }
+}
+
+// Add this Divider composable if not already imported
+@Composable
+fun Divider(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.outline,
+    thickness: Dp = 1.dp
+) {
+    androidx.compose.material3.Divider(
+        modifier = modifier,
+        color = color,
+        thickness = thickness
+    )
+}
+
 ///**
 // * Extracted Delta Indicator for better reusability
 // */
