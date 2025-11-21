@@ -11,4 +11,8 @@ class UserProfileRepository(private val userProfileDao: UserProfileDao) {
     suspend fun saveUserProfile(userProfile: UserProfile) {
         userProfileDao.insertUserProfile(userProfile)
     }
+
+    suspend fun clearAll() {
+        userProfileDao.clearAll()
+    }
 }

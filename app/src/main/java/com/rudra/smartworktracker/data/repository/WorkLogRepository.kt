@@ -5,7 +5,7 @@ import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.MonthlyStats
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -16,18 +16,20 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         return workLogDao.getTodayWorkLog()
     }
 
-    suspend fun getMonthlyStats(): MonthlyStats {
+    fun getMonthlyStats(): Flow<MonthlyStats> = flow {
         val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
         val officeDays = workLogDao.countByType(monthYear, WorkType.OFFICE)
         val homeOfficeDays = workLogDao.countByType(monthYear, WorkType.HOME_OFFICE)
         val offDays = workLogDao.countByType(monthYear, WorkType.OFF_DAY)
         val extraHours = workLogDao.getTotalExtraHours(monthYear) ?: 0.0
-        return MonthlyStats(
-            officeDays = officeDays,
-            homeOfficeDays = homeOfficeDays,
-            offDays = offDays,
-            extraHours = extraHours,
-            totalWorkDays = officeDays + homeOfficeDays
+        emit(
+            MonthlyStats(
+                officeDays = officeDays,
+                homeOfficeDays = homeOfficeDays,
+                offDays = offDays,
+                extraHours = extraHours,
+                totalWorkDays = officeDays + homeOfficeDays
+            )
         )
     }
 

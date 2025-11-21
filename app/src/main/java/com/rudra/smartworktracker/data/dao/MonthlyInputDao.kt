@@ -13,4 +13,8 @@ interface MonthlyInputDao {
 
     @Query("SELECT * FROM monthly_inputs WHERE month = :month")
     suspend fun getMonthlyInput(month: String): MonthlyInput?
+
+
+
+
 }

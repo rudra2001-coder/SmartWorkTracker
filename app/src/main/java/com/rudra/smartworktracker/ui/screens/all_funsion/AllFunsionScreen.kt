@@ -1,5 +1,6 @@
 package com.rudra.smartworktracker.ui.screens.all_funsion
 
+import android.app.Application
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -47,6 +48,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,11 +61,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.rudra.smartworktracker.ui.navigation.NavigationItem
 
@@ -72,7 +76,10 @@ data class FeatureSection(val title: String, val items: List<NavigationItem>)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AllFunsionScreen(navController: NavController) {
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val viewModel: AllFunsionViewModel = viewModel(factory = AllFunsionViewModelFactory(context.applicationContext as Application))
+    val recentFeatures by viewModel.recentFeatures.collectAsState()
     var searchText by remember { mutableStateOf("") }
 
     val quickAccessFeatures = remember {
@@ -93,13 +100,20 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Health,
                     NavigationItem.Achievements,
                     NavigationItem.MindfulBreak,
-                    NavigationItem.Wisdom
+                    NavigationItem.Wisdom ,
+
                 )
             ),
             FeatureSection(
                 "Financials", listOf(
+                    NavigationItem.FinancialStatement,
                     NavigationItem.Income,
                     NavigationItem.Expense,
+                    NavigationItem.Savings,
+                    NavigationItem.Loans,
+                    NavigationItem.EMI,
+                    NavigationItem.CreditCard,
+                    NavigationItem.Transfer,
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation
@@ -107,7 +121,6 @@ fun AllFunsionScreen(navController: NavController) {
             ),
             FeatureSection(
                 "General", listOf(
-                    NavigationItem.UserProfile,
                     NavigationItem.Backup,
                     NavigationItem.Settings
                 )
@@ -160,30 +173,33 @@ fun AllFunsionScreen(navController: NavController) {
             }
 
             if (searchText.isBlank()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    SectionHeader("Quick Access", isSticky = false)
-                }
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(end = 8.dp)
-                    ) {
-                        items(quickAccessFeatures) { feature ->
-                            var visible by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                visible = true
+                if (recentFeatures.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SectionHeader("Recently Used", isSticky = false)
+                    }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(end = 8.dp)
+                        ) {
+                            items(recentFeatures) { feature ->
+                                var visible by remember { mutableStateOf(false) }
+                                LaunchedEffect(Unit) {
+                                    visible = true
+                                }
+                                FeatureCard(
+                                    feature = feature,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.onFeatureClicked(feature)
+                                        navController.navigate(feature.route)
+                                    },
+                                    isVisible = visible,
+                                    modifier = Modifier
+                                        .width(160.dp)
+                                        .height(160.dp) // Increased height
+                                )
                             }
-                            FeatureCard(
-                                feature = feature,
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate(feature.route)
-                                },
-                                isVisible = visible,
-                                modifier = Modifier
-                                    .width(160.dp)
-                                    .height(160.dp) // Increased height
-                            )
                         }
                     }
                 }
@@ -201,6 +217,7 @@ fun AllFunsionScreen(navController: NavController) {
                             feature = feature,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.onFeatureClicked(feature)
                                 navController.navigate(feature.route)
                             },
                             isVisible = visible
@@ -225,6 +242,7 @@ fun AllFunsionScreen(navController: NavController) {
                             feature = feature,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.onFeatureClicked(feature)
                                 navController.navigate(feature.route)
                             },
                             isVisible = visible

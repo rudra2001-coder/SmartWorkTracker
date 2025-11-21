@@ -1,0 +1,465 @@
+package com.rudra.smartworktracker.ui.screens.savings
+
+import android.app.Application
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.Savings
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SavingsScreen() {
+    val context = LocalContext.current
+    val viewModel: SavingsViewModel = viewModel(factory = SavingsViewModelFactory(context.applicationContext as Application))
+    val uiState by viewModel.uiState.collectAsState()
+
+    var amount by remember { mutableStateOf("") }
+    var showHistory by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Savings Management",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                actions = {
+                    Button(
+                        onClick = { showHistory = !showHistory },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = "History")
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(if (showHistory) "Hide History" else "Show History")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Current Savings with animation
+                AnimatedSavingsCard(savings = uiState.savings)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Savings Chart
+                SavingsHistoryChart(history = uiState.savingsHistory)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Input Section
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = {
+                            if (it.isEmpty() || it.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
+                                amount = it
+                            }
+                        },
+                        label = { Text("Amount (BDT)") },
+                        placeholder = { Text("Enter amount...") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.addToSavings(amount.toDoubleOrNull() ?: 0.0)
+                                amount = ""
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            enabled = amount.isNotEmpty() && amount.toDoubleOrNull() ?: 0.0 > 0
+                        ) {
+                            Icon(Icons.Default.ArrowUpward, contentDescription = "Add to Savings")
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Add")
+                        }
+                        Button(
+                            onClick = {
+                                viewModel.withdrawFromSavings(amount.toDoubleOrNull() ?: 0.0)
+                                amount = ""
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            enabled = amount.isNotEmpty() && amount.toDoubleOrNull() ?: 0.0 > 0
+                        ) {
+                            Icon(Icons.Default.ArrowDownward, contentDescription = "Withdraw from Savings")
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Withdraw")
+                        }
+                    }
+                }
+
+                // Quick Action Buttons
+                Spacer(modifier = Modifier.height(16.dp))
+                QuickAmountButtons { amount = it.toString() }
+
+                // History List
+                if (showHistory && uiState.savingsHistory.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    SavingsHistoryList(history = uiState.savingsHistory)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimatedSavingsCard(savings: Double) {
+    val animatedSavings by animateFloatAsState(
+        targetValue = savings.toFloat(),
+        animationSpec = tween(durationMillis = 1500),
+        label = "savings_animation"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Savings,
+                    contentDescription = "Savings",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    "Current Savings",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = String.format("%.2f BDT", animatedSavings.toDouble()),
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+@Composable
+fun SavingsHistoryChart(history: List<Savings>) {
+    if (history.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "No savings history yet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                "Savings Trend",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val maxSavings = history.maxOfOrNull { it.amount } ?: 1.0
+                    val minSavings = history.minOfOrNull { it.amount } ?: 0.0
+                    val range = maxSavings - minSavings
+
+                    // Draw grid lines
+                    for (i in 0..4) {
+                        val y = size.height * (1 - i * 0.25f)
+                        drawLine(
+                            color = Color.Gray.copy(alpha = 0.3f),
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 1f
+                        )
+                    }
+
+                    val path = Path()
+                    val gradientPath = Path()
+
+                    // Use a regular for loop instead of forEachIndexed
+                    for (index in history.indices) {
+                        val savings = history[index]
+                        val x = (index.toFloat() / (history.size - 1).coerceAtLeast(1).toFloat()) * size.width
+                        val y = if (range > 0) {
+                            size.height - ((savings.amount - minSavings) / range * size.height).toFloat()
+                        } else {
+                            size.height / 2
+                        }
+
+                        if (index == 0) {
+                            path.moveTo(x, y)
+                            gradientPath.moveTo(x, y)
+                        } else {
+                            path.lineTo(x, y)
+                            gradientPath.lineTo(x, y)
+                        }
+
+                        // Draw data points
+                        drawCircle(
+                            color = Color(0xFF2196F3), // Blue color
+                            radius = 4f,
+                            center = Offset(x, y)
+                        )
+                    }
+
+                    // Complete gradient path
+                    gradientPath.lineTo(size.width, size.height)
+                    gradientPath.lineTo(0f, size.height)
+                    gradientPath.close()
+
+                    // Draw gradient area
+                    drawPath(
+                        path = gradientPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF2196F3).copy(alpha = 0.3f), // Blue with alpha
+                                Color.Transparent
+                            )
+                        )
+                    )
+
+                    // Draw line
+                    drawPath(
+                        path = path,
+                        color = Color(0xFF2196F3), // Blue color
+                        style = Stroke(width = 3f)
+                    )
+                }
+            }
+        }
+    }
+}
+@Composable
+fun QuickAmountButtons(onAmountSelected: (Double) -> Unit) {
+    val quickAmounts = listOf(100.0, 500.0, 1000.0, 2000.0, 5000.0)
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Quick Amounts",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            quickAmounts.forEach { amount ->
+                Button(
+                    onClick = { onAmountSelected(amount) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("${amount.toInt()} BDT")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SavingsHistoryList(history: List<Savings>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                "Transaction History",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(history.reversed()) { savings ->
+                    SavingsHistoryItem(savings = savings)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SavingsHistoryItem(savings: Savings) {
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = if (savings.amount >= 0) "Deposit" else "Withdrawal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = dateFormat.format(Date(savings.timestamp)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+            Text(
+                text = String.format("%.2f BDT", savings.amount),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (savings.amount >= 0) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}

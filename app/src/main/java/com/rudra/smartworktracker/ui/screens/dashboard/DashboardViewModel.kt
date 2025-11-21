@@ -10,11 +10,13 @@ import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.SettingsRepository
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.model.Expense
+import com.rudra.smartworktracker.model.ExpenseByCategory
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
+import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,34 +49,49 @@ class DashboardViewModel(
             val startTime = today.apply { set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
             val endTime = today.apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); add(Calendar.DATE, -1) }.timeInMillis
 
-            combine(
+            val flows = listOf(
                 workLogRepository.getTodayWorkLog(),
                 expenseRepository.getTotalExpensesBetween(startTime, endTime),
                 expenseRepository.getMealExpensesBetween(startTime, endTime),
                 incomeRepository.getTotalIncomeBetween(startTime, endTime),
                 settingsRepository.mealRate,
-                workLogRepository.getRecentActivities()
-            ) { values ->
-                val todayWorkLog = values[0] as? WorkLog
-                val totalExpense = values[1] as? Double
-                val monthlyMealExpenses = values[2] as? Double
-                val totalIncome = values[3] as? Double
-                val recentActivities = values[5] as? List<WorkLog>
+                workLogRepository.getRecentActivities(),
+                expenseRepository.getExpensesByCategoryBetween(startTime, endTime),
+                workLogRepository.getMonthlyStats(),
+                incomeRepository.getAllIncomes(),
+                expenseRepository.getAllExpenses()
+            )
 
-                val netSavings = (totalIncome ?: 0.0) - (totalExpense ?: 0.0)
-                val monthlyStats = workLogRepository.getMonthlyStats()
+            combine(flows) { array ->
+                val todayWorkLog = array[0] as? WorkLog
+                val totalExpense = array[1] as? Double ?: 0.0
+                val monthlyMealExpenses = array[2] as? Double ?: 0.0
+                val totalIncome = array[3] as? Double ?: 0.0
+                val mealRate = array[4] as? Double // unused
+                val recentActivities = array[5] as? List<WorkLog> ?: emptyList()
+                val expensesByCategory = array[6] as? List<ExpenseByCategory> ?: emptyList()
+                val monthlyStats = array[7] as MonthlyStats
+                val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
+                val expenses = array[9] as? List<Expense> ?: emptyList()
+
+
+                val netSavings = totalIncome - totalExpense
+                val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
 
                 DashboardUiState(
                     userName = null, // Removed userProfileRepository
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
-                    recentActivities = recentActivities?.map { it.toUiModel() } ?: emptyList(),
+                    recentActivities = recentActivities.map { it.toUiModel() },
                     financialSummary = FinancialSummary(
-                        totalIncome = totalIncome ?: 0.0,
-                        totalExpense = totalExpense ?: 0.0,
+                        totalIncome = totalIncome,
+                        totalExpense = totalExpense,
                         netSavings = netSavings,
-                        totalMealCost = monthlyMealExpenses ?: 0.0
-                    )
+                        totalMealCost = monthlyMealExpenses
+                    ),
+                    expensesByCategory = expensesByCategoryMap,
+                    incomes = incomes,
+                    expenses = expenses,
                 )
             }.collect { newState ->
                 _uiSate.value = newState

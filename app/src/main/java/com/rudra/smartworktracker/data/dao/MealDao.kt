@@ -18,4 +18,14 @@ interface MealDao {
 
     @Query("DELETE FROM meals")
     suspend fun clearAllMeals()
+    @Query("DELETE FROM meals WHERE id = :mealId")
+    suspend fun deleteMealById(mealId: Int)
+    @Query("SELECT * FROM meals WHERE id = :mealId")
+    suspend fun getMealById(mealId: Int): Meal?
+    @Query("SELECT * FROM meals WHERE date = :date")
+    fun getMealsByDate(date: String): Flow<List<Meal>>
+
+
+
+
 }

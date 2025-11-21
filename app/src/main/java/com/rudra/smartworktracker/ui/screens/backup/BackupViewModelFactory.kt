@@ -9,7 +9,7 @@ class BackupViewModelFactory(private val context: Context) : ViewModelProvider.F
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BackupViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return BackupViewModel(AppDatabase.getDatabase(context)) as T
+            return BackupViewModel(AppDatabase.getDatabase(context), context.applicationContext) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -18,16 +18,21 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.RealEstateAgent
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -55,19 +60,23 @@ import com.rudra.smartworktracker.ui.screens.backup.BackupScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
 import com.rudra.smartworktracker.ui.screens.calculation.CalculationScreen
 import com.rudra.smartworktracker.ui.screens.calendar.CalendarScreen
+import com.rudra.smartworktracker.ui.screens.creditcard.CreditCardScreen
 import com.rudra.smartworktracker.ui.screens.dashboard.DashboardScreen
+import com.rudra.smartworktracker.ui.screens.emi.EmiScreen
 import com.rudra.smartworktracker.ui.screens.expense.ExpenseScreen
+import com.rudra.smartworktracker.ui.screens.financials.FinancialStatementScreen
 import com.rudra.smartworktracker.ui.screens.focus.FocusScreen
 import com.rudra.smartworktracker.ui.screens.habit.HabitScreen
 import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
 import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
+import com.rudra.smartworktracker.ui.screens.loans.LoansScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
+import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileViewModelFactory
+import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
@@ -84,7 +93,6 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
-        NavigationItem.UserProfile,
         NavigationItem.AddEntry,
         NavigationItem.Reports,
         NavigationItem.Journal,
@@ -101,6 +109,12 @@ fun MainApp() {
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
         NavigationItem.Calculation,
+        NavigationItem.FinancialStatement,
+        NavigationItem.Savings,
+        NavigationItem.Loans,
+        NavigationItem.EMI,
+        NavigationItem.CreditCard,
+        NavigationItem.Transfer,
         NavigationItem.Backup,
         NavigationItem.AllFunsion,
         NavigationItem.Settings
@@ -174,9 +188,9 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToAllFunsion = {
-                            navController.navigate(NavigationItem.AllFunsion.route)
-                        }
+                        onNavigateToIncome = { navController.navigate(NavigationItem.Income.route) },
+                        onNavigateToExpense = { navController.navigate(NavigationItem.Expense.route) },
+                        onNavigateToLoan = { navController.navigate(NavigationItem.Loans.route) }
                     )
                 }
 
@@ -357,19 +371,6 @@ fun MainApp() {
                     AllFunsionScreen(navController = navController)
                 }
 
-                composable(
-                    route = NavigationItem.UserProfile.route,
-                    enterTransition = { defaultEnterTransition() },
-                    exitTransition = { defaultExitTransition() },
-                    popEnterTransition = { defaultPopEnterTransition() },
-                    popExitTransition = { defaultPopExitTransition() }
-                ) {
-                    val context = LocalContext.current
-                    UserProfileScreen(
-                        viewModel = viewModel(factory = UserProfileViewModelFactory(context)),
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
 
                 composable(
                     route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",
@@ -393,6 +394,60 @@ fun MainApp() {
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     ReportsScreen(onNavigateBack = { navController.popBackStack() })
+                }
+                 composable(
+                    route = NavigationItem.FinancialStatement.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    FinancialStatementScreen()
+                }
+                composable(
+                    route = NavigationItem.Savings.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    SavingsScreen()
+                }
+                composable(
+                    route = NavigationItem.Loans.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    LoansScreen()
+                }
+                composable(
+                    route = NavigationItem.EMI.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    EmiScreen()
+                }
+                composable(
+                    route = NavigationItem.CreditCard.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    CreditCardScreen()
+                }
+                 composable(
+                    route = NavigationItem.Transfer.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    TransferScreen()
                 }
             }
         }
@@ -626,6 +681,42 @@ sealed class NavigationItem(
         title = "Reports",
         icon = Icons.Default.Assessment,
         description = "Generate work reports"
+    )
+    object FinancialStatement : NavigationItem(
+        route = "financial_statement",
+        title = "Financial Statement",
+        icon = Icons.Default.Assessment,
+        description = "View all financial transactions"
+    )
+    object Savings : NavigationItem(
+        route = "savings",
+        title = "Savings",
+        icon = Icons.Default.Savings,
+        description = "Manage your savings"
+    )
+    object Loans : NavigationItem(
+        route = "loans",
+        title = "Loans",
+        icon = Icons.Default.RealEstateAgent,
+        description = "Manage your loans"
+    )
+    object EMI : NavigationItem(
+        route = "emi",
+        title = "EMI",
+        icon = Icons.Default.Payment,
+        description = "Manage your EMIs"
+    )
+    object CreditCard : NavigationItem(
+        route = "credit_card",
+        title = "Credit Card",
+        icon = Icons.Default.CreditCard,
+        description = "Manage your credit cards"
+    )
+    object Transfer : NavigationItem(
+        route = "transfer",
+        title = "Transfer",
+        icon = Icons.Default.SwapHoriz,
+        description = "Move money between accounts"
     )
 }
 

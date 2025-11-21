@@ -14,4 +14,7 @@ interface UserProfileDao {
 
     @Query("SELECT * FROM user_profile WHERE id = 1")
     fun getUserProfile(): Flow<UserProfile?>
+
+    @Query("DELETE FROM user_profile")
+    suspend fun clearAll()
 }
