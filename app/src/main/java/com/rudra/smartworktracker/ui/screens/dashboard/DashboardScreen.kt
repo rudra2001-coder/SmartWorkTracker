@@ -46,11 +46,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
@@ -78,6 +82,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -102,11 +107,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Income
+import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -172,18 +180,20 @@ fun DashboardScreen(
                 Header(userName = uiState.userName)
             }
 
+            // Financial Summary Chart - Your component
             item {
-                FinancialSummaryCard(
-                    summary = uiState.financialSummary
+                FinancialSummaryChart(
+                    incomes = uiState.incomes,
+                    expenses = uiState.expenses
                 )
             }
-
-            item {
-                PerformanceRow(
-                    summary = uiState.financialSummary,
-                    stats = uiState.monthlyStats
-                )
-            }
+//
+//            item {
+//                PerformanceRow(
+//                    summary = uiState.financialSummary,
+//                    stats = uiState.monthlyStats
+//                )
+//            }
 
             item {
                 CategorySummaryCard(expensesByCategory = uiState.expensesByCategory)
@@ -206,6 +216,151 @@ fun DashboardScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Your FinancialSummaryChart composable - copied exactly from your code
+ */
+@Composable
+fun FinancialSummaryChart(
+    incomes: List<Income>,
+    expenses: List<Expense>
+) {
+    val totalIncome = incomes.sumOf { it.amount }
+    val totalExpense = expenses.sumOf { it.amount }
+    val savings = totalIncome - totalExpense
+    var animatedIncome by remember { mutableFloatStateOf(0f) }
+    var animatedExpense by remember { mutableFloatStateOf(0f) }
+    var animatedSavings by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(totalIncome, totalExpense, savings) {
+        animatedIncome = 0f
+        animatedExpense = 0f
+        animatedSavings = 0f
+
+        delay(300)
+        animatedIncome = totalIncome.toFloat()
+        delay(200)
+        animatedExpense = totalExpense.toFloat()
+        delay(200)
+        animatedSavings = savings.toFloat()
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.AttachMoney,
+                    contentDescription = "Financial",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.padding(8.dp))
+                Text(
+                    "Financial Summary",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FinancialMetricCard(
+                    title = "Income",
+                    value = animatedIncome,
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp
+                )
+
+                FinancialMetricCard(
+                    title = "Expense",
+                    value = animatedExpense,
+                    color = MaterialTheme.colorScheme.error,
+                    icon = Icons.Default.BarChart
+                )
+
+                FinancialMetricCard(
+                    title = "Savings",
+                    value = animatedSavings,
+                    color = if (savings >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                    icon = Icons.Default.CheckCircle
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FinancialMetricCard(
+    title: String,
+    value: Float,
+    color: Color,
+    icon: ImageVector
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            title,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            "৳${"%.0f".format(value)}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
     }
 }
 
@@ -264,284 +419,211 @@ fun Header(userName: String?) {
 }
 
 /**
- * Optimized financial summary card with better state management
- */
-@Composable
-fun FinancialSummaryCard(summary: FinancialSummary) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .border(
-                width = 1.dp,
-                color = colorScheme.onSurface.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(24.dp)
-            ),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surface.copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Financial Overview",
-                style = typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            val cardMinHeight = 120.dp
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FinancialMetricCard(
-                    title = "Total Income",
-                    amount = summary.totalIncome,
-                    delta = 8.2f,
-                    trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
-                    color = colorScheme.primary,
-                    icon = Icons.AutoMirrored.Outlined.TrendingUp,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = cardMinHeight)
-                )
-
-                FinancialMetricCard(
-                    title = "Total Expenses",
-                    amount = summary.totalExpense,
-                    delta = -5.6f,
-                    trendData = listOf(0.9f, 0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f),
-                    color = colorScheme.error,
-                    icon = Icons.AutoMirrored.Outlined.TrendingDown,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = cardMinHeight)
-                )
-
-                FinancialMetricCard(
-                    title = "Net Savings",
-                    amount = summary.netSavings,
-                    delta = 15.3f,
-                    trendData = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.8f, 0.7f, 0.9f),
-                    color = Color(0xFF0F9D58),
-                    icon = Icons.Outlined.Savings,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = cardMinHeight)
-                )
-            }
-        }
-    }
-}
-
-/**
  * Performance row with better state derivation
  */
-@Composable
-fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
-    Column {
-        Text(
-            text = "Performance",
-            style = typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
-        )
 
-        val cardMinHeight = 120.dp
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FinancialMetricCard(
-                title = "Total Loan",
-                amount = summary.totalLoan,
-                delta = 0f,
-                trendData = List(7) { 0.5f },
-                color = colorScheme.tertiary,
-                icon = Icons.Outlined.AccountBalance,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = cardMinHeight)
-            )
-
-            FinancialMetricCard(
-                title = "Office Days",
-                amount = stats.officeDays.toDouble(),
-                delta = 2.5f,
-                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
-                color = colorScheme.primary,
-                icon = Icons.Filled.Work,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = cardMinHeight)
-            )
-
-            FinancialMetricCard(
-                title = "Off Days",
-                amount = stats.offDays.toDouble(),
-                delta = -1.0f,
-                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f),
-                color = colorScheme.secondary,
-                icon = Icons.Filled.BeachAccess,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = cardMinHeight)
-            )
-        }
-    }
-}
+//@Composable
+//fun PerformanceRow(summary: FinancialSummary, stats: MonthlyStats) {
+//    Column {
+//        Text(
+//            text = "Performance",
+//            style = typography.titleLarge,
+//            fontWeight = FontWeight.SemiBold,
+//            modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
+//        )
+//
+//        val cardMinHeight = 120.dp
+//
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            FinancialMetricCard2(
+//                title = "Savings Percentage",
+//                amount = summary.savingsPercentage,
+//                delta = 0f,
+//                trendData = List(7) { 0.5f },
+//                color = colorScheme.tertiary,
+//                icon = Icons.Outlined.AccountBalance,
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .heightIn(min = cardMinHeight)
+//            )
+//
+//            FinancialMetricCard2(
+//                title = "Office Days",
+//                amount = stats.officeDays.toDouble(),
+//                delta = 2.5f,
+//                trendData = listOf(0.5f, 0.6f, 0.4f, 0.7f, 0.8f, 0.6f, 0.9f),
+//                color = colorScheme.primary,
+//                icon = Icons.Filled.Work,
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .heightIn(min = cardMinHeight)
+//            )
+//
+////            FinancialMetricCard2(
+////                title = "Off Days",
+////                amount = stats.offDays.toDouble(),
+////                delta = -1.0f,
+////                trendData = listOf(0.5f, 0.4f, 0.6f, 0.3f, 0.2f, 0.1f, 0.0f),
+////                color = colorScheme.secondary,
+////                icon = Icons.Filled.BeachAccess,
+////                modifier = Modifier
+////                    .weight(1f)
+////                    .heightIn(min = cardMinHeight)
+////            )
+//        }
+//    }
+//}
 
 /**
  * Optimized financial metric card with better number formatting and performance
+ * Renamed to avoid conflict with your FinancialMetricCard
  */
-@Composable
-fun FinancialMetricCard(
-    title: String,
-    amount: Double,
-    delta: Float,
-    trendData: List<Float>,
-    color: Color,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    val minHeight = 120.dp
-    var currentValue by remember { mutableDoubleStateOf(0.0) }
-
-    // Optimized animation
-    LaunchedEffect(amount) {
-        currentValue = 0.0 // Reset for re-animation
-        val animation = Animatable(0f)
-        animation.animateTo(
-            targetValue = amount.toFloat(),
-            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
-        ) {
-            currentValue = this.value.toDouble()
-        }
-    }
-
-    // Memoized formatted values
-    val formattedValue = remember(currentValue, title) {
-        if (title.contains("Days", ignoreCase = true)) {
-            currentValue.toInt().toString()
-        } else {
-            "৳${String.format("%.2f", currentValue)}"
-        }
-    }
-
-    val formattedDelta = remember(delta) {
-        "${if (delta > 0) "+" else ""}${String.format("%.1f", delta)}%"
-    }
-
-    Card(
-        modifier = modifier
-            .heightIn(min = minHeight)
-            .clip(RoundedCornerShape(18.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f),
-            contentColor = color
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(14.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Top row: Icon + Title
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = title,
-                    style = typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Main KPI Number
-            Text(
-                text = formattedValue,
-                style = typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-
-            // Bottom row: Sparkline + Delta Indicator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Sparkline Trend Chart
-                SparklineChart(
-                    data = trendData,
-                    color = color,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                )
-
-                // Delta Indicator
-                DeltaIndicator(
-                    delta = delta,
-                    formattedDelta = formattedDelta
-                )
-            }
-        }
-    }
-}
-
-/**
- * Extracted Delta Indicator for better reusability
- */
-@Composable
-private fun DeltaIndicator(delta: Float, formattedDelta: String) {
-    val trendIcon = if (delta >= 0) {
-        Icons.AutoMirrored.Outlined.TrendingUp
-    } else {
-        Icons.AutoMirrored.Outlined.TrendingDown
-    }
-
-    val trendColor = if (delta >= 0) {
-        Color(0xFF0F9D58)
-    } else {
-        colorScheme.error
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = trendIcon,
-            contentDescription = if (delta >= 0) "Trending up" else "Trending down",
-            tint = trendColor,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            text = formattedDelta,
-            style = typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = trendColor
-        )
-    }
-}
+//@Composable
+//fun FinancialMetricCard2(
+//    title: String,
+//    amount: Double,
+//    delta: Float,
+//    trendData: List<Float>,
+//    color: Color,
+//    icon: ImageVector,
+//    modifier: Modifier = Modifier
+//) {
+//    val minHeight = 120.dp
+//    var currentValue by remember { mutableDoubleStateOf(0.0) }
+//
+//    // Optimized animation
+//    LaunchedEffect(amount) {
+//        currentValue = 0.0 // Reset for re-animation
+//        val animation = Animatable(0f)
+//        animation.animateTo(
+//            targetValue = amount.toFloat(),
+//            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
+//        ) {
+//            currentValue = this.value.toDouble()
+//        }
+//    }
+//
+//    // Memoized formatted values
+//    val formattedValue = remember(currentValue, title) {
+//        if (title.contains("Days", ignoreCase = true)) {
+//            currentValue.toInt().toString()
+//        } else {
+//            "৳${String.format("%.2f", currentValue)}"
+//        }
+//    }
+//
+//    val formattedDelta = remember(delta) {
+//        "${if (delta > 0) "+" else ""}${String.format("%.1f", delta)}%"
+//    }
+//
+//    Card(
+//        modifier = modifier
+//            .heightIn(min = minHeight)
+//            .clip(RoundedCornerShape(18.dp)),
+//        colors = CardDefaults.cardColors(
+//            containerColor = color.copy(alpha = 0.1f),
+//            contentColor = color
+//        ),
+//        elevation = CardDefaults.cardElevation(0.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier
+//                .padding(14.dp)
+//                .fillMaxSize(),
+//            verticalArrangement = Arrangement.SpaceBetween
+//        ) {
+//            // Top row: Icon + Title
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.spacedBy(6.dp)
+//            ) {
+//                Icon(
+//                    imageVector = icon,
+//                    contentDescription = title,
+//                    tint = color,
+//                    modifier = Modifier.size(20.dp)
+//                )
+//                Text(
+//                    text = title,
+//                    style = typography.bodyMedium,
+//                    maxLines = 2,
+//                    overflow = TextOverflow.Ellipsis,
+//                    color = colorScheme.onSurfaceVariant
+//                )
+//            }
+//
+//            // Main KPI Number
+//            Text(
+//                text = formattedValue,
+//                style = typography.headlineSmall,
+//                fontWeight = FontWeight.Bold,
+//                color = color
+//            )
+//
+//            // Bottom row: Sparkline + Delta Indicator
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                // Sparkline Trend Chart
+//                SparklineChart(
+//                    data = trendData,
+//                    color = color,
+//                    modifier = Modifier
+//                        .weight(1f)
+//                        .height(40.dp)
+//                )
+//
+//                // Delta Indicator
+//                DeltaIndicator(
+//                    delta = delta,
+//                    formattedDelta = formattedDelta
+//                )
+//            }
+//        }
+//    }
+//}
+//
+///**
+// * Extracted Delta Indicator for better reusability
+// */
+//@Composable
+//private fun DeltaIndicator(delta: Float, formattedDelta: String) {
+//    val trendIcon = if (delta >= 0) {
+//        Icons.AutoMirrored.Outlined.TrendingUp
+//    } else {
+//        Icons.AutoMirrored.Outlined.TrendingDown
+//    }
+//
+//    val trendColor = if (delta >= 0) {
+//        Color(0xFF0F9D58)
+//    } else {
+//        colorScheme.error
+//    }
+//
+//    Row(
+//        verticalAlignment = Alignment.CenterVertically,
+//        horizontalArrangement = Arrangement.spacedBy(4.dp)
+//    ) {
+//        Icon(
+//            imageVector = trendIcon,
+//            contentDescription = if (delta >= 0) "Trending up" else "Trending down",
+//            tint = trendColor,
+//            modifier = Modifier.size(16.dp)
+//        )
+//        Text(
+//            text = formattedDelta,
+//            style = typography.bodySmall,
+//            fontWeight = FontWeight.Medium,
+//            color = trendColor
+//        )
+//    }
+//}
 
 /**
  * Optimized sparkline chart with better performance
@@ -770,7 +852,6 @@ fun WeeklyActivityTimeline(activities: List<WorkLogUi>) {
         }
     }
 }
-
 
 /**
  * Optimized day activity row with better work type handling

@@ -65,7 +65,7 @@ class DashboardViewModel(
                 val totalExpense = array[1] as? Double ?: 0.0
                 val monthlyMealExpenses = array[2] as? Double ?: 0.0
                 val totalIncome = array[3] as? Double ?: 0.0
-                // val mealRate = array[4] as? Double // unused
+                val mealRate = array[4] as? Double // unused
                 val recentActivities = array[5] as? List<WorkLog> ?: emptyList()
                 val expensesByCategory = array[6] as? List<ExpenseByCategory> ?: emptyList()
                 val monthlyStats = array[7] as MonthlyStats
@@ -83,6 +83,8 @@ class DashboardViewModel(
                         totalExpense = totalExpense,
                         netSavings = netSavings,
                         totalMealCost = monthlyMealExpenses
+
+
                     ),
                     expensesByCategory = expensesByCategoryMap
                 )
