@@ -101,6 +101,8 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Achievements,
                     NavigationItem.MindfulBreak,
                     NavigationItem.Wisdom ,
+                    NavigationItem.Focus,
+
 
                 )
             ),

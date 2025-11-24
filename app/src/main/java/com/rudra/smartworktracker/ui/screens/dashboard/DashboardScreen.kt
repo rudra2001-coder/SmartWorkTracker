@@ -345,7 +345,7 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Savings",
                     value = animatedSavings,
-                    color = if (savings >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                    color = if (savings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
                     icon = Icons.Default.CheckCircle
                 )
             }
@@ -371,7 +371,7 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Daily Savings",
                     value = animatedDailySavings,
-                    color = if (dailySavings >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                    color = if (dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
                 )
             }
