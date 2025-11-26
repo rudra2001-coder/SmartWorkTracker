@@ -54,6 +54,20 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun heavyDeleteHabit(habit: Habit) {
+        viewModelScope.launch {
+            deleteHabitAndItsTriggers(habit)
+        }
+    }
+
+    private suspend fun deleteHabitAndItsTriggers(habit: Habit) {
+        val triggeredHabits = habitDao.getHabitsByTriggerId(habit.id)
+        for (triggeredHabit in triggeredHabits) {
+            deleteHabitAndItsTriggers(triggeredHabit)
+        }
+        habitDao.deleteHabit(habit)
+    }
+
     private fun isEligibleForCompletion(lastCompleted: Long?): Boolean {
         if (lastCompleted == null) return true // First time completion
 

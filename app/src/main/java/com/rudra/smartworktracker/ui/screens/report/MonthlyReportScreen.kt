@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,7 +23,6 @@ import co.yml.charts.common.model.PlotType
 import co.yml.charts.ui.piechart.charts.PieChart
 import co.yml.charts.ui.piechart.models.PieChartConfig
 import co.yml.charts.ui.piechart.models.PieChartData
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
@@ -34,12 +34,22 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Monthly Report") },
+                title = {
+                    Text(
+                        "Monthly Report",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     ) { paddingValues ->
@@ -47,44 +57,66 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Month Selector
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+            // Month Selector Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                TextField(
-                    value = uiState.selectedMonth,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Select Month") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    },
-                    colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    viewModel.months.forEach { month ->
-                        DropdownMenuItem(
-                            text = { Text(text = month) },
-                            onClick = {
-                                viewModel.onMonthSelected(month)
-                                expanded = false
-                            }
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Select Month",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        TextField(
+                            value = uiState.selectedMonth,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Choose month") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                            },
+                            colors = ExposedDropdownMenuDefaults.textFieldColors(),
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
                         )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            viewModel.months.forEach { month ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = month,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.onMonthSelected(month)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             if (uiState.workLogs.isEmpty()) {
                 Box(
@@ -93,32 +125,47 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No data available for ${uiState.selectedMonth}",
-                        fontSize = 16.sp,
-                        color = Color.Gray
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "No data",
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "No data available for ${uiState.selectedMonth}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             } else {
+                val totalDays = uiState.officeCount + uiState.homeCount + uiState.offCount + uiState.extraCount
+                val totalWorkDays = uiState.officeCount + uiState.homeCount + uiState.extraCount
+
                 // Pie Chart Card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = "Work Type Distribution",
-                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        val totalDays = uiState.officeCount + uiState.homeCount + uiState.offCount + uiState.extraCount
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         if (totalDays > 0) {
                             val pieChartData = PieChartData(
@@ -136,112 +183,203 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                                 activeSliceAlpha = 0.9f,
                                 isAnimationEnable = true,
                                 labelVisible = true,
-                                labelColor = Color.Black,
+                                labelColor = MaterialTheme.colorScheme.onSurface,
                                 labelFontSize = 14.sp,
                                 showSliceLabels = true
                             )
 
                             PieChart(
-                                modifier = Modifier.size(250.dp),
+                                modifier = Modifier.size(280.dp),
                                 pieChartData = pieChartData,
                                 pieChartConfig = pieChartConfig
                             )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Chart legend
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                pieChartData.slices.forEach { slice ->
+                                    LegendItem(slice)
+                                }
+                            }
                         } else {
-                            Text(
-                                text = "No work data available",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "No data",
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Text(
+                                    text = "No work data available",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Quick Stats Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickStatCard(
+                        title = "Work Days",
+                        value = totalWorkDays.toString(),
+                        subtitle = "${if (totalDays > 0) ((totalWorkDays.toDouble() / totalDays) * 100).toInt() else 0}%",
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    QuickStatCard(
+                        title = "Off Days",
+                        value = uiState.offCount.toString(),
+                        subtitle = "${if (totalDays > 0) ((uiState.offCount.toDouble() / totalDays) * 100).toInt() else 0}%",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Summary Statistics Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Monthly Summary",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Work Type Breakdown
+                        Text(
+                            text = "Work Type Breakdown",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            WorkTypeItem("Office Days", uiState.officeCount, Color(0xFF58BDFF))
+                            WorkTypeItem("Home Office Days", uiState.homeCount, Color(0xFF1266F1))
+                            WorkTypeItem("Off Days", uiState.offCount, Color(0xFF00B74A))
+                            WorkTypeItem("Extra Work Days", uiState.extraCount, Color(0xFFF93154))
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Divider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            thickness = 1.dp
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Totals
+                        Text(
+                            text = "Totals",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SummaryItem("Total Days Tracked", totalDays.toString())
+                            SummaryItem("Total Work Days", totalWorkDays.toString())
+                            SummaryItem("Total Off Days", uiState.offCount.toString())
+                            SummaryItem("Total Logs", uiState.workLogs.size.toString())
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Summary Statistics Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Monthly Summary",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Work Type Breakdown
-                        Text(
-                            text = "Work Type Breakdown:",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        WorkTypeItem("Office Days", uiState.officeCount, Color(0xFF58BDFF))
-                        WorkTypeItem("Home Office Days", uiState.homeCount, Color(0xFF1266F1))
-                        WorkTypeItem("Off Days", uiState.offCount, Color(0xFF00B74A))
-                        WorkTypeItem("Extra Work Days", uiState.extraCount, Color(0xFFF93154))
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Divider()
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Totals
-                        Text(
-                            text = "Totals:",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val totalWorkDays = uiState.officeCount + uiState.homeCount + uiState.extraCount
-                        val totalDays = totalWorkDays + uiState.offCount
-
-                        SummaryItem("Total Days Tracked", totalDays.toString())
-                        SummaryItem("Total Work Days", totalWorkDays.toString())
-                        SummaryItem("Total Off Days", uiState.offCount.toString())
-                        SummaryItem("Total Logs", uiState.workLogs.size.toString())
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Quick Stats Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Quick Stats",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-//                        Row(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            horizontalArrangement = Arrangement.SpaceBetween
-//                        ) {
-//                            QuickStatItem("Most Frequent", getMostFrequentWorkType(uiState))
-//                            QuickStatItem("Work Rate",
-////                                if (totalDays > 0) "${((totalWorkDays.toDouble() / totalDays) * 100).toInt()}%"
-////                                else "N/A"
-////                            )
-//                        }
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(slice: PieChartData.Slice) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(slice.color, shape = MaterialTheme.shapes.small)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = slice.label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = slice.value.toInt().toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun QuickStatCard(
+    title: String,
+    value: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
         }
     }
 }
@@ -249,24 +387,26 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
 @Composable
 private fun WorkTypeItem(label: String, count: Int, color: Color) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(12.dp)
+                    .size(16.dp)
                     .background(color, shape = MaterialTheme.shapes.small)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = label, fontSize = 14.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
         Text(
             text = count.toString(),
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
@@ -276,47 +416,19 @@ private fun WorkTypeItem(label: String, count: Int, color: Color) {
 @Composable
 private fun SummaryItem(label: String, value: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, fontSize = 14.sp)
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
-private fun QuickStatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            fontSize = 12.sp,
-            color = Color.Gray
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
     }
-}
-
-private fun getMostFrequentWorkType(uiState: MonthlyReportUiState): String {
-    val workTypes = listOf(
-        "Office" to uiState.officeCount,
-        "Home" to uiState.homeCount,
-        "Off" to uiState.offCount,
-        "Extra" to uiState.extraCount
-    )
-
-    val max = workTypes.maxByOrNull { it.second }
-    return if (max != null && max.second > 0) max.first else "N/A"
 }

@@ -122,6 +122,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
@@ -239,10 +240,33 @@ fun FinancialSummaryChart(
     var animatedExpense by remember { mutableFloatStateOf(0f) }
     var animatedSavings by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(totalIncome, totalExpense, savings) {
+    val today = Calendar.getInstance()
+    val dailyIncome = incomes.filter {
+        val incomeDate = Calendar.getInstance()
+        incomeDate.timeInMillis = it.timestamp
+        today.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
+                today.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
+    }.sumOf { it.amount }
+
+    val dailyExpense = expenses.filter {
+        val expenseDate = Calendar.getInstance()
+        expenseDate.timeInMillis = it.timestamp
+        today.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
+                today.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
+    }.sumOf { it.amount }
+    val dailySavings = dailyIncome - dailyExpense
+
+    var animatedDailyIncome by remember { mutableFloatStateOf(0f) }
+    var animatedDailyExpense by remember { mutableFloatStateOf(0f) }
+    var animatedDailySavings by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(totalIncome, totalExpense, savings, dailyIncome, dailyExpense, dailySavings) {
         animatedIncome = 0f
         animatedExpense = 0f
         animatedSavings = 0f
+        animatedDailyIncome = 0f
+        animatedDailyExpense = 0f
+        animatedDailySavings = 0f
 
         delay(300)
         animatedIncome = totalIncome.toFloat()
@@ -250,6 +274,12 @@ fun FinancialSummaryChart(
         animatedExpense = totalExpense.toFloat()
         delay(200)
         animatedSavings = savings.toFloat()
+        delay(200)
+        animatedDailyIncome = dailyIncome.toFloat()
+        delay(200)
+        animatedDailyExpense = dailyExpense.toFloat()
+        delay(200)
+        animatedDailySavings = dailySavings.toFloat()
     }
 
     Card(
@@ -315,7 +345,33 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Savings",
                     value = animatedSavings,
-                    color = if (savings >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                    color = if (savings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
+                    icon = Icons.Default.CheckCircle
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FinancialMetricCard(
+                    title = "Daily Income",
+                    value = animatedDailyIncome,
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp
+                )
+
+                FinancialMetricCard(
+                    title = "Daily Expense",
+                    value = animatedDailyExpense,
+                    color = MaterialTheme.colorScheme.error,
+                    icon = Icons.Default.BarChart
+                )
+
+                FinancialMetricCard(
+                    title = "Daily Savings",
+                    value = animatedDailySavings,
+                    color = if (dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
                 )
             }
