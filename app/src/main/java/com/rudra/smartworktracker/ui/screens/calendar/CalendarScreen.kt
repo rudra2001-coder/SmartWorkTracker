@@ -17,11 +17,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.BusinessCenter
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Timer
@@ -119,13 +123,14 @@ fun CalendarScreen(
         floatingActionButton = {
             AnimatedVisibility(
                 visible = uiState.isMultiSelectMode && uiState.multiSelectedDates.isNotEmpty(),
-                enter = scaleIn() + fadeIn(),
-                exit = scaleOut() + fadeOut()
+                enter = slideInHorizontally { fullWidth -> fullWidth } + fadeIn(),
+                exit = slideOutHorizontally { fullWidth -> fullWidth } + fadeOut()
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+
                     // Selection count chip
                     Card(
                         colors = CardDefaults.cardColors(containerColor = primaryColor),
@@ -142,14 +147,39 @@ fun CalendarScreen(
                     // Mark as Office Day FAB
                     ExtendedFloatingActionButton(
                         onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
-                        icon = { Icon(Icons.Default.Edit, "Mark as Office Day") },
+                        icon = { Icon(Icons.Default.Business, "Mark as Office Day") },
                         text = { Text("Mark Office") },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = Color(0xFF2196F3),
+                        contentColor = Color.White
+                    )
+
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.markSelectedDates(WorkType.HOME_OFFICE) },
+                        icon = { Icon(Icons.Default.Home, "Home Office") },
+                        text = { Text("Mark Home") },
+                        containerColor = Color(0xFFFF9800),
+                        contentColor = Color.White
+                    )
+
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.markSelectedDates(WorkType.OFF_DAY) },
+                        icon = { Icon(Icons.Default.BeachAccess, "Off Day") },
+                        text = { Text("Mark Off") },
+                        containerColor = Color(0xFF4CAF50),
+                        contentColor = Color.White
+                    )
+
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.markSelectedDates(WorkType.EXTRA_WORK) },
+                        icon = { Icon(Icons.Default.BusinessCenter, "Extra Work") },
+                        text = { Text("Extra Work") },
+                        containerColor = Color(0xFFF44336),
+                        contentColor = Color.White
                     )
                 }
             }
         }
+
     ) { paddingValues ->
         Column(
             modifier = Modifier
