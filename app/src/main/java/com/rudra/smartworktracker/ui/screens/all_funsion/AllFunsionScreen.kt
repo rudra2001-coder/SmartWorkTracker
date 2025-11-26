@@ -100,7 +100,9 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Health,
                     NavigationItem.Achievements,
                     NavigationItem.MindfulBreak,
-                    NavigationItem.Wisdom
+                    NavigationItem.Wisdom ,
+                    NavigationItem.Focus,
+                    NavigationItem.WorkTimer
                 )
             ),
             FeatureSection(
@@ -115,19 +117,19 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Transfer,
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
-                    NavigationItem.Calculation
+                    NavigationItem.Calculation,
+                    NavigationItem.AddEntry
                 )
             ),
             FeatureSection(
                 "General", listOf(
-                    NavigationItem.UserProfile,
                     NavigationItem.Backup,
                     NavigationItem.Settings
                 )
             )
         )
     }
-    val allFeatures = remember { quickAccessFeatures + featureSections.flatMap { it.items } }
+    val allFeatures = remember { (quickAccessFeatures + featureSections.flatMap { it.items }).distinctBy { it.route } }
 
 
     Scaffold(

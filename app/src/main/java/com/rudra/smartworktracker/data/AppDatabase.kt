@@ -5,8 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.rudra.smartworktracker.data.dao.ColleagueDao
 import com.rudra.smartworktracker.data.dao.AchievementDao
 import com.rudra.smartworktracker.data.dao.CalculationDao
+import com.rudra.smartworktracker.data.dao.Converters
 import com.rudra.smartworktracker.data.dao.CreditCardDao
 import com.rudra.smartworktracker.data.dao.CreditCardTransactionDao
 import com.rudra.smartworktracker.data.dao.DailyJournalDao
@@ -41,6 +43,7 @@ import com.rudra.smartworktracker.data.entity.UserProfile
 import com.rudra.smartworktracker.data.entity.WorkDay
 import com.rudra.smartworktracker.data.local.TypeConverters as LocalTypeConverters
 import com.rudra.smartworktracker.model.Achievement
+import com.rudra.smartworktracker.model.Colleague
 import com.rudra.smartworktracker.model.DailyJournal
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.FocusSession
@@ -70,16 +73,17 @@ import com.rudra.smartworktracker.model.WorkSession
         Emi::class,
         CreditCard::class,
         CreditCardTransaction::class,
-        Savings::class
+        Savings::class,
+        Colleague::class
     ],
     views = [
         MonthlySummary::class
     
     ],
-    version = 17, 
+    version = 19,
     exportSchema = false
 )
-@TypeConverters(LocalTypeConverters::class, com.rudra.smartworktracker.data.local.TypeConverters::class)
+@TypeConverters(LocalTypeConverters::class, Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun workSessionDao(): WorkSessionDao
@@ -103,6 +107,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun creditCardDao(): CreditCardDao
     abstract fun creditCardTransactionDao(): CreditCardTransactionDao
     abstract fun savingsDao(): SavingsDao
+    abstract fun colleagueDao(): ColleagueDao
 
     companion object {
         @Volatile

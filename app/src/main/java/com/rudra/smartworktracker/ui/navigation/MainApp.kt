@@ -23,12 +23,12 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.RealEstateAgent
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
@@ -77,8 +77,6 @@ import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileScreen
-import com.rudra.smartworktracker.ui.screens.user_profile.UserProfileViewModelFactory
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
@@ -95,7 +93,6 @@ fun MainApp() {
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
-        NavigationItem.UserProfile,
         NavigationItem.AddEntry,
         NavigationItem.Reports,
         NavigationItem.Journal,
@@ -191,9 +188,9 @@ fun MainApp() {
                         onNavigateToAddEntry = {
                             navController.navigate(NavigationItem.AddEntry.route)
                         },
-                        onNavigateToAllFunsion = {
-                            navController.navigate(NavigationItem.AllFunsion.route)
-                        }
+                        onNavigateToIncome = { navController.navigate(NavigationItem.Income.route) },
+                        onNavigateToExpense = { navController.navigate(NavigationItem.Expense.route) },
+                        onNavigateToLoan = { navController.navigate(NavigationItem.Loans.route) }
                     )
                 }
 
@@ -374,19 +371,6 @@ fun MainApp() {
                     AllFunsionScreen(navController = navController)
                 }
 
-                composable(
-                    route = NavigationItem.UserProfile.route,
-                    enterTransition = { defaultEnterTransition() },
-                    exitTransition = { defaultExitTransition() },
-                    popEnterTransition = { defaultPopEnterTransition() },
-                    popExitTransition = { defaultPopExitTransition() }
-                ) {
-                    val context = LocalContext.current
-                    UserProfileScreen(
-                        viewModel = viewModel(factory = UserProfileViewModelFactory(context)),
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
 
                 composable(
                     route = NavigationItem.AddEntry.route + "?workLogId={workLogId}",

@@ -89,6 +89,11 @@ dependencies {
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.litert.support.api)
+    implementation(libs.material3)
+    implementation(libs.androidx.compose.ui.geometry)
+    implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.ui.text)
+    implementation(libs.androidx.foundation.layout)
     ksp(libs.androidx.room.compiler)
 
     // Animation

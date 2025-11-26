@@ -57,7 +57,9 @@ class DashboardViewModel(
                 settingsRepository.mealRate,
                 workLogRepository.getRecentActivities(),
                 expenseRepository.getExpensesByCategoryBetween(startTime, endTime),
-                workLogRepository.getMonthlyStats()
+                workLogRepository.getMonthlyStats(),
+                incomeRepository.getAllIncomes(),
+                expenseRepository.getAllExpenses()
             )
 
             combine(flows) { array ->
@@ -65,10 +67,13 @@ class DashboardViewModel(
                 val totalExpense = array[1] as? Double ?: 0.0
                 val monthlyMealExpenses = array[2] as? Double ?: 0.0
                 val totalIncome = array[3] as? Double ?: 0.0
-                // val mealRate = array[4] as? Double // unused
+                val mealRate = array[4] as? Double // unused
                 val recentActivities = array[5] as? List<WorkLog> ?: emptyList()
                 val expensesByCategory = array[6] as? List<ExpenseByCategory> ?: emptyList()
                 val monthlyStats = array[7] as MonthlyStats
+                val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
+                val expenses = array[9] as? List<Expense> ?: emptyList()
+
 
                 val netSavings = totalIncome - totalExpense
                 val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
@@ -84,7 +89,9 @@ class DashboardViewModel(
                         netSavings = netSavings,
                         totalMealCost = monthlyMealExpenses
                     ),
-                    expensesByCategory = expensesByCategoryMap
+                    expensesByCategory = expensesByCategoryMap,
+                    incomes = incomes,
+                    expenses = expenses,
                 )
             }.collect { newState ->
                 _uiSate.value = newState

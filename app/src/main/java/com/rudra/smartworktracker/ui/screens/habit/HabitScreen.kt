@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -25,6 +26,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -67,11 +69,15 @@ fun HabitScreen(viewModel: HabitViewModel = viewModel()) {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            items(habits) { habit ->
-                HabitItem(habit = habit, onComplete = {
-                    viewModel.completeHabit(habit)
-                    Toast.makeText(context, "'${habit.name}' completed!", Toast.LENGTH_SHORT).show()
-                })
+            items(items = habits, key = { it.id }) { habit ->
+                HabitItem(
+                    habit = habit,
+                    onComplete = {
+                        viewModel.completeHabit(habit)
+                        Toast.makeText(context, "'${habit.name}' completed!", Toast.LENGTH_SHORT).show()
+                    },
+                    onDelete = { viewModel.heavyDeleteHabit(habit) }
+                )
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
@@ -89,8 +95,13 @@ fun HabitScreen(viewModel: HabitViewModel = viewModel()) {
 }
 
 @Composable
-fun HabitItem(habit: Habit, onComplete: () -> Unit) {
+fun HabitItem(
+    habit: Habit,
+    onComplete: () -> Unit,
+    onDelete: () -> Unit
+) {
     val isCompletedToday = habit.lastCompleted?.isToday() == true
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -117,8 +128,32 @@ fun HabitItem(habit: Habit, onComplete: () -> Unit) {
                     tint = if (isCompletedToday || habit.streak > 0) Color(0xFFFFA000) else Color.Gray
                 )
                 Text(text = "${habit.streak}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                IconButton(onClick = { showDeleteConfirmation = true }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete Habit", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Habit") },
+            text = { Text("Are you sure you want to delete this habit?") },
+            confirmButton = {
+                Button(onClick = { 
+                    onDelete()
+                    showDeleteConfirmation = false
+                 }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

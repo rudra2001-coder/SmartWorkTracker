@@ -13,6 +13,7 @@ data class Habit(
     val triggerHabitId: String?,
     val createdAt: Long,
     val lastCompleted: Long? = null
+    
 )
 
 enum class HabitDifficulty {

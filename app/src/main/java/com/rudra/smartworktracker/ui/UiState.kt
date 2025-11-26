@@ -1,8 +1,10 @@
 package com.rudra.smartworktracker.ui
 
+import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.DARK_THEME
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.NOTIFICATIONS
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.VIBRATION
+import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.HealthMetricType
 import com.rudra.smartworktracker.model.WorkType
@@ -16,7 +18,9 @@ data class DashboardUiState(
     val financialSummary: FinancialSummary = FinancialSummary(),
     val expensesByCategory: Map<ExpenseCategory, Double> = emptyMap(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val incomes: List<Income> = emptyList(), // Add this
+    val expenses: List<Expense> = emptyList() // Add this
 )
 
 data class MonthlyStats(
@@ -35,7 +39,11 @@ data class FinancialSummary(
     val totalExpense: Double = 0.0,
     val netSavings: Double = 0.0,
     val totalMealCost: Double = 0.0,
-    val expenseBreakdown: Map<String, Double> = emptyMap()
+    val expenseBreakdown: Map<String, Double> = emptyMap(),
+    val totalLoan: Double = 0.0,
+    val totalOfficeDays: Int = 0,
+    val totalOffDays: Int = 0
+
 ) {
     val savingsPercentage: Double
         get() = if (totalIncome > 0) (netSavings / totalIncome) * 100 else 0.0
