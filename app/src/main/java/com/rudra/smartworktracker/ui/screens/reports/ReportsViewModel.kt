@@ -208,6 +208,18 @@ class ReportsViewModel(
         _sortOption.value = sortOption
     }
 
+    fun deleteIncome(income: Income) {
+        viewModelScope.launch {
+            incomeRepository.deleteIncome(income)
+        }
+    }
+
+    fun deleteExpense(expense: Expense) {
+        viewModelScope.launch {
+            expenseRepository.deleteExpense(expense)
+        }
+    }
+
     fun generateTextReport(): String {
         val reportBuilder = StringBuilder()
         viewModelScope.launch {
