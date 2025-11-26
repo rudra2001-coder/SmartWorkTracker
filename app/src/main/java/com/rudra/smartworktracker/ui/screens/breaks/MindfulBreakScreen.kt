@@ -98,7 +98,7 @@ fun MindfulBreakScreen() {
         contentAlignment = Alignment.Center
     ) {
         // Animated background elements
-        FloatingParticles(count = 8, animationProgress = pulseState.value)
+
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -215,27 +215,7 @@ fun PulsingCircle(progress: Float) {
     }
 }
 
-@Composable
-fun FloatingParticles(count: Int, animationProgress: Float) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        for (i in 0 until count) {
-            val angle = (i * 360f / count) + (animationProgress * 360f)
-            val distance = 150.dp.toPx() * (0.7f + animationProgress * 0.3f)
 
-            val x = center.x + distance * cos(Math.toRadians(angle.toDouble())).toFloat()
-            val y = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
-
-            val particleSize = 4.dp.toPx() * (1f + animationProgress * 0.5f)
-            val alpha = 0.3f + animationProgress * 0.2f
-
-            drawCircle(
-                color = Color.White.copy(alpha = alpha),
-                radius = particleSize,
-                center = Offset(x, y)
-            )
-        }
-    }
-}
 
 private fun getBreathingGuide(instruction: String): String {
     return when (instruction) {
