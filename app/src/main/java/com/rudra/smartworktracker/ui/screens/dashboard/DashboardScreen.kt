@@ -3,6 +3,7 @@ package com.rudra.smartworktracker.ui.screens.dashboard
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColor
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -41,6 +42,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -65,6 +67,7 @@ import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -108,6 +111,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.Income
@@ -483,7 +487,6 @@ fun Header(userName: String?) {
  * Performance row with better state derivation
  */
 
-
 @Composable
 fun MonthlyStatsCard(stats: MonthlyStats) {
     var isVisible by remember { mutableStateOf(false) }
@@ -599,15 +602,17 @@ fun AnimatedStatItem(
     delay: Int = 0
 ) {
     var animatedValue by remember { mutableIntStateOf(0) }
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse_animation")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
+    val infiniteTransition = rememberInfiniteTransition(label = "color_animation")
+
+    // Color animation for the number
+    val animatedColor by infiniteTransition.animateColor(
+        initialValue = color.copy(alpha = 0.7f),
+        targetValue = color,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "pulse_alpha"
+        label = "color_pulse"
     )
 
     LaunchedEffect(visible, value) {
@@ -625,45 +630,30 @@ fun AnimatedStatItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(4.dp)
     ) {
-        Box(
+        // Only the number with animation
+        Text(
+            text = if (visible) animatedValue.toString() else "0",
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 16.sp),
+            fontWeight = FontWeight.ExtraBold,
+            color = animatedColor,
             modifier = Modifier
-                .size(70.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = pulseAlpha)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (visible) animatedValue.toString() else "0",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-        }
+                .height(30.dp)
+                .wrapContentHeight()
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             maxLines = 2,
-            modifier = Modifier.width(70.dp)
+            modifier = Modifier.width(40.dp)
         )
     }
 }
-
-// Add this Divider composable if not already imported
-@Composable
-fun Divider(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.outline,
-    thickness: Dp = 1.dp
-) {
-    HorizontalDivider(modifier = modifier, thickness = thickness, color = color)
-}
-
 ///**
 // * Extracted Delta Indicator for better reusability
 // */

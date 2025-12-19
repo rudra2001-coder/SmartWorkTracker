@@ -104,7 +104,6 @@ fun MainApp() {
         NavigationItem.Income,
         NavigationItem.Health,
         NavigationItem.Achievements,
-        NavigationItem.Wisdom,
         NavigationItem.Calendar,
         NavigationItem.Analytics,
         NavigationItem.MonthlyReport,
@@ -116,7 +115,6 @@ fun MainApp() {
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
         NavigationItem.Backup,
-        NavigationItem.AllFunsion,
         NavigationItem.Settings
     )
 
