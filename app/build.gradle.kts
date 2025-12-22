@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.ui.text)
     implementation(libs.androidx.foundation.layout)
+    implementation(libs.androidx.compose.ui.ui.graphics)
     ksp(libs.androidx.room.compiler)
 
     // Animation
@@ -121,6 +122,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 // https://mvnrepository.com/artifact/org.mnode.ical4j/ical4j
     implementation("org.mnode.ical4j:ical4j:4.2.1")
+
 
     // Test dependencies
     testImplementation(libs.junit)

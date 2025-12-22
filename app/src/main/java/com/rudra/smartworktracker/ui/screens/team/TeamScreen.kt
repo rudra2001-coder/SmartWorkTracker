@@ -1,27 +1,71 @@
 package com.rudra.smartworktracker.ui.screens.team
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.SharedPreferenceManager
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,42 +76,652 @@ fun TeamScreen() {
         factory = TeamViewModelFactory(sharedPreferenceManager)
     )
 
-    var teamName by remember { mutableStateOf("") }
-    var teammateName by remember { mutableStateOf("") }
-    var teammateNumber by remember { mutableStateOf("") }
+    val teams by teamViewModel.teams.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var showAddTeamDialog by remember { mutableStateOf(false) }
+    var showAddTeammateDialog by remember { mutableStateOf(false) }
+    var selectedTeamForTeammate by remember { mutableStateOf<Team?>(null) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Teams")
-        LazyColumn {
-            items(teamViewModel.teams.value) { team ->
-                Card(modifier = Modifier.padding(8.dp)) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text("Team: ${team.name}")
-                        team.teammates.forEach { teammate ->
-                            Text("  - ${teammate.name}: ${teammate.number}")
+    // Filter teams based on search query
+    val filteredTeams = remember(teams, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isEmpty()) {
+                teams
+            } else {
+                teams.filter { team ->
+                    team.name.contains(searchQuery, ignoreCase = true) ||
+                            team.teammates.any { teammate ->
+                                teammate.name.contains(searchQuery, ignoreCase = true) ||
+                                        teammate.number.contains(searchQuery, ignoreCase = true)
+                            }
+                }
+            }
+        }
+    }.value
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Teams",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        },
+        floatingActionButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddTeammateDialog = true },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PersonAdd,
+                        contentDescription = "Add Teammate",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                FloatingActionButton(
+                    onClick = { showAddTeamDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Team",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Search Bar
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Search teams or teammates...") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color(0xFF9A7AE7),
+                            unfocusedContainerColor = Color(0xFF8B73D0),
+                            focusedLabelColor = Color.White,
+                            unfocusedLabelColor = Color.White,
+                            cursorColor = Color.White
+                        ),
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = "Clear search",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    )
+
+                }
+            }
+
+            // Teams List
+            if (filteredTeams.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredTeams) { team ->
+                        TeamCard(
+                            team = team,
+                            onAddTeammateClick = {
+                                selectedTeamForTeammate = team
+                                showAddTeammateDialog = true
+                            }
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Group,
+                            contentDescription = "No teams",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            if (searchQuery.isNotEmpty()) "No teams found" else "No teams yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        if (searchQuery.isEmpty()) {
+                            Button(
+                                onClick = { showAddTeamDialog = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Create your first team")
+                            }
                         }
                     }
                 }
             }
         }
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
+    // Add Team Dialog
+    if (showAddTeamDialog) {
+        AddTeamDialog(
+            onDismiss = { showAddTeamDialog = false },
+            onConfirm = { teamName ->
+                teamViewModel.addTeam(Team(teamName, emptyList()))
+                showAddTeamDialog = false
+            }
+        )
+    }
 
-        Text("Add Team")
-        TextField(value = teamName, onValueChange = { teamName = it }, label = { Text("Team Name") })
-        Button(onClick = { teamViewModel.addTeam(Team(teamName, emptyList())) }) {
-            Text("Add Team")
+    // Add Teammate Dialog
+    if (showAddTeammateDialog) {
+        AddTeammateDialog(
+            teams = teams,
+            selectedTeam = selectedTeamForTeammate,
+            onDismiss = {
+                showAddTeammateDialog = false
+                selectedTeamForTeammate = null
+            },
+            onConfirm = { teamName, teammate ->
+                teamViewModel.addTeammate(teamName, teammate)
+                showAddTeammateDialog = false
+                selectedTeamForTeammate = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TeamCard(
+    team: Team,
+    onAddTeammateClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Team Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = team.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                ElevatedButton(
+                    onClick = onAddTeammateClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PersonAdd,
+                        contentDescription = "Add Teammate",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Member")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Team Stats
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                TeamStat(
+                    icon = Icons.Default.Group,
+                    label = "Members",
+                    value = team.teammates.size.toString()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Teammates List
+            if (team.teammates.isNotEmpty()) {
+                Text(
+                    "Team Members",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                team.teammates.forEachIndexed { index, teammate ->
+                    TeammateItem(teammate = teammate)
+                    if (index < team.teammates.size - 1) {
+                        Divider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    }
+                }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "No teammates",
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No team members yet",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onAddTeammateClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text("Add First Member")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeammateItem(teammate: Teammate) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        Surface(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    teammate.name.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
-        Text("Add Teammate")
-        TextField(value = teammateName, onValueChange = { teammateName = it }, label = { Text("Teammate Name") })
-        TextField(value = teammateNumber, onValueChange = { teammateNumber = it }, label = { Text("Teammate Number") })
-        Row {
-            teamViewModel.teams.value.forEach { team ->
-                Button(onClick = { teamViewModel.addTeammate(team.name, Teammate(teammateName, teammateNumber)) }) {
-                    Text("Add to ${team.name}")
+        // Teammate Info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = teammate.name,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = teammate.number,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TeamStat(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddTeamDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var teamName by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    "Create New Team",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = teamName,
+                    onValueChange = { teamName = it },
+                    label = { Text("Team Name") },
+                    placeholder = { Text("Enter team name") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Button(
+                        onClick = {
+                            if (teamName.isNotBlank()) {
+                                onConfirm(teamName)
+                            }
+                        },
+                        enabled = teamName.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Create Team")
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        focusRequester.requestFocus()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddTeammateDialog(
+    teams: List<Team>,
+    selectedTeam: Team?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Teammate) -> Unit
+) {
+    var teammateName by remember { mutableStateOf("") }
+    var teammateNumber by remember { mutableStateOf("") }
+    var selectedTeamName by remember { mutableStateOf(selectedTeam?.name ?: "") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    "Add Team Member",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Team Selection
+                if (teams.isNotEmpty()) {
+                    Column {
+                        Text(
+                            "Select Team",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.height(120.dp)
+                        ) {
+                            items(teams) { team ->
+                                Surface(
+                                    onClick = { selectedTeamName = team.name },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (selectedTeamName == team.name) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                ) {
+                                    Text(
+                                        text = team.name,
+                                        modifier = Modifier.padding(16.dp),
+                                        color = if (selectedTeamName == team.name) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        fontWeight = if (selectedTeamName == team.name) {
+                                            FontWeight.Bold
+                                        } else {
+                                            FontWeight.Normal
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Member Details
+                OutlinedTextField(
+                    value = teammateName,
+                    onValueChange = { teammateName = it },
+                    label = { Text("Member Name") },
+                    placeholder = { Text("Enter member name") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = teammateNumber,
+                    onValueChange = { teammateNumber = it },
+                    label = { Text("Phone Number") },
+                    placeholder = { Text("Enter phone number") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Button(
+                        onClick = {
+                            if (teammateName.isNotBlank() && teammateNumber.isNotBlank() && selectedTeamName.isNotBlank()) {
+                                onConfirm(selectedTeamName, Teammate(teammateName, teammateNumber))
+                            }
+                        },
+                        enabled = teammateName.isNotBlank() && teammateNumber.isNotBlank() && selectedTeamName.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Add Member")
+                    }
                 }
             }
         }
