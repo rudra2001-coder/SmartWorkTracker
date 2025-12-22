@@ -1,5 +1,8 @@
 package com.rudra.smartworktracker.ui.screens.team
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,10 +22,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -92,7 +97,9 @@ fun TeamScreen() {
                     team.name.contains(searchQuery, ignoreCase = true) ||
                             team.teammates.any { teammate ->
                                 teammate.name.contains(searchQuery, ignoreCase = true) ||
-                                        teammate.number.contains(searchQuery, ignoreCase = true)
+                                        teammate.phoneNumbers.any { phone ->
+                                            phone.contains(searchQuery, ignoreCase = true)
+                                        }
                             }
                 }
             }
@@ -202,7 +209,6 @@ fun TeamScreen() {
                             }
                         }
                     )
-
                 }
             }
 
@@ -220,6 +226,12 @@ fun TeamScreen() {
                             onAddTeammateClick = {
                                 selectedTeamForTeammate = team
                                 showAddTeammateDialog = true
+                            },
+                            onDeleteTeamClick = {
+                                teamViewModel.removeTeam(team.name)
+                            },
+                            onDeleteTeammateClick = { teammateName ->
+                                teamViewModel.removeTeammate(team.name, teammateName)
                             }
                         )
                     }
@@ -295,8 +307,41 @@ fun TeamScreen() {
 @Composable
 private fun TeamCard(
     team: Team,
-    onAddTeammateClick: () -> Unit
+    onAddTeammateClick: () -> Unit,
+    onDeleteTeamClick: () -> Unit,
+    onDeleteTeammateClick: (String) -> Unit
 ) {
+    var showDeleteTeamDialog by remember { mutableStateOf(false) }
+
+    // Delete Team Confirmation Dialog
+    if (showDeleteTeamDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteTeamDialog = false },
+            title = { Text("Delete Team") },
+            text = { Text("Are you sure you want to delete '${team.name}'? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteTeamClick()
+                        showDeleteTeamDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDeleteTeamDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -310,7 +355,7 @@ private fun TeamCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Team Header
+            // Team Header with Delete button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -327,20 +372,37 @@ private fun TeamCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                ElevatedButton(
-                    onClick = onAddTeammateClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.PersonAdd,
-                        contentDescription = "Add Teammate",
-                        modifier = Modifier.size(18.dp)
-                    )
+                Row {
+                    // Delete Team Button
+                    IconButton(
+                        onClick = { showDeleteTeamDialog = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete team",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Member")
+
+                    // Add Teammate Button
+                    ElevatedButton(
+                        onClick = onAddTeammateClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.PersonAdd,
+                            contentDescription = "Add Teammate",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Member")
+                    }
                 }
             }
 
@@ -373,12 +435,13 @@ private fun TeamCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 team.teammates.forEachIndexed { index, teammate ->
-                    TeammateItem(teammate = teammate)
+                    TeammateItem(
+                        teammate = teammate,
+                        teamName = team.name,
+                        onDeleteClick = { onDeleteTeammateClick(teammate.name) }
+                    )
                     if (index < team.teammates.size - 1) {
-                        Divider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             } else {
@@ -415,46 +478,115 @@ private fun TeamCard(
 }
 
 @Composable
-private fun TeammateItem(teammate: Teammate) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+private fun TeammateItem(
+    teammate: Teammate,
+    teamName: String,
+    onDeleteClick: () -> Unit
+) {
+    val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Teammate") },
+            text = { Text("Are you sure you want to remove '${teammate.name}' from '$teamName'?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteClick()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDeleteDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        // Avatar
-        Surface(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            // Avatar
+            Surface(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        teammate.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Teammate Info
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    teammate.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
+                    text = teammate.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
                     ),
-                    color = MaterialTheme.colorScheme.primary
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Display multiple phone numbers with click-to-dial
+                teammate.phoneNumbers.forEachIndexed { index, phoneNumber ->
+                    Text(
+                        text = if (index == 0) phoneNumber else "• $phoneNumber",
+                        style = if (index == 0) MaterialTheme.typography.bodyMedium
+                        else MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:$phoneNumber")
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            }
+
+            // Delete button
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete teammate",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Teammate Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = teammate.name,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = teammate.number,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
         }
     }
 }
@@ -586,7 +718,7 @@ private fun AddTeammateDialog(
     onConfirm: (String, Teammate) -> Unit
 ) {
     var teammateName by remember { mutableStateOf("") }
-    var teammateNumber by remember { mutableStateOf("") }
+    var phoneNumbersInput by remember { mutableStateOf("") }
     var selectedTeamName by remember { mutableStateOf(selectedTeam?.name ?: "") }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -657,6 +789,12 @@ private fun AddTeammateDialog(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    Text(
+                        "No teams available. Please create a team first.",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
                 }
 
                 // Member Details
@@ -676,17 +814,25 @@ private fun AddTeammateDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
-                    value = teammateNumber,
-                    onValueChange = { teammateNumber = it },
-                    label = { Text("Phone Number") },
-                    placeholder = { Text("Enter phone number") },
+                    value = phoneNumbersInput,
+                    onValueChange = { phoneNumbersInput = it },
+                    label = { Text("Phone Numbers (comma-separated)") },
+                    placeholder = { Text("e.g., +1234567890, +9876543210") },
                     leadingIcon = {
                         Icon(Icons.Default.Person, contentDescription = null)
                     },
-                    singleLine = true,
+                    singleLine = false,
+                    maxLines = 3,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
+                )
+
+                Text(
+                    "Enter multiple phone numbers separated by commas",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -710,11 +856,22 @@ private fun AddTeammateDialog(
 
                     Button(
                         onClick = {
-                            if (teammateName.isNotBlank() && teammateNumber.isNotBlank() && selectedTeamName.isNotBlank()) {
-                                onConfirm(selectedTeamName, Teammate(teammateName, teammateNumber))
+                            if (teammateName.isNotBlank() && phoneNumbersInput.isNotBlank() && selectedTeamName.isNotBlank()) {
+                                // Parse phone numbers (split by comma and trim)
+                                val phoneNumbers = phoneNumbersInput
+                                    .split(",")
+                                    .map { it.trim() }
+                                    .filter { it.isNotBlank() }
+
+                                if (phoneNumbers.isNotEmpty()) {
+                                    onConfirm(selectedTeamName, Teammate(teammateName, phoneNumbers))
+                                }
                             }
                         },
-                        enabled = teammateName.isNotBlank() && teammateNumber.isNotBlank() && selectedTeamName.isNotBlank(),
+                        enabled = teammateName.isNotBlank() &&
+                                phoneNumbersInput.isNotBlank() &&
+                                selectedTeamName.isNotBlank() &&
+                                teams.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         ),

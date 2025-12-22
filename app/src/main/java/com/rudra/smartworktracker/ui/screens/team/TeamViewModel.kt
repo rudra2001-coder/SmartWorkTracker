@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
 class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager) : ViewModel() {
 
     // Use StateFlow for better Compose integration
-    private val _teams = MutableStateFlow(sharedPreferenceManager.getTeams())
+    private val _teams = MutableStateFlow(loadAndCleanTeams())
     val teams: StateFlow<List<Team>> = _teams.asStateFlow()
 
     // For backward compatibility with existing code
     @Deprecated("Use teams StateFlow instead", replaceWith = ReplaceWith("teams"))
-    var teamsLegacy = mutableStateOf(sharedPreferenceManager.getTeams())
+    var teamsLegacy = mutableStateOf(loadAndCleanTeams())
         private set
 
     init {
@@ -28,51 +28,54 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
             }
         }
     }
+    
+    private fun loadAndCleanTeams(): List<Team> {
+        val teamsFromPrefs = sharedPreferenceManager.getTeams() ?: return emptyList()
+        return teamsFromPrefs.map { team ->
+            val cleanTeammates = team.teammates?.map { teammate ->
+                teammate.copy(phoneNumbers = teammate.phoneNumbers ?: emptyList())
+            } ?: emptyList()
+            team.copy(teammates = cleanTeammates)
+        }
+    }
+    
+    private fun updateTeams(newTeams: List<Team>) {
+        _teams.value = newTeams
+        sharedPreferenceManager.saveTeams(newTeams)
+    }
 
     fun addTeam(team: Team) {
         val currentTeams = _teams.value.toMutableList()
         currentTeams.add(team)
-        _teams.value = currentTeams
-        sharedPreferenceManager.saveTeams(currentTeams)
+        updateTeams(currentTeams)
     }
 
     fun addTeammate(teamName: String, teammate: Teammate) {
         val currentTeams = _teams.value.toMutableList()
-        val team = currentTeams.find { it.name == teamName }
-        team?.let {
-            val updatedTeammates = it.teammates.toMutableList()
-            updatedTeammates.add(teammate)
-            val updatedTeam = it.copy(teammates = updatedTeammates)
-            val teamIndex = currentTeams.indexOf(it)
+        val teamIndex = currentTeams.indexOfFirst { it.name == teamName }
+        if (teamIndex != -1) {
+            val team = currentTeams[teamIndex]
+            val updatedTeammates = (team.teammates ?: emptyList()) + teammate
+            val updatedTeam = team.copy(teammates = updatedTeammates)
             currentTeams[teamIndex] = updatedTeam
-            _teams.value = currentTeams
-            sharedPreferenceManager.saveTeams(currentTeams)
+            updateTeams(currentTeams)
         }
     }
 
-    // New function to remove a team
     fun removeTeam(teamName: String) {
-        val currentTeams = _teams.value.toMutableList()
-        currentTeams.removeIf { it.name == teamName }
-        _teams.value = currentTeams
-        sharedPreferenceManager.saveTeams(currentTeams)
+        val updatedTeams = _teams.value.filterNot { it.name == teamName }
+        updateTeams(updatedTeams)
     }
 
-    // New function to remove a teammate
     fun removeTeammate(teamName: String, teammateName: String) {
         val currentTeams = _teams.value.toMutableList()
-        val team = currentTeams.find { it.name == teamName }
-        team?.let {
-            val updatedTeammates = it.teammates.toMutableList()
-                .filterNot { teammate -> teammate.name == teammateName }
-            val updatedTeam = it.copy(teammates = updatedTeammates)
-            val teamIndex = currentTeams.indexOf(it)
+        val teamIndex = currentTeams.indexOfFirst { it.name == teamName }
+        if (teamIndex != -1) {
+            val team = currentTeams[teamIndex]
+            val updatedTeammates = (team.teammates ?: emptyList()).filterNot { it.name == teammateName }
+            val updatedTeam = team.copy(teammates = updatedTeammates)
             currentTeams[teamIndex] = updatedTeam
-            _teams.value = currentTeams
-            sharedPreferenceManager.saveTeams(currentTeams)
+            updateTeams(currentTeams)
         }
     }
-
-    // Search functionality could also be handled here if needed
-    // Alternatively, you can filter in the UI as shown in the TeamScreen
 }
