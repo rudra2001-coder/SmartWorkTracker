@@ -84,11 +84,13 @@ fun AllFunsionScreen(navController: NavController) {
 
     val quickAccessFeatures = remember {
         listOf(
+            NavigationItem.Team,
             NavigationItem.AddEntry,
             NavigationItem.WorkTimer,
             NavigationItem.Focus,
             NavigationItem.Calendar,
             NavigationItem.Analytics
+
         )
     }
     val featureSections = remember {
@@ -124,9 +126,12 @@ fun AllFunsionScreen(navController: NavController) {
             FeatureSection(
                 "General", listOf(
                     NavigationItem.Backup,
-                    NavigationItem.Settings
+                    NavigationItem.Settings,
+                    NavigationItem.Team
                 )
-            )
+            ),
+
+
         )
     }
     val allFeatures = remember { (quickAccessFeatures + featureSections.flatMap { it.items }).distinctBy { it.route } }

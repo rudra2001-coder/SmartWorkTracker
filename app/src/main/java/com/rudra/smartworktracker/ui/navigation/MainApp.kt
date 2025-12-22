@@ -75,6 +75,7 @@ import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
+import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
@@ -115,7 +116,8 @@ fun MainApp() {
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
         NavigationItem.Backup,
-        NavigationItem.Settings
+        NavigationItem.Settings,
+        NavigationItem.Team
     )
 
     ModalNavigationDrawer(
@@ -447,6 +449,15 @@ fun MainApp() {
                 ) {
                     TransferScreen()
                 }
+                 composable(
+                    route = NavigationItem.Team.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    TeamScreen()
+                }
             }
         }
     }
@@ -716,6 +727,13 @@ sealed class NavigationItem(
         icon = Icons.Default.SwapHoriz,
         description = "Move money between accounts"
     )
+    object Team : NavigationItem(
+        route = "team",
+        title = "Team",
+        icon = Icons.Default.Group,
+        description = "Manage your teams"
+    )
+
 }
 
 @Preview(showBackground = true)
