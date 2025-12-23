@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rudra.smartworktracker.model.WorkLog
+import com.rudra.smartworktracker.ui.screens.team.Team
 
 class SharedPreferenceManager(context: Context) {
     private val sharedPreferences = context.getSharedPreferences("WorkLogs", Context.MODE_PRIVATE)
@@ -18,6 +19,21 @@ class SharedPreferenceManager(context: Context) {
         val json = sharedPreferences.getString("work_logs", null)
         return if (json != null) {
             val type = object : TypeToken<List<WorkLog>>() {}.type
+            gson.fromJson(json, type)
+        } else {
+            emptyList()
+        }
+    }
+
+    fun saveTeams(teams: List<Team>) {
+        val json = gson.toJson(teams)
+        sharedPreferences.edit().putString("teams", json).apply()
+    }
+
+    fun getTeams(): List<Team> {
+        val json = sharedPreferences.getString("teams", null)
+        return if (json != null) {
+            val type = object : TypeToken<List<Team>>() {}.type
             gson.fromJson(json, type)
         } else {
             emptyList()

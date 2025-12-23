@@ -1,7 +1,11 @@
 package com.rudra.smartworktracker.data
 
 import android.content.Context
+import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -39,6 +43,7 @@ import com.rudra.smartworktracker.data.entity.MonthlyInput
 import com.rudra.smartworktracker.data.entity.MonthlySummary
 import com.rudra.smartworktracker.data.entity.Savings
 import com.rudra.smartworktracker.data.entity.Settings
+import com.rudra.smartworktracker.data.entity.TravelAndExpense
 import com.rudra.smartworktracker.data.entity.UserProfile
 import com.rudra.smartworktracker.data.entity.WorkDay
 import com.rudra.smartworktracker.data.local.TypeConverters as LocalTypeConverters
@@ -51,6 +56,7 @@ import com.rudra.smartworktracker.model.Habit
 import com.rudra.smartworktracker.model.HealthMetric
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkSession
+import kotlinx.coroutines.flow.Flow
 
 @Database(
     entities = [
@@ -74,13 +80,14 @@ import com.rudra.smartworktracker.model.WorkSession
         CreditCard::class,
         CreditCardTransaction::class,
         Savings::class,
-        Colleague::class
+        Colleague::class,
+        TravelAndExpense::class
     ],
     views = [
         MonthlySummary::class
     
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -109,6 +116,19 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun savingsDao(): SavingsDao
     abstract fun colleagueDao(): ColleagueDao
 
+    abstract fun travelExpenseDao(): TravelExpenseDao
+
+    @Dao
+    interface TravelExpenseDao {
+        @Query("SELECT * FROM travel_expenses LIMIT 1")
+        fun getTravelExpense(): Flow<TravelAndExpense?>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(expense: TravelAndExpense)
+
+        @Query("DELETE FROM travel_expenses")
+        suspend fun deleteAll()
+    }
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null

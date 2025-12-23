@@ -11,7 +11,7 @@ sealed interface ReportListItem {
 
 data class WorkLogReportItem(val workLog: WorkLog) : ReportListItem {
     override val date: Long = workLog.date.time
-    override val amount: Double = 0.0 // Or some other default value
+    override val amount: Double = 0.0
 }
 
 data class IncomeReportItem(val income: Income) : ReportListItem {
@@ -24,12 +24,10 @@ data class ExpenseReportItem(val expense: Expense) : ReportListItem {
     override val amount: Double = expense.amount
 }
 
-enum class SortOption { DateNewest, DateOldest, AmountHighest, AmountLowest }
-
 data class ReportUiState(
     val selectedCategory: ReportCategory = ReportCategory.All,
     val selectedDateRange: DateRange = DateRange.ThisMonth,
-    val customDateRange: Pair<Long, Long>? = null,
+    val customDateRange: CustomDateRange? = null,
     val filteredItems: List<ReportListItem> = emptyList(),
     val totalWorkHours: Long = 0,
     val totalIncome: Double = 0.0,

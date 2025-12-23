@@ -1,5 +1,6 @@
 package com.rudra.smartworktracker.ui.navigation
 
+import android.content.Context
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Spacer
@@ -13,8 +14,8 @@ import androidx.compose.material.icons.filled.AddRoad
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
@@ -34,16 +35,31 @@ import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.*
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -54,8 +70,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
 import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
-import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
 import com.rudra.smartworktracker.ui.screens.all_funsion.AllFunsionScreen
+import com.rudra.smartworktracker.ui.screens.analytics.AnalyticsScreen
 import com.rudra.smartworktracker.ui.screens.backup.BackupScreen
 import com.rudra.smartworktracker.ui.screens.breaks.MindfulBreakScreen
 import com.rudra.smartworktracker.ui.screens.calculation.CalculationScreen
@@ -71,10 +87,12 @@ import com.rudra.smartworktracker.ui.screens.health.HealthMetricsScreen
 import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.loans.LoansScreen
+import com.rudra.smartworktracker.ui.screens.onboarding.OnboardingScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
+import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
@@ -84,12 +102,18 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp() {
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("main_prefs", Context.MODE_PRIVATE) }
+    val isOnboardingCompleted = remember { sharedPreferences.getBoolean("onboarding_completed", false) }
+    val startDestination = if (isOnboardingCompleted) NavigationItem.Dashboard.route else NavigationItem.Onboarding.route
+
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val shouldShowBars = currentRoute != NavigationItem.Onboarding.route
 
     val navigationItems = listOf(
         NavigationItem.Dashboard,
@@ -115,7 +139,8 @@ fun MainApp() {
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
         NavigationItem.Backup,
-        NavigationItem.Settings
+        NavigationItem.Settings,
+        NavigationItem.Team
     )
 
     ModalNavigationDrawer(
@@ -148,33 +173,49 @@ fun MainApp() {
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Smart Work Tracker") },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch {
-                                drawerState.apply {
-                                    if (isClosed) open() else close()
+                if (shouldShowBars) {
+                    TopAppBar(
+                        title = { Text("Smart Work Tracker") },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    drawerState.apply {
+                                        if (isClosed) open() else close()
+                                    }
                                 }
+                            }) {
+                                Icon(Icons.Filled.Menu, contentDescription = "Menu")
                             }
-                        }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menu")
                         }
-                    }
-                )
+                    )
+                }
             },
             bottomBar = {
-                AppBottomNavigation(
-                    navController = navController,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (shouldShowBars) {
+                    AppBottomNavigation(
+                        navController = navController,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         ) { paddingValues ->
             NavHost(
                 navController = navController,
-                startDestination = NavigationItem.Dashboard.route,
+                startDestination = startDestination,
                 modifier = Modifier.padding(paddingValues)
             ) {
+                composable(NavigationItem.Onboarding.route) {
+                    OnboardingScreen(
+                        onOnboardingFinished = {
+                            sharedPreferences.edit().putBoolean("onboarding_completed", true).apply()
+                            navController.navigate(NavigationItem.Dashboard.route) {
+                                popUpTo(NavigationItem.Onboarding.route) {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                    )
+                }
                 composable(
                     route = NavigationItem.Dashboard.route,
                     enterTransition = { defaultEnterTransition() },
@@ -354,7 +395,7 @@ fun MainApp() {
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
                     popEnterTransition = { defaultPopEnterTransition() },
-                    popExitTransition = { defaultPopExitTransition() }
+popExitTransition = { defaultPopExitTransition() }
                 ) {
                     BackupScreen(onNavigateBack = { navController.popBackStack() })
                 }
@@ -447,6 +488,15 @@ fun MainApp() {
                 ) {
                     TransferScreen()
                 }
+                 composable(
+                    route = NavigationItem.Team.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    TeamScreen()
+                }
             }
         }
     }
@@ -521,7 +571,7 @@ fun AppBottomNavigation(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     indicatorColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
@@ -535,6 +585,7 @@ sealed class NavigationItem(
     val icon: ImageVector,
     val description: String? = null
 ) {
+    object Onboarding : NavigationItem("onboarding", "Onboarding", Icons.Default.Dashboard)
     object Dashboard : NavigationItem(
         route = "dashboard",
         title = "Dashboard",
@@ -716,6 +767,13 @@ sealed class NavigationItem(
         icon = Icons.Default.SwapHoriz,
         description = "Move money between accounts"
     )
+    object Team : NavigationItem(
+        route = "team",
+        title = "Team",
+        icon = Icons.Default.Group,
+        description = "Manage your teams"
+    )
+
 }
 
 @Preview(showBackground = true)

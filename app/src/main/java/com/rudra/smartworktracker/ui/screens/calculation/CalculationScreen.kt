@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,31 +28,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.ViewWeek
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -83,33 +66,90 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
     val viewModel: CalculationViewModel = viewModel(factory = CalculationViewModelFactory(context))
 
     val calculation by viewModel.calculation.collectAsState()
+    val travelExpense by viewModel.travelExpense.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
+
+    // Meal costs
     val mealCostPerWeek by viewModel.mealCostPerWeek.collectAsState()
     val mealCostPerMonth by viewModel.mealCostPerMonth.collectAsState()
     val mealCostPerYear by viewModel.mealCostPerYear.collectAsState()
+
+    // Travel costs
+    val travelCostPerWeek by viewModel.travelCostPerWeek.collectAsState()
+    val travelCostPerMonth by viewModel.travelCostPerMonth.collectAsState()
+    val travelCostPerYear by viewModel.travelCostPerYear.collectAsState()
+
+    // Other expenses
+    val otherExpensePerMonth by viewModel.otherExpensePerMonth.collectAsState()
+    val otherExpensePerYear by viewModel.otherExpensePerYear.collectAsState()
+
+    // Total expenses
+    val totalExpensePerMonth by viewModel.totalExpensePerMonth.collectAsState()
+    val totalExpensePerYear by viewModel.totalExpensePerYear.collectAsState()
+
+    // Office days
     val officeDays by viewModel.officeDays.collectAsState()
     val homeOfficeDays by viewModel.homeOfficeDays.collectAsState()
 
+    // State for input fields
     var dailyMealRate by remember { mutableStateOf("") }
-    val focusManager = LocalFocusManager.current
+    var dailyTravelCost by remember { mutableStateOf("") }
+    var otherExpenses by remember { mutableStateOf("") }
+    var otherExpenseDescription by remember { mutableStateOf("") }
 
+    val focusManager = LocalFocusManager.current
     val monthYearFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
 
-    LaunchedEffect(calculation) {
+    // Initialize fields from ViewModel
+    LaunchedEffect(calculation, travelExpense) {
         calculation?.let {
             if (dailyMealRate.toDoubleOrNull() != it.dailyMealRate) {
                 dailyMealRate = it.dailyMealRate.toString()
             }
         }
+
+        travelExpense?.let {
+            if (dailyTravelCost.toDoubleOrNull() != it.dailyTravelCost) {
+                dailyTravelCost = it.dailyTravelCost.toString()
+            }
+            if (otherExpenses.toDoubleOrNull() != it.otherExpenses) {
+                otherExpenses = it.otherExpenses.toString()
+            }
+            if (otherExpenseDescription != it.otherExpenseDescription) {
+                otherExpenseDescription = it.otherExpenseDescription
+            }
+        }
     }
 
-    val infoCardItems = remember(officeDays, homeOfficeDays, mealCostPerWeek, mealCostPerMonth, mealCostPerYear) {
+    val infoCardItems = remember(
+        officeDays, homeOfficeDays,
+        mealCostPerWeek, mealCostPerMonth, mealCostPerYear,
+        travelCostPerWeek, travelCostPerMonth, travelCostPerYear,
+        otherExpensePerMonth, otherExpensePerYear,
+        totalExpensePerMonth, totalExpensePerYear
+    ) {
         listOf(
+            // Office Days
             "Office Days" to "$officeDays days",
             "Home Office Days" to "$homeOfficeDays days",
-            "Est. Weekly Meal Cost" to String.format("%.2f Taka", mealCostPerWeek),
+
+            // Meal Costs
+            "Weekly Meal Cost" to String.format("%.2f Taka", mealCostPerWeek),
             "Monthly Meal Cost" to String.format("%.2f Taka", mealCostPerMonth),
-            "Projected Yearly Cost" to String.format("%.2f Taka", mealCostPerYear)
+            "Yearly Meal Cost" to String.format("%.2f Taka", mealCostPerYear),
+
+            // Travel Costs
+            "Weekly Travel Cost" to String.format("%.2f Taka", travelCostPerWeek),
+            "Monthly Travel Cost" to String.format("%.2f Taka", travelCostPerMonth),
+            "Yearly Travel Cost" to String.format("%.2f Taka", travelCostPerYear),
+
+            // Other Expenses
+            "Monthly Other Expenses" to String.format("%.2f Taka", otherExpensePerMonth),
+            "Yearly Other Expenses" to String.format("%.2f Taka", otherExpensePerYear),
+
+            // Total Expenses
+            "Total Monthly Expense" to String.format("%.2f Taka", totalExpensePerMonth),
+            "Total Yearly Expense" to String.format("%.2f Taka", totalExpensePerYear)
         )
     }
 
@@ -117,10 +157,20 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Meal Cost Calculator", fontWeight = FontWeight.Bold) },
+                    title = {
+                        Text(
+                            "Expense Calculator",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -150,28 +200,122 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
                     SummaryHeaderCard(
                         officeDays = officeDays,
                         homeOfficeDays = homeOfficeDays,
-                        totalCost = mealCostPerMonth
+                        totalCost = totalExpensePerMonth
                     )
                 }
 
+                // Input Section - Meal Rate
                 item {
-                    ModernTextField(
-                        value = dailyMealRate,
-                        onValueChange = { dailyMealRate = it },
-                        label = "Daily Meal Rate (Taka)",
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                dailyMealRate.toDoubleOrNull()?.let {
-                                    viewModel.saveDailyMealRate(it)
-                                }
-                                focusManager.clearFocus()
-                            }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
-                    )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                "Meal Cost Settings",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+
+                            ModernTextField(
+                                value = dailyMealRate,
+                                onValueChange = { dailyMealRate = it },
+                                label = "Daily Meal Rate (Taka)",
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        dailyMealRate.toDoubleOrNull()?.let {
+                                            viewModel.saveDailyMealRate(it)
+                                        }
+                                        focusManager.clearFocus()
+                                    }
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Input Section - Travel & Other Expenses
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                "Travel & Other Expenses",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+
+                            ModernTextField(
+                                value = dailyTravelCost,
+                                onValueChange = { dailyTravelCost = it },
+                                label = "Daily Travel Cost (Taka)",
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = {
+                                        dailyTravelCost.toDoubleOrNull()?.let {
+                                            viewModel.saveTravelExpense(
+                                                it,
+                                                otherExpenses.toDoubleOrNull() ?: 0.0,
+                                                otherExpenseDescription
+                                            )
+                                        }
+                                        focusManager.clearFocus()
+                                    }
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            ModernTextField(
+                                value = otherExpenses,
+                                onValueChange = { otherExpenses = it },
+                                label = "Other Monthly Expenses (Taka)",
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = {
+                                        otherExpenses.toDoubleOrNull()?.let {
+                                            viewModel.saveTravelExpense(
+                                                dailyTravelCost.toDoubleOrNull() ?: 0.0,
+                                                it,
+                                                otherExpenseDescription
+                                            )
+                                        }
+                                        focusManager.clearFocus()
+                                    }
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+
+                        }
+                    }
                 }
 
                 item {
@@ -190,17 +334,36 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
 
                 itemsIndexed(infoCardItems) { index, item ->
                     val cardAppearance = when (index) {
+                        // Office Days
                         0 -> InfoCardAppearance(Icons.Default.Business, MaterialTheme.colorScheme.primary)
                         1 -> InfoCardAppearance(Icons.Default.Home, Color(0xFF388E3C))
-                        2 -> InfoCardAppearance(Icons.Default.ViewWeek, Color(0xFFF57C00))
+
+                        // Meal Costs
+                        2 -> InfoCardAppearance(Icons.Default.Restaurant, Color(0xFFF57C00))
                         3 -> InfoCardAppearance(Icons.Default.CalendarToday, Color(0xFF7B1FA2))
-                        else -> InfoCardAppearance(Icons.AutoMirrored.Filled.TrendingUp, MaterialTheme.colorScheme.error)
+                        4 -> InfoCardAppearance(Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF1976D2))
+
+                        // Travel Costs
+                        5 -> InfoCardAppearance(Icons.Default.DirectionsCar, Color(0xFF512DA8))
+                        6 -> InfoCardAppearance(Icons.Default.DirectionsBus, Color(0xFF00796B))
+                        7 -> InfoCardAppearance(Icons.AutoMirrored.Filled.DirectionsWalk, Color(0xFF0288D1))
+
+                        // Other Expenses
+                        8 -> InfoCardAppearance(Icons.Default.AttachMoney, Color(0xFFC2185B))
+                        9 -> InfoCardAppearance(Icons.Default.Savings, Color(0xFF7B1FA2))
+
+                        // Total Expenses
+                        10 -> InfoCardAppearance(Icons.Default.Calculate, MaterialTheme.colorScheme.error)
+                        11 -> InfoCardAppearance(Icons.Default.ShowChart, Color(0xFFD32F2F))
+
+                        else -> InfoCardAppearance(Icons.Default.Info, MaterialTheme.colorScheme.primary)
                     }
+
                     InfoCard(
                         title = item.first,
                         value = item.second,
                         icon = cardAppearance.icon,
-                        iconColor = cardAppearance.color,
+                        iconColor = Color(0xFF673AB7),
                         animationDelay = index * 100
                     )
                 }
@@ -222,7 +385,12 @@ fun MonthNavigator(month: String, onPrevious: () -> Unit, onNext: () -> Unit) {
             Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Previous Month")
         }
         AnimatedContent(targetState = month, label = "Month Text") { targetMonth ->
-            Text(text = targetMonth, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text = targetMonth,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
         IconButton(onClick = onNext) {
             Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "Next Month")
@@ -241,7 +409,11 @@ fun SummaryHeaderCard(officeDays: Int, homeOfficeDays: Int, totalCost: Double) {
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("This Month's Summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "This Month's Summary",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -250,7 +422,7 @@ fun SummaryHeaderCard(officeDays: Int, homeOfficeDays: Int, totalCost: Double) {
                 SummaryItem("Office", "$officeDays days")
                 SummaryItem("Home", "$homeOfficeDays days")
                 SummaryItem("Total", "${officeDays + homeOfficeDays} days")
-                SummaryItem("Cost", String.format("%.0f Taka", totalCost), isCost = true)
+                SummaryItem("Total Cost", String.format("%.0f Taka", totalCost), isCost = true)
             }
         }
     }
@@ -333,13 +505,21 @@ fun InfoCard(title: String, value: String, icon: ImageVector, iconColor: Color, 
         ) {
             Icon(imageVector = icon, contentDescription = title, tint = iconColor)
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-            Text(text = value, style = MaterialTheme.typography.bodyLarge, color = iconColor, fontWeight = FontWeight.Bold)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = iconColor,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
-
 @Composable
 fun WorkingDaysPieChart(data: Map<String, Float>) {
     val pieChartColors = listOf(
@@ -350,44 +530,54 @@ fun WorkingDaysPieChart(data: Map<String, Float>) {
     val officeValue = data["Office"] ?: 0f
     val homeValue = data["Home Office"] ?: 0f
     val totalValue = officeValue + homeValue
-    val officePercentage = if (totalValue > 0) (officeValue / totalValue) * 100f else 0f
+    val officePercentage =
+        if (totalValue > 0f) (officeValue / totalValue) * 100f else 0f
 
     val pieChartData = PieChartData(
         slices = data.entries.mapIndexed { index, entry ->
-            PieChartData.Slice(entry.key, entry.value, pieChartColors[index % pieChartColors.size])
+            PieChartData.Slice(
+                label = entry.key,
+                value = entry.value,
+                color = pieChartColors[index % pieChartColors.size]
+            )
         },
         plotType = PlotType.Donut
     )
 
     val pieChartConfig = PieChartConfig(
         isAnimationEnable = true,
-        showSliceLabels = true,
-        sliceLabelTextSize = 12.sp,
-        sliceLabelTextColor = MaterialTheme.colorScheme.onPrimary,
-        strokeWidth = 35f,
-        chartPadding = 25
+        showSliceLabels = false, // IMPORTANT
+        strokeWidth = 28f,       // Reduced to prevent clipping
+        chartPadding = 20
     )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .padding(16.dp),
+                .height(260.dp), // FIXED HEIGHT
             contentAlignment = Alignment.Center
         ) {
+
+            // 🔹 SQUARE CHART AREA
             PieChart(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.size(220.dp),
                 pieChartData = pieChartData,
                 pieChartConfig = pieChartConfig
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+            // 🔹 CENTER TEXT
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = "%.0f%%".format(officePercentage),
+                    text = "${officePercentage.toInt()}%",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -407,7 +597,7 @@ fun NoDataPlaceholder() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .aspectRatio(1.5f)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
@@ -418,5 +608,13 @@ fun NoDataPlaceholder() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+    }
+}
+// Add @Preview annotations for preview
+@Preview(showBackground = true)
+@Composable
+fun CalculationScreenPreview() {
+    SmartWorkTrackerTheme {
+        CalculationScreen(onNavigateBack = {})
     }
 }

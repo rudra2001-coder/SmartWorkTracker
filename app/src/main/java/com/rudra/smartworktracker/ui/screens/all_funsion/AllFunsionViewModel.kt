@@ -66,7 +66,8 @@ class AllFunsionViewModel(application: Application) : AndroidViewModel(applicati
             NavigationItem.Transfer,
             NavigationItem.Backup,
             NavigationItem.AllFunsion,
-            NavigationItem.Settings
+            NavigationItem.Settings,
+            NavigationItem.Team
         )
     }
 }
