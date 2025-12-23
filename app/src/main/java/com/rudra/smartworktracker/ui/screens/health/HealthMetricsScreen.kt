@@ -1,18 +1,20 @@
 package com.rudra.smartworktracker.ui.screens.health
 
-import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,25 +22,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.Nightlight
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.LocalDrink
+import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.Nightlight
+import androidx.compose.material.icons.outlined.Straighten
+import androidx.compose.material.icons.outlined.TrackChanges
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,199 +59,196 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.HealthMetricType
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
     val healthData by viewModel.healthData.collectAsState()
-    val context = LocalContext.current
+    val healthAnalytics by viewModel.healthAnalytics.collectAsState()
+    val goals by viewModel.goals.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     var selectedMetric by remember { mutableStateOf(HealthMetricType.WEIGHT) }
-    var inputValue by remember { mutableStateOf("") }
     var showInputDialog by remember { mutableStateOf(false) }
+    var showGoalDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selectedMetric) {
-        // Reset input when metric changes
-        inputValue = ""
+    // Confetti effect
+    if (uiState.showConfetti) {
+        ConfettiAnimation()
     }
 
-    Column(
+    // Premium gradient background
+    val backgroundGradient = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.05f)
+        )
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(backgroundGradient)
     ) {
-        // Header
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(20.dp),
-                    clip = true
-                ),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "Health Dashboard",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    "Track your wellness journey",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        // Animated floating particles
+        AnimatedParticles()
 
-        LazyColumn(
+        // Main content
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(4.dp)
         ) {
-            // Health Overview Cards
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    HealthMetricCard(
-                        title = "Weight",
-                        currentValue = healthData.currentWeight,
-                        unit = "kg",
-                        targetValue = healthData.weightGoal,
-                        icon = Icons.Default.MonitorWeight,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            selectedMetric = HealthMetricType.WEIGHT
-                            showInputDialog = true
-                        }
-                    )
+            // Header with gradient
+            HealthHeader(
+                dailyStreak = healthAnalytics.dailyStreak,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
-                    HealthMetricCard(
-                        title = "BMI",
-                        currentValue = healthData.currentBMI,
-                        unit = "",
-                        targetValue = 22.5, // Healthy BMI range
-                        icon = Icons.Default.Calculate,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            // BMI is calculated automatically
-                        }
-                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                // Health Overview Cards
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        HealthMetricCard(
+                            title = "Weight",
+                            currentValue = healthData.currentValues[HealthMetricType.WEIGHT],
+                            unit = "kg",
+                            targetValue = goals[HealthMetricType.WEIGHT],
+                            icon = Icons.Outlined.MonitorWeight,
+                            color = Color(0xFF6C63FF), // Premium purple
+                            trend = healthAnalytics.weightTrend,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                selectedMetric = HealthMetricType.WEIGHT
+                                showInputDialog = true
+                            }
+                        )
+
+                        HealthMetricCard(
+                            title = "BMI",
+                            currentValue = healthAnalytics.bmi,
+                            unit = "",
+                            targetValue = 22.5,
+                            icon = Icons.Outlined.Calculate,
+                            color = Color(0xFF4CC9F0), // Cyan
+                            bmiCategory = healthAnalytics.bmiCategory,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                // Show BMI info
+                            }
+                        )
+                    }
                 }
-            }
 
-            // Progress Visualization
-            item {
-                HealthProgressChart(
-                    weightProgress = healthData.weightProgress,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Quick Actions
-            item {
-                Text(
-                    "Quick Log",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    HealthQuickAction(
-                        title = "Weight",
-                        icon = Icons.Default.MonitorWeight,
-                        color = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            selectedMetric = HealthMetricType.WEIGHT
-                            showInputDialog = true
-                        }
-                    )
-
-                    HealthQuickAction(
-                        title = "Height",
-                        icon = Icons.Default.Straighten,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        onClick = {
-                            selectedMetric = HealthMetricType.HEIGHT
-                            showInputDialog = true
-                        }
-                    )
-
-                    HealthQuickAction(
-                        title = "Water",
-                        icon = Icons.Default.LocalDrink,
-                        color = MaterialTheme.colorScheme.secondary,
-                        onClick = {
-                            selectedMetric = HealthMetricType.WATER
-                            showInputDialog = true
-                        }
-                    )
-
-                    HealthQuickAction(
-                        title = "Sleep",
-                        icon = Icons.Default.Nightlight,
-                        color = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            selectedMetric = HealthMetricType.SLEEP
-                            showInputDialog = true
-                        }
-                    )
-                }
-            }
-
-            // Recent Entries
-            item {
-                if (healthData.recentEntries.isNotEmpty()) {
-                    RecentHealthEntries(
-                        entries = healthData.recentEntries,
+                // Progress Visualization Section
+                item {
+                    HealthProgressSection(
+                        weightProgress = healthData.weightProgress,
+                        waterConsistency = healthData.waterConsistency,
+                        sleepConsistency = healthData.sleepConsistency,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                // Quick Actions with premium design
+                item {
+                    Text(
+                        "Quick Log",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+
+                    QuickActionsGrid(
+                        onWeightClick = {
+                            selectedMetric = HealthMetricType.WEIGHT
+                            showInputDialog = true
+                        },
+                        onHeightClick = {
+                            selectedMetric = HealthMetricType.HEIGHT
+                            showInputDialog = true
+                        },
+                        onWaterClick = {
+                            selectedMetric = HealthMetricType.WATER
+                            showInputDialog = true
+                        },
+                        onSleepClick = {
+                            selectedMetric = HealthMetricType.SLEEP
+                            showInputDialog = true
+                        },
+                        onGoalClick = { showGoalDialog = true }
+                    )
+                }
+
+                // Recent Entries with glassmorphism effect
+                if (healthData.recentEntries.isNotEmpty()) {
+                    item {
+                        RecentEntriesCard(
+                            entries = healthData.recentEntries,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // Health Insights
+                item {
+                    HealthInsightsCard(
+                        analytics = healthAnalytics,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // Error/Success Snackbars
+        if (uiState.error != null) {
+            LaunchedEffect(uiState.error) {
+                delay(3000)
+                viewModel.uiState.value.copy(error = null)
+            }
+        }
+
+        if (uiState.saveSuccess) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 80.dp)
+            ) {
+                SuccessToast(message = "${selectedMetric.displayName} saved successfully!")
             }
         }
     }
@@ -251,31 +257,95 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
     if (showInputDialog) {
         HealthInputDialog(
             metricType = selectedMetric,
-            value = inputValue,
-            onValueChange = { inputValue = it },
-            onConfirm = {
-                if (inputValue.isNotBlank()) {
-                    try {
-                        viewModel.saveHealthMetric(selectedMetric, inputValue.toDouble())
-                        Toast.makeText(
-                            context,
-                            "${selectedMetric.displayName} saved successfully!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        showInputDialog = false
-                        inputValue = ""
-                    } catch (_: NumberFormatException) {
-                        Toast.makeText(context, "Please enter a valid number", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Toast.makeText(context, "Please enter a value", Toast.LENGTH_SHORT).show()
-                }
-            },
-            onDismiss = {
+            onSave = { value ->
+                viewModel.saveHealthMetric(selectedMetric, value)
                 showInputDialog = false
-                inputValue = ""
-            }
+            },
+            onDismiss = { showInputDialog = false }
         )
+    }
+
+    // Goal Setting Dialog
+    if (showGoalDialog) {
+        GoalSettingDialog(
+            currentGoals = goals,
+            onGoalUpdate = { type, value ->
+                viewModel.updateGoal(type, value)
+                showGoalDialog = false
+            },
+            onDismiss = { showGoalDialog = false }
+        )
+    }
+}
+
+@Composable
+fun HealthHeader(dailyStreak: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(24.dp),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    "Health Dashboard",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Track your wellness journey",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Streak Badge
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFFFD700), // Gold
+                                Color(0xFFFFA500)  // Orange
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "$dailyStreak",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        "Days",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -287,6 +357,8 @@ fun HealthMetricCard(
     targetValue: Double?,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
+    trend: Float = 0f,
+    bmiCategory: BMICategory? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -308,14 +380,15 @@ fun HealthMetricCard(
     Card(
         modifier = modifier
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
+                elevation = 12.dp,
+                shape = RoundedCornerShape(24.dp),
+                spotColor = color.copy(alpha = 0.2f),
                 clip = true
             )
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
         )
     ) {
         Column(
@@ -324,56 +397,88 @@ fun HealthMetricCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header with icon
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    icon,
-                    contentDescription = title,
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        icon,
+                        contentDescription = title,
+                        tint = color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = color
+                    )
+                }
+
+                // Trend indicator
+                if (abs(trend) > 0.1f) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            if (trend < 0) Icons.AutoMirrored.Filled.TrendingDown
+                            else Icons.AutoMirrored.Filled.TrendingUp,
+                            contentDescription = "Trend",
+                            tint = if (trend < 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            "${String.format(Locale.getDefault(), "%.1f", abs(trend))}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (trend < 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Circular Progress
+            // Animated Circular Progress
             Box(
-                modifier = Modifier.size(100.dp),
+                modifier = Modifier.size(120.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.size(100.dp)) {
+                // Background ring
+                Canvas(modifier = Modifier.size(120.dp)) {
                     drawCircle(
                         color = color.copy(alpha = 0.1f),
-                        style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
                     )
 
+                    // Progress ring
                     val sweepAngle = animatedProgress.value * 360
                     drawArc(
                         color = color,
                         startAngle = -90f,
                         sweepAngle = sweepAngle,
                         useCenter = false,
-                        style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
-                        currentValue?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "--",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = color
+                        currentValue?.let {
+                            String.format(Locale.getDefault(), "%.1f", it)
+                        } ?: "--",
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         unit,
@@ -383,150 +488,228 @@ fun HealthMetricCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Target
-            targetValue?.let {
+            // BMI Category or Target
+            if (bmiCategory != null && bmiCategory != BMICategory.UNKNOWN) {
                 Text(
-                    String.format(Locale.getDefault(), "Goal: %.1f%s", it, unit),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    bmiCategory.name.replace("_", " "),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = getBMIColor(bmiCategory)
                 )
+            } else {
+                targetValue?.let {
+                    Text(
+                        "Goal: ${String.format(Locale.getDefault(), "%.1f", it)}$unit",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun HealthProgressChart(
+fun HealthProgressSection(
     weightProgress: List<Pair<LocalDate, Double>>,
+    waterConsistency: Int,
+    sleepConsistency: Int,
     modifier: Modifier = Modifier
 ) {
-    val onSurfaceVariant20 = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    val errorColor = MaterialTheme.colorScheme.error
     Card(
         modifier = modifier
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
+                elevation = 12.dp,
+                shape = RoundedCornerShape(24.dp),
                 clip = true
             ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(24.dp)
         ) {
-            Text(
-                "Weight Progress",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (weightProgress.size >= 2) {
-                // Simple line chart visualization
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                        .clip(RoundedCornerShape(12.dp))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val maxWeight = weightProgress.maxOf { it.second }
-                        val minWeight = weightProgress.minOf { it.second }
-                        val weightRange = maxWeight - minWeight
-
-                        val xStep = size.width / (weightProgress.size - 1)
-                        val yScale = if (weightRange > 0) size.height * 0.8f / weightRange.toFloat() else 1f
-
-
-                        // Draw grid lines
-                        for (i in 0..4) {
-                            val y = size.height * 0.1f + (i * size.height * 0.2f)
-                            drawLine(
-                                color = onSurfaceVariant20,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = 1.dp.toPx()
-                            )
-                        }
-
-                        // Draw line
-                        for (i in 0 until weightProgress.size - 1) {
-                            val x1 = i * xStep
-                            val y1 = size.height - ((weightProgress[i].second - minWeight).toFloat() * yScale) - size.height * 0.1f
-                            val x2 = (i + 1) * xStep
-                            val y2 = size.height - ((weightProgress[i + 1].second - minWeight).toFloat() * yScale) - size.height * 0.1f
-
-                            drawLine(
-                                color = primaryColor,
-                                start = Offset(x1, y1),
-                                end = Offset(x2, y2),
-                                strokeWidth = 3.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        }
-
-                        // Draw points
-                        weightProgress.forEachIndexed { index, (_, weight) ->
-                            val x = index * xStep
-                            val y = size.height - ((weight - minWeight).toFloat() * yScale) - size.height * 0.1f
-
-                            drawCircle(
-                                color = primaryColor,
-                                radius = 4.dp.toPx(),
-                                center = Offset(x, y)
-                            )
-                        }
-                    }
-                }
-
-                // Progress summary
-                Spacer(modifier = Modifier.height(12.dp))
-                val firstWeight = weightProgress.first().second
-                val lastWeight = weightProgress.last().second
-                val difference = lastWeight - firstWeight
-                val trendIcon = if (difference < 0) Icons.AutoMirrored.Filled.TrendingDown else Icons.AutoMirrored.Filled.TrendingUp
-                val trendColor = if (difference < 0) tertiaryColor else errorColor
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Progress Overview",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        "Overall change: ${String.format(Locale.getDefault(), "%.1f", kotlin.math.abs(difference))}kg",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
+                    ConsistencyBadge(
+                        type = "Water",
+                        consistency = waterConsistency,
+                        color = Color(0xFF2196F3)
                     )
-                    Icon(
-                        trendIcon,
-                        contentDescription = "Trend",
-                        tint = trendColor,
-                        modifier = Modifier.size(20.dp)
+                    ConsistencyBadge(
+                        type = "Sleep",
+                        consistency = sleepConsistency,
+                        color = Color(0xFF9C27B0)
                     )
                 }
-            } else {
-                Text(
-                    "Log more data to see progress",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (weightProgress.size >= 2) {
+                AnimatedLineChart(
+                    dataPoints = weightProgress,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp)
+                        .height(180.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ShowChart,
+                        contentDescription = "No Data",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Log more data to see progress",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConsistencyBadge(type: String, consistency: Int, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.1f))
+                .border(
+                    width = 2.dp,
+                    color = color.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "$consistency%",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = color
+            )
+        }
+        Text(
+            type,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun QuickActionsGrid(
+    onWeightClick: () -> Unit,
+    onHeightClick: () -> Unit,
+    onWaterClick: () -> Unit,
+    onSleepClick: () -> Unit,
+    onGoalClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionButton(
+                    title = "Weight",
+                    icon = Icons.Outlined.MonitorWeight,
+                    color = Color(0xFF6C63FF),
+                    onClick = onWeightClick,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    title = "Height",
+                    icon = Icons.Outlined.Straighten,
+                    color = Color(0xFF4CC9F0),
+                    onClick = onHeightClick,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    title = "Water",
+                    icon = Icons.Outlined.LocalDrink,
+                    color = Color(0xFF2196F3),
+                    onClick = onWaterClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickActionButton(
+                    title = "Sleep",
+                    icon = Icons.Outlined.Nightlight,
+                    color = Color(0xFF9C27B0),
+                    onClick = onSleepClick,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    title = "Goals",
+                    icon = Icons.Outlined.TrackChanges,
+                    color = Color(0xFF4CAF50),
+                    onClick = onGoalClick,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    title = "Insights",
+                    icon = Icons.Outlined.Insights,
+                    color = Color(0xFFFF9800),
+                    onClick = { /* Show insights */ },
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -534,43 +717,45 @@ fun HealthProgressChart(
 }
 
 @Composable
-fun RowScope.HealthQuickAction(
+fun QuickActionButton(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
+            .aspectRatio(1f)
             .shadow(
-                elevation = 4.dp,
+                elevation = 6.dp,
                 shape = RoundedCornerShape(16.dp),
+                spotColor = color.copy(alpha = 0.3f),
                 clip = true
             )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
+            containerColor = color.copy(alpha = 0.08f)
         )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 icon,
                 contentDescription = title,
                 tint = color,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(28.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 title,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Medium
+                ),
                 color = color,
                 textAlign = TextAlign.Center
             )
@@ -579,38 +764,58 @@ fun RowScope.HealthQuickAction(
 }
 
 @Composable
-fun RecentHealthEntries(
+fun RecentEntriesCard(
     entries: List<HealthMetricEntry>,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
+                elevation = 12.dp,
+                shape = RoundedCornerShape(24.dp),
                 clip = true
             ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(24.dp)
         ) {
-            Text(
-                "Recent Entries",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Recent Entries",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "View All",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            entries.take(5).forEach { entry ->
+            entries.take(3).forEach { entry ->
                 HealthEntryRow(entry = entry)
+                if (entry != entries.take(3).last()) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                    )
+                }
             }
         }
     }
@@ -618,120 +823,334 @@ fun RecentHealthEntries(
 
 @Composable
 fun HealthEntryRow(entry: HealthMetricEntry) {
-    val date = Instant.ofEpochMilli(entry.timestamp).atZone(ZoneId.systemDefault()).toLocalDateTime()
+    val date = Instant.ofEpochMilli(entry.timestamp)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDateTime()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            entry.type.icon,
-            contentDescription = entry.type.displayName,
-            tint = entry.type.color,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                entry.type.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                date.format(DateTimeFormatter.ofPattern("MMM d, HH:mm")),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(entry.type.color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    entry.type.icon,
+                    contentDescription = entry.type.displayName,
+                    tint = entry.type.color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    entry.type.displayName,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    date.format(DateTimeFormatter.ofPattern("MMM d, HH:mm")),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+
         Text(
-            String.format(Locale.getDefault(), "%.1f%s", entry.value, entry.type.unit),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
+            "${String.format(Locale.getDefault(), "%.1f", entry.value)}${entry.type.unit}",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
             color = entry.type.color
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HealthInsightsCard(
+    analytics: HealthAnalytics,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Health Insights",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    Icons.Outlined.Insights,
+                    contentDescription = "Insights",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Add insights here based on analytics
+            // Example: Show recommendations or health tips
+            Text(
+                "Keep up the good work! " +
+                        if (analytics.dailyStreak >= 3) "You've maintained a ${analytics.dailyStreak}-day streak!"
+                        else "Log daily to build your streak.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedParticles() {
+    // Implement animated floating particles in background
+    // For now, we'll leave this as a placeholder
+}
+
+@Composable
+fun ConfettiAnimation() {
+    // Implement confetti animation for success events
+    // For now, we'll leave this as a placeholder
+}
+
+@Composable
+fun SuccessToast(message: String) {
+    Card(
+        modifier = Modifier
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = "Success",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun getBMIColor(category: BMICategory): Color {
+    return when (category) {
+        BMICategory.UNDERWEIGHT -> Color(0xFFFF9800)
+        BMICategory.NORMAL -> Color(0xFF4CAF50)
+        BMICategory.OVERWEIGHT -> Color(0xFFFF5722)
+        BMICategory.OBESE -> Color(0xFFF44336)
+        BMICategory.UNKNOWN -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
 @Composable
 fun HealthInputDialog(
     metricType: HealthMetricType,
-    value: String,
-    onValueChange: (String) -> Unit,
-    onConfirm: () -> Unit,
+    onSave: (Double) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        title = {
-            Text("Log ${metricType.displayName}")
-        },
-        text = {
-            Column {
+    var value by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    "Enter your ${metricType.displayName.lowercase()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Log ${metricType.displayName}",
+                    style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                TextField(
+                OutlinedTextField(
                     value = value,
-                    onValueChange = onValueChange,
+                    onValueChange = { value = it },
                     label = { Text("${metricType.displayName} (${metricType.unit})") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        value.toDoubleOrNull()?.let {
+                            onSave(it)
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                }
             }
         }
-    )
+    }
 }
 
-// Extension properties for HealthMetricType
-val HealthMetricType.displayName: String
-    get() = when (this) {
-        HealthMetricType.WEIGHT -> "Weight"
-        HealthMetricType.HEIGHT -> "Height"
-        HealthMetricType.WATER -> "Water"
-        HealthMetricType.SLEEP -> "Sleep"
+@Composable
+fun GoalSettingDialog(
+    currentGoals: Map<HealthMetricType, Double>,
+    onGoalUpdate: (HealthMetricType, Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val healthMetricTypes = listOf(HealthMetricType.WEIGHT, HealthMetricType.WATER, HealthMetricType.SLEEP)
+    var selectedMetric by remember { mutableStateOf(healthMetricTypes.first()) }
+    var goalValue by remember { mutableStateOf(currentGoals[selectedMetric]?.toString() ?: "") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Set Your Goals", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                healthMetricTypes.forEach { metricType ->
+                    var text by remember(metricType, currentGoals) {
+                        mutableStateOf(currentGoals[metricType]?.toString() ?: "")
+                    }
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = {
+                            text = it
+                            it.toDoubleOrNull()?.let { value ->
+                                onGoalUpdate(metricType, value)
+                            }
+                        },
+                        label = { Text("Goal for ${metricType.displayName} (${metricType.unit})") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onDismiss) {
+                    Text("Done")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimatedLineChart(
+    dataPoints: List<Pair<LocalDate, Double>>,
+    modifier: Modifier = Modifier
+) {
+    val animatable = remember { Animatable(0f) }
+
+    LaunchedEffect(dataPoints) {
+        animatable.animateTo(1f, animationSpec = tween(durationMillis = 1000))
     }
 
-val HealthMetricType.unit: String
-    get() = when (this) {
-        HealthMetricType.WEIGHT -> "kg"
-        HealthMetricType.HEIGHT -> "cm"
-        HealthMetricType.WATER -> "ml"
-        HealthMetricType.SLEEP -> "hrs"
-    }
+    Canvas(modifier = modifier) {
+        val path = Path()
+        val xMin = dataPoints.first().first.toEpochDay().toFloat()
+        val xMax = dataPoints.last().first.toEpochDay().toFloat()
+        val yMin = dataPoints.minOf { it.second }.toFloat()
+        val yMax = dataPoints.maxOf { it.second }.toFloat()
 
-val HealthMetricType.icon: androidx.compose.ui.graphics.vector.ImageVector
-    get() = when (this) {
-        HealthMetricType.WEIGHT -> Icons.Default.MonitorWeight
-        HealthMetricType.HEIGHT -> Icons.Default.Straighten
-        HealthMetricType.WATER -> Icons.Default.LocalDrink
-        HealthMetricType.SLEEP -> Icons.Default.Nightlight
-    }
+        dataPoints.forEachIndexed { index, pair ->
+            val x = (pair.first.toEpochDay().toFloat() - xMin) / (xMax - xMin) * size.width
+            val y = (1 - (pair.second.toFloat() - yMin) / (yMax - yMin)) * size.height
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
 
+        drawPath(
+            path = path,
+            Color(0xFF2196F3),
+            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+        )
+    }
+}
+
+
+// Extension for HealthMetricType to include color
 val HealthMetricType.color: Color
     @Composable
     get() = when (this) {
-        HealthMetricType.WEIGHT -> MaterialTheme.colorScheme.primary
-        HealthMetricType.HEIGHT -> MaterialTheme.colorScheme.tertiary
-        HealthMetricType.WATER -> MaterialTheme.colorScheme.secondary
-        HealthMetricType.SLEEP -> MaterialTheme.colorScheme.primary
+        HealthMetricType.WEIGHT -> Color(0xFF6C63FF)
+        HealthMetricType.HEIGHT -> Color(0xFF4CC9F0)
+        HealthMetricType.WATER -> Color(0xFF2196F3)
+        HealthMetricType.SLEEP -> Color(0xFF9C27B0)
+    }
+
+// Extension for HealthMetricType to include icon
+val HealthMetricType.icon: androidx.compose.ui.graphics.vector.ImageVector
+    get() = when (this) {
+        HealthMetricType.WEIGHT -> Icons.Outlined.MonitorWeight
+        HealthMetricType.HEIGHT -> Icons.Outlined.Straighten
+        HealthMetricType.WATER -> Icons.Outlined.LocalDrink
+        HealthMetricType.SLEEP -> Icons.Outlined.Nightlight
     }
 
 @Preview(showBackground = true)
