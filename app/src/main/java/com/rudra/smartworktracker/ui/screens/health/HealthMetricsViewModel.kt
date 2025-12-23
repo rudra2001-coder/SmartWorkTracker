@@ -9,7 +9,7 @@ import com.rudra.smartworktracker.model.HealthMetricType
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneId
+import kotlin.math.abs
 
 class HealthMetricsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -19,7 +19,21 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
     private val _uiState = MutableStateFlow(HealthUiState())
     val uiState: StateFlow<HealthUiState> = _uiState.asStateFlow()
 
-    // Health Data Stream
+    // Analytics Data
+    private val _healthAnalytics = MutableStateFlow(HealthAnalytics())
+    val healthAnalytics: StateFlow<HealthAnalytics> = _healthAnalytics.asStateFlow()
+
+    // Goals
+    private val _goals = MutableStateFlow(
+        mapOf(
+            HealthMetricType.WEIGHT to 70.0,
+            HealthMetricType.WATER to 2500.0, // ml
+            HealthMetricType.SLEEP to 8.0 // hours
+        )
+    )
+    val goals: StateFlow<Map<HealthMetricType, Double>> = _goals.asStateFlow()
+
+    // Health Data Stream with enhanced processing
     val healthData: StateFlow<HealthData> = healthMetricDao.getAllHealthMetrics()
         .map { metrics ->
             processHealthData(metrics)
@@ -30,15 +44,21 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
             HealthData()
         )
 
-    // Goals
-    private val _weightGoal = MutableStateFlow(70.0) // Default goal
+    init {
+        // Initialize analytics
+        viewModelScope.launch {
+            healthData.collect { data ->
+                _healthAnalytics.value = calculateAnalytics(data)
+            }
+        }
+    }
 
     fun saveHealthMetric(type: HealthMetricType, value: Double) {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, error = null) }
 
-                // Validate input
+                // Enhanced validation
                 val isValid = when (type) {
                     HealthMetricType.WEIGHT -> value in 20.0..300.0
                     HealthMetricType.HEIGHT -> value in 50.0..250.0
@@ -47,7 +67,7 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 }
 
                 if (!isValid) {
-                    _uiState.update { it.copy(error = "Please enter a valid value.") }
+                    _uiState.update { it.copy(error = "Please enter a valid ${type.displayName} value.") }
                     return@launch
                 }
 
@@ -62,42 +82,58 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                     it.copy(
                         isLoading = false,
                         saveSuccess = true,
-                        lastSavedMetric = type to value
+                        lastSavedMetric = type to value,
+                        showConfetti = true
                     )
                 }
 
-                // Reset success state after 3 seconds
+                // Reset success state
                 launch {
                     kotlinx.coroutines.delay(3000)
-                    _uiState.update { it.copy(saveSuccess = false) }
+                    _uiState.update { it.copy(saveSuccess = false, showConfetti = false) }
                 }
 
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = "Failed to save ${type.name}: ${e.message}"
+                        error = "Failed to save ${type.displayName}: ${e.message}"
                     )
                 }
             }
         }
     }
 
+    fun updateGoal(type: HealthMetricType, value: Double) {
+        viewModelScope.launch {
+            _goals.update { current ->
+                current.toMutableMap().apply {
+                    this[type] = value
+                }
+            }
+            _uiState.update { it.copy(goalUpdated = true) }
+
+            launch {
+                kotlinx.coroutines.delay(2000)
+                _uiState.update { it.copy(goalUpdated = false) }
+            }
+        }
+    }
+
     private fun processHealthData(metrics: List<HealthMetric>): HealthData {
-        val weightMetrics = metrics.filter { it.type == HealthMetricType.WEIGHT }
-        val heightMetrics = metrics.filter { it.type == HealthMetricType.HEIGHT }
+        val groupedMetrics = metrics.groupBy { it.type }
 
-        val currentWeight = weightMetrics.maxByOrNull { it.timestamp }?.value
-        val currentHeight = heightMetrics.maxByOrNull { it.timestamp }?.value
-        val currentBMI = calculateBMI(currentWeight, currentHeight)
+        val currentValues = HealthMetricType.entries.associateWith { type ->
+            groupedMetrics[type]?.maxByOrNull { it.timestamp }?.value
+        }
 
-        val weightProgress = weightMetrics
-            .sortedBy { it.timestamp }
-            .map {
+        val weightProgress = groupedMetrics[HealthMetricType.WEIGHT]
+            ?.sortedBy { it.timestamp }
+            ?.takeLast(30)
+            ?.map {
                 val date = LocalDate.ofEpochDay(it.timestamp / (1000 * 60 * 60 * 24))
                 date to it.value
-            }
-            .takeLast(30) // Last 30 entries
+            } ?: emptyList()
 
         val recentEntries = metrics
             .sortedByDescending { it.timestamp }
@@ -110,43 +146,100 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 )
             }
 
+        // Calculate streaks and consistency
+        val waterConsistency = calculateConsistency(groupedMetrics[HealthMetricType.WATER])
+        val sleepConsistency = calculateConsistency(groupedMetrics[HealthMetricType.SLEEP])
+
         return HealthData(
-            currentWeight = currentWeight,
-            currentHeight = currentHeight,
-            currentBMI = currentBMI,
-            weightGoal = _weightGoal.value,
+            currentValues = currentValues,
             weightProgress = weightProgress,
-            recentEntries = recentEntries
+            recentEntries = recentEntries,
+            waterConsistency = waterConsistency,
+            sleepConsistency = sleepConsistency,
+            lastUpdated = metrics.maxOfOrNull { it.timestamp }
         )
+    }
+
+    private fun calculateConsistency(metrics: List<HealthMetric>?): Int {
+        if (metrics.isNullOrEmpty()) return 0
+        val recentMetrics = metrics.takeLast(7)
+        return if (recentMetrics.size >= 5) 100 else (recentMetrics.size * 100 / 7)
     }
 
     private fun calculateBMI(weight: Double?, height: Double?): Double? {
         return if (weight != null && height != null && height > 0) {
-            // Convert height from cm to meters and calculate BMI
             val heightInMeters = height / 100
             weight / (heightInMeters * heightInMeters)
         } else {
             null
         }
     }
+
+    private fun calculateAnalytics(data: HealthData): HealthAnalytics {
+        val weight = data.currentValues[HealthMetricType.WEIGHT]
+        val height = data.currentValues[HealthMetricType.HEIGHT]
+        val bmi = calculateBMI(weight, height)
+
+        val bmiCategory = when {
+            bmi == null -> BMICategory.UNKNOWN
+            bmi < 18.5 -> BMICategory.UNDERWEIGHT
+            bmi < 25 -> BMICategory.NORMAL
+            bmi < 30 -> BMICategory.OVERWEIGHT
+            else -> BMICategory.OBESE
+        }
+
+        val weightTrend = if (data.weightProgress.size >= 2) {
+            val first = data.weightProgress.first().second
+            val last = data.weightProgress.last().second
+            ((last - first) / first * 100).toFloat()
+        } else 0f
+
+        return HealthAnalytics(
+            bmi = bmi,
+            bmiCategory = bmiCategory,
+            weightTrend = weightTrend,
+            waterConsistency = data.waterConsistency,
+            sleepConsistency = data.sleepConsistency,
+            dailyStreak = calculateDailyStreak(data.recentEntries)
+        )
+    }
+
+    private fun calculateDailyStreak(entries: List<HealthMetricEntry>): Int {
+        val dates = entries.map {
+            LocalDate.ofEpochDay(it.timestamp / (1000 * 60 * 60 * 24))
+        }.distinct().sortedDescending()
+
+        var streak = 0
+        var currentDate = LocalDate.now()
+        for (date in dates) {
+            if (date == currentDate || date == currentDate.minusDays(1)) {
+                streak++
+                currentDate = currentDate.minusDays(1)
+            } else {
+                break
+            }
+        }
+        return streak
+    }
 }
 
-// Data Classes
+// Enhanced Data Classes
 data class HealthUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val saveSuccess: Boolean = false,
-    val deleteSuccess: Boolean = false,
+    val goalUpdated: Boolean = false,
+    val showConfetti: Boolean = false,
     val lastSavedMetric: Pair<HealthMetricType, Double>? = null
 )
 
 data class HealthData(
-    val currentWeight: Double? = null,
-    val currentHeight: Double? = null,
-    val currentBMI: Double? = null,
-    val weightGoal: Double? = null,
+    val currentValues: Map<HealthMetricType, Double?> = emptyMap(),
     val weightProgress: List<Pair<LocalDate, Double>> = emptyList(),
-    val recentEntries: List<HealthMetricEntry> = emptyList()
+    val recentEntries: List<HealthMetricEntry> = emptyList(),
+    val waterConsistency: Int = 0,
+    val sleepConsistency: Int = 0,
+    val lastUpdated: Long? = null
 )
 
 data class HealthMetricEntry(
@@ -155,11 +248,33 @@ data class HealthMetricEntry(
     val timestamp: Long
 )
 
-data class HealthInsights(
-    val currentWeight: Double? = null,
-    val weightTrend: Double = 0.0,
-    val sleepQuality: Int = 0,
-    val hydrationScore: Int = 0,
-    val consistencyScore: Int = 0,
+data class HealthAnalytics(
+    val bmi: Double? = null,
+    val bmiCategory: BMICategory = BMICategory.UNKNOWN,
+    val weightTrend: Float = 0f,
+    val waterConsistency: Int = 0,
+    val sleepConsistency: Int = 0,
+    val dailyStreak: Int = 0,
     val recommendations: List<String> = emptyList()
 )
+
+enum class BMICategory {
+    UNDERWEIGHT, NORMAL, OVERWEIGHT, OBESE, UNKNOWN
+}
+
+// Extension properties for HealthMetricType
+val HealthMetricType.displayName: String
+    get() = when (this) {
+        HealthMetricType.WEIGHT -> "Weight"
+        HealthMetricType.HEIGHT -> "Height"
+        HealthMetricType.WATER -> "Water"
+        HealthMetricType.SLEEP -> "Sleep"
+    }
+
+val HealthMetricType.unit: String
+    get() = when (this) {
+        HealthMetricType.WEIGHT -> "kg"
+        HealthMetricType.HEIGHT -> "cm"
+        HealthMetricType.WATER -> "ml"
+        HealthMetricType.SLEEP -> "hrs"
+    }
