@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -529,44 +530,54 @@ fun WorkingDaysPieChart(data: Map<String, Float>) {
     val officeValue = data["Office"] ?: 0f
     val homeValue = data["Home Office"] ?: 0f
     val totalValue = officeValue + homeValue
-    val officePercentage = if (totalValue > 0) (officeValue / totalValue) * 100f else 0f
+    val officePercentage =
+        if (totalValue > 0f) (officeValue / totalValue) * 100f else 0f
 
     val pieChartData = PieChartData(
         slices = data.entries.mapIndexed { index, entry ->
-            PieChartData.Slice(entry.key, entry.value, pieChartColors[index % pieChartColors.size])
+            PieChartData.Slice(
+                label = entry.key,
+                value = entry.value,
+                color = pieChartColors[index % pieChartColors.size]
+            )
         },
         plotType = PlotType.Donut
     )
 
     val pieChartConfig = PieChartConfig(
         isAnimationEnable = true,
-        showSliceLabels = true,
-        sliceLabelTextSize = 12.sp,
-        sliceLabelTextColor = MaterialTheme.colorScheme.onPrimary,
-        strokeWidth = 35f,
-        chartPadding = 25
+        showSliceLabels = false, // IMPORTANT
+        strokeWidth = 28f,       // Reduced to prevent clipping
+        chartPadding = 20
     )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1.5f)
-                .padding(16.dp),
+                .height(260.dp), // FIXED HEIGHT
             contentAlignment = Alignment.Center
         ) {
+
+            // 🔹 SQUARE CHART AREA
             PieChart(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.size(220.dp),
                 pieChartData = pieChartData,
                 pieChartConfig = pieChartConfig
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+            // 🔹 CENTER TEXT
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = "%.0f%%".format(officePercentage),
+                    text = "${officePercentage.toInt()}%",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
