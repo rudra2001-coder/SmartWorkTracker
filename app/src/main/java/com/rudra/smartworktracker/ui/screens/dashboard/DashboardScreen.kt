@@ -633,11 +633,11 @@ fun AnimatedStatItem(
         // Only the number with animation
         Text(
             text = if (visible) animatedValue.toString() else "0",
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 16.sp),
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
             fontWeight = FontWeight.ExtraBold,
             color = animatedColor,
             modifier = Modifier
-                .height(30.dp)
+                .height(60.dp)
                 .wrapContentHeight()
         )
 
@@ -650,7 +650,7 @@ fun AnimatedStatItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             maxLines = 2,
-            modifier = Modifier.width(40.dp)
+            modifier = Modifier.width(80.dp)
         )
     }
 }
