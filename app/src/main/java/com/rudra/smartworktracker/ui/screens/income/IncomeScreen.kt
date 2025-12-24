@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Category
@@ -115,7 +116,8 @@ fun IncomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()), // Added scroll here
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Premium Header
@@ -366,12 +368,13 @@ fun IncomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Saved Income Display Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(bottom = 32.dp) // Added bottom padding for better scroll
                     .shadow(
                         elevation = 8.dp,
                         shape = RoundedCornerShape(16.dp),
@@ -396,7 +399,7 @@ fun IncomeScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "৳${String.format("%,.2f", savedIncome)}",
@@ -407,7 +410,7 @@ fun IncomeScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     // Visual indicator
                     LinearProgressIndicator(
@@ -420,7 +423,7 @@ fun IncomeScreen(
                         trackColor = Color(0xFFE2E8F0)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "Keep tracking your income!",
