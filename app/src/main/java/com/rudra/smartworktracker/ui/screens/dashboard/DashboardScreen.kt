@@ -756,7 +756,7 @@ fun CategorySummaryCard(expensesByCategory: Map<ExpenseCategory, Double>) {
         derivedStateOf {
             expensesByCategory.entries
                 .sortedByDescending { it.value }
-                .take(3)
+                .take(6)
         }
     }
 
