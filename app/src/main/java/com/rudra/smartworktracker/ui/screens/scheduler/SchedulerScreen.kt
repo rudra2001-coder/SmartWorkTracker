@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
@@ -89,14 +90,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.alarm.AlarmScheduler
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.ScheduleRepository
 import com.rudra.smartworktracker.model.Schedule
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -106,7 +111,8 @@ fun SchedulerScreen() {
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return SchedulerViewModel(
-                    ScheduleRepository(AppDatabase.getDatabase(context).scheduleDao())
+                    ScheduleRepository(AppDatabase.getDatabase(context).scheduleDao()),
+                    context
                 ) as T
             }
         }
@@ -249,6 +255,7 @@ fun SchedulerScreen() {
                     onTitleChange = viewModel::onTitleChange,
                     onTimeChange = viewModel::onTimeChange,
                     onIsRepeatingChange = viewModel::onIsRepeatingChange,
+                    onRepeatingDayChange = viewModel::onDaySelected,
                     onAddSchedule = {
                         viewModel.addSchedule()
                         isAddingSchedule = false
@@ -314,6 +321,7 @@ fun SchedulerScreen() {
                                 schedule = schedule,
                                 onDelete = { viewModel.deleteSchedule(schedule) },
                                 onToggle = { viewModel.toggleSchedule(schedule) },
+                                onTestAlarm = { viewModel.testAlarmNow(schedule) },
                                 recentActivity = uiState.history.firstOrNull { it.scheduleId == schedule.id }
                             )
                         }
@@ -373,11 +381,11 @@ fun AddScheduleDialog(
     onTitleChange: (String) -> Unit,
     onTimeChange: (Int, Int) -> Unit,
     onIsRepeatingChange: (Boolean) -> Unit,
+    onRepeatingDayChange: (Int) -> Unit,
     onAddSchedule: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     Box(
         modifier = Modifier
@@ -519,18 +527,24 @@ fun AddScheduleDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                "Repeat Daily",
+                                "Repeat",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Medium
                                 )
                             )
                             Text(
-                                "Schedule will repeat every day at the same time",
+                                "Schedule will repeat on selected days",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+                }
+                AnimatedVisibility(visible = uiState.newScheduleIsRepeating) {
+                    DayOfWeekSelector(
+                        selectedDays = uiState.selectedDays.toSet(),
+                        onDayClick = onRepeatingDayChange
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -564,6 +578,45 @@ fun AddScheduleDialog(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DayOfWeekSelector(
+    selectedDays: Set<Int>,
+    onDayClick: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceAround
+    ) {
+        (1..7).forEach { dayOfWeek ->
+            val isSelected = selectedDays.contains(dayOfWeek)
+            val dayName = DayOfWeek.of(dayOfWeek).getDisplayName(TextStyle.SHORT, Locale.getDefault())
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = CircleShape
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        shape = CircleShape
+                    )
+                    .clickable { onDayClick(dayOfWeek) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = dayName,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
@@ -784,10 +837,11 @@ fun ScheduleItem(
     schedule: Schedule,
     onDelete: () -> Unit,
     onToggle: () -> Unit,
+    onTestAlarm: () -> Unit, // Add this
     recentActivity: ScheduleHistory?,
     modifier: Modifier = Modifier
 ) {
-    val time = LocalTime.of(schedule.hour, schedule.minute)
+    val time = schedule.time
     val animatedColor by animateColorAsState(
         targetValue = if (schedule.isEnabled)
             MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
@@ -921,7 +975,7 @@ fun ScheduleItem(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                     Text(
-                                        text = "Daily",
+                                        text = if (schedule.repeatingDays.isEmpty()) "Daily" else schedule.repeatingDays.joinToString { day -> DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, Locale.getDefault()) },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Medium
@@ -945,6 +999,19 @@ fun ScheduleItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        IconButton(
+                            onClick = onTestAlarm,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                        ) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = "Test Alarm",
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                         Switch(
                             checked = schedule.isEnabled,
                             onCheckedChange = { onToggle() },
@@ -994,7 +1061,7 @@ fun ScheduleItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                     Text(
-                        "Created: ${schedule.createdAt?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) ?: "Recently"}",
+                        "Created: ${schedule.createdAt?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) ?: "Recently"}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -1210,7 +1277,7 @@ fun HistoryItem(history: ScheduleHistory, schedule: Schedule?, onDelete: () -> U
                     )
                     schedule?.let {
                         Text(
-                            text = "Schedule: ${it.title} at ${LocalTime.of(it.hour, it.minute).format(DateTimeFormatter.ofPattern("hh:mm a"))}",
+                            text = "Schedule: ${it.title} at ${it.time.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
@@ -1234,5 +1301,3 @@ fun HistoryItem(history: ScheduleHistory, schedule: Schedule?, onDelete: () -> U
         }
     }
 }
-
-
