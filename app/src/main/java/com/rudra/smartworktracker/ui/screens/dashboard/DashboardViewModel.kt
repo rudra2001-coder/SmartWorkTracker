@@ -59,7 +59,8 @@ class DashboardViewModel(
                 expenseRepository.getExpensesByCategoryBetween(startTime, endTime),
                 workLogRepository.getMonthlyStats(),
                 incomeRepository.getAllIncomes(),
-                expenseRepository.getAllExpenses()
+                expenseRepository.getAllExpenses(),
+                workLogRepository.getAllWorkLogs()
             )
 
             combine(flows) { array ->
@@ -73,6 +74,7 @@ class DashboardViewModel(
                 val monthlyStats = array[7] as MonthlyStats
                 val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
                 val expenses = array[9] as? List<Expense> ?: emptyList()
+                val workLogs = array[10] as? List<WorkLog> ?: emptyList()
 
 
                 val netSavings = totalIncome - totalExpense
@@ -92,6 +94,7 @@ class DashboardViewModel(
                     expensesByCategory = expensesByCategoryMap,
                     incomes = incomes,
                     expenses = expenses,
+                    workLogs = workLogs
                 )
             }.collect { newState ->
                 _uiSate.value = newState

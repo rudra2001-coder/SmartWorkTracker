@@ -1,6 +1,8 @@
 package com.rudra.smartworktracker.ui.screens.income
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Savings
@@ -25,6 +28,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -35,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,6 +62,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +78,8 @@ fun IncomeScreen(
     var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val savedIncome by viewModel.income.collectAsState()
+    var selectedDate by remember { mutableStateOf<Date?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val incomeCategories = listOf("Salary", "Side Income", "Other Business Income", "Others")
     var expanded by remember { mutableStateOf(false) }
@@ -303,6 +316,37 @@ fun IncomeScreen(
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Date Field
+                    Text(
+                        text = "Date",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Date",
+                                tint = Color(0xFF6C63FF)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors,
+                        readOnly = true,
+                        enabled = false
+                    )
                 }
             }
 
@@ -315,7 +359,8 @@ fun IncomeScreen(
                             amount = incomeValue,
                             description = descriptionInput.text,
                             category = selectedCategory,
-                            source = "Primary Job"
+                            source = "Primary Job",
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis()
                         )
                         incomeInput = TextFieldValue("")
                         descriptionInput = TextFieldValue("")
@@ -432,6 +477,30 @@ fun IncomeScreen(
                         )
                     )
                 }
+            }
+        }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState()
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            selectedDate = Date(it)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }

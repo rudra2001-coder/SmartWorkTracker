@@ -11,12 +11,15 @@ data class WorkLog(
     val date: Date,
     val workType: WorkType,
     val startTime: String?,
-    val endTime: String?
+    val endTime: String?,
+    val isOvertime: Boolean = false,
+    val overtimeRate: Double? = null
 )
 
 enum class WorkType {
     OFFICE,
     HOME_OFFICE,
     OFF_DAY,
-    EXTRA_WORK
+    EXTRA_WORK,
+    OVERTIME
 }

@@ -117,6 +117,7 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
@@ -192,17 +193,24 @@ fun DashboardScreen(
             item {
                 FinancialSummaryChart(
                     incomes = uiState.incomes,
-                    expenses = uiState.expenses
+                    expenses = uiState.expenses,
+                    workLogs = uiState.workLogs
+                )
+            }
+
+            item {
+                OvertimeSummaryCard(
+                    workLogs = uiState.workLogs
                 )
             }
 
             item {
                 MonthlyStatsCard(
-                  //  MonthlyStats= uiState.monthlyStats,
-                  //  monthlyStats = uiState.monthlyStats ,
-                   // summary = uiState.financialSummary,
+                    //  MonthlyStats= uiState.monthlyStats,
+                    //  monthlyStats = uiState.monthlyStats ,
+                    // summary = uiState.financialSummary,
                     stats = uiState.monthlyStats,
-               )
+                )
             }
 
             item {
@@ -235,7 +243,8 @@ fun DashboardScreen(
 @Composable
 fun FinancialSummaryChart(
     incomes: List<Income>,
-    expenses: List<Expense>
+    expenses: List<Expense>,
+    workLogs: List<WorkLog>
 ) {
     val totalIncome = incomes.sumOf { it.amount }
     val totalExpense = expenses.sumOf { it.amount }
@@ -263,6 +272,17 @@ fun FinancialSummaryChart(
     var animatedDailyIncome by remember { mutableFloatStateOf(0f) }
     var animatedDailyExpense by remember { mutableFloatStateOf(0f) }
     var animatedDailySavings by remember { mutableFloatStateOf(0f) }
+    val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
+        val start = log.startTime?.let { parseTime(it) } ?: 0L
+        val end = log.endTime?.let { parseTime(it) } ?: 0L
+        (end - start).toDouble() / (1000 * 60 * 60)
+    }
+
+    val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
+        val hours = (log.endTime?.let { parseTime(it) } ?: 0L) - (log.startTime?.let { parseTime(it) } ?: 0L)
+        (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
+    }
+
 
     LaunchedEffect(totalIncome, totalExpense, savings, dailyIncome, dailyExpense, dailySavings) {
         animatedIncome = 0f
@@ -383,6 +403,121 @@ fun FinancialSummaryChart(
     }
 }
 
+@Composable
+fun OvertimeSummaryCard(workLogs: List<WorkLog>) {
+    val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
+        val start = log.startTime?.let { parseTime(it) } ?: 0L
+        val end = log.endTime?.let { parseTime(it) } ?: 0L
+        (end - start).toDouble() / (1000 * 60 * 60)
+    }
+
+    val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
+        val hours = (log.endTime?.let { parseTime(it) } ?: 0L) - (log.startTime?.let { parseTime(it) } ?: 0L)
+        (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Bolt,
+                    contentDescription = "Overtime",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.padding(8.dp))
+                Text(
+                    "Overtime Summary",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FinancialMetricCard(
+                    title = "Overtime Hours",
+                    value = overtimeHours.toFloat(),
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.Bolt
+                )
+
+                FinancialMetricCard(
+                    title = "Overtime Earnings",
+                    value = overtimeEarnings.toFloat(),
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.AttachMoney
+                )
+            }
+        }
+    }
+}
+
+//private fun parseTime(time: String): Long {
+//    val parts = time.split(":")
+//    val calendar = Calendar.getInstance()
+//
+//    // Safe access with default values
+//    val hour = parts.getOrElse(0) { "0" }.toIntOrNull() ?: 0
+//    val minute = parts.getOrElse(1) { "0" }.toIntOrNull() ?: 0
+//
+//    calendar.set(Calendar.HOUR_OF_DAY, hour)
+//    calendar.set(Calendar.MINUTE, minute)
+//    calendar.set(Calendar.SECOND, 0)
+//    calendar.set(Calendar.MILLISECOND, 0)
+//
+//    return calendar.timeInMillis
+//}
+private fun parseTime(time: String): Long {
+    // Handle null/empty input
+    val cleanTime = time.trim()
+    if (cleanTime.isEmpty()) {
+        return getTimeInMillis(0, 0)
+    }
+
+    // Parse with safety
+    val parts = cleanTime.split(":")
+    val hour = parts.getOrElse(0) { "0" }.toIntOrNull()?.coerceIn(0..23) ?: 0
+    val minute = parts.getOrElse(1) { "0" }.toIntOrNull()?.coerceIn(0..59) ?: 0
+
+    return getTimeInMillis(hour, minute)
+}
+
+private fun getTimeInMillis(hour: Int, minute: Int): Long {
+    return Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
 @Composable
 fun FinancialMetricCard(
     title: String,
@@ -954,6 +1089,7 @@ fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
             WorkType.HOME_OFFICE -> HomeOfficeColor to "Home Office"
             WorkType.OFF_DAY -> OffDayColor to "Off Day"
             WorkType.EXTRA_WORK -> ExtraWorkColor to "Extra Work"
+            WorkType.OVERTIME -> ExtraWorkColor to "Overtime"
             null -> NoEntryColor to "No Entry"
         }
     }
@@ -1106,6 +1242,7 @@ fun TodayStatusCard(
             WorkType.HOME_OFFICE -> colorScheme.secondaryContainer
             WorkType.OFF_DAY -> colorScheme.tertiaryContainer
             WorkType.EXTRA_WORK -> colorScheme.errorContainer
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.surfaceVariant
         },
         label = "background_color"
@@ -1165,6 +1302,7 @@ private fun WorkTypeContent(workType: WorkType?) {
             WorkType.HOME_OFFICE -> "Home Office 🏠" to "Working comfortably from home"
             WorkType.OFF_DAY -> "Off Day 🌴" to "Enjoy your day off!"
             WorkType.EXTRA_WORK -> "Extra Work ⚡" to "Going above and beyond!"
+            WorkType.OVERTIME -> "Overtime 🚀" to "You are on fire!"
             null -> "Mark Your Day" to "Tap to select today's work type"
         }
     }
@@ -1261,6 +1399,7 @@ fun RowScope.AnimatedWorkTypeButton(
                         WorkType.HOME_OFFICE -> colorScheme.secondary
                         WorkType.OFF_DAY -> colorScheme.tertiary
                         WorkType.EXTRA_WORK -> colorScheme.error
+                        WorkType.OVERTIME -> colorScheme.errorContainer
                     }
                 } else {
                     colorScheme.surface
@@ -1290,6 +1429,7 @@ fun RowScope.AnimatedWorkTypeButton(
                         WorkType.HOME_OFFICE -> "Home"
                         WorkType.OFF_DAY -> "Off"
                         WorkType.EXTRA_WORK -> "Extra"
+                        WorkType.OVERTIME -> "Overtime 🚀"
                     },
                     style = typography.labelSmall
                 )
@@ -1320,6 +1460,7 @@ fun WorkTypeAnimation(workType: WorkType?) {
             WorkType.HOME_OFFICE -> colorScheme.secondary
             WorkType.OFF_DAY -> colorScheme.tertiary
             WorkType.EXTRA_WORK -> colorScheme.error
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.primary
         },
         label = "primary_color"
@@ -1331,6 +1472,7 @@ fun WorkTypeAnimation(workType: WorkType?) {
             WorkType.HOME_OFFICE -> colorScheme.tertiary
             WorkType.OFF_DAY -> colorScheme.primary
             WorkType.EXTRA_WORK -> colorScheme.secondary
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.secondary
         },
         label = "secondary_color"

@@ -147,8 +147,8 @@ fun CalendarScreen(
                     // Mark as Office Day FAB
                     ExtendedFloatingActionButton(
                         onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
-                        icon = { Icon(Icons.Default.Business, "Mark as Office Day") },
-                        text = { Text("Mark Office") },
+                        icon = { Icon(Icons.Default.Business, "OFFICE") },
+                        text = { Text("OFFICE") },
                         containerColor = Color(0xFF2196F3),
                         contentColor = Color.White
                     )
@@ -156,23 +156,23 @@ fun CalendarScreen(
                     ExtendedFloatingActionButton(
                         onClick = { viewModel.markSelectedDates(WorkType.HOME_OFFICE) },
                         icon = { Icon(Icons.Default.Home, "Home Office") },
-                        text = { Text("Mark Home") },
+                        text = { Text("Home") },
                         containerColor = Color(0xFFFF9800),
                         contentColor = Color.White
                     )
 
                     ExtendedFloatingActionButton(
                         onClick = { viewModel.markSelectedDates(WorkType.OFF_DAY) },
-                        icon = { Icon(Icons.Default.BeachAccess, "Off Day") },
-                        text = { Text("Mark Off") },
+                        icon = { Icon(Icons.Default.BeachAccess, "OFF") },
+                        text = { Text("OFF") },
                         containerColor = Color(0xFF4CAF50),
                         contentColor = Color.White
                     )
 
                     ExtendedFloatingActionButton(
-                        onClick = { viewModel.markSelectedDates(WorkType.EXTRA_WORK) },
-                        icon = { Icon(Icons.Default.BusinessCenter, "Extra Work") },
-                        text = { Text("Extra Work") },
+                        onClick = { viewModel.markSelectedDates(WorkType.OVERTIME) },
+                        icon = { Icon(Icons.Default.BusinessCenter, "OverTime") },
+                        text = { Text("Overtime") },
                         containerColor = Color(0xFFF44336),
                         contentColor = Color.White
                     )
@@ -520,6 +520,7 @@ fun CalendarDay(
                                 WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary
                                 WorkType.OFF_DAY -> MaterialTheme.colorScheme.error
                                 WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary
+                                WorkType.OVERTIME -> MaterialTheme.colorScheme.primary
                             }
                         )
                 )
@@ -637,6 +638,7 @@ fun WorkTypeChip(workType: WorkType) {
         WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
         WorkType.OFF_DAY -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
         WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+        WorkType.OVERTIME -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     }
 
     Box(

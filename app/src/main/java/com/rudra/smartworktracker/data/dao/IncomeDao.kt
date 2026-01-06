@@ -26,6 +26,9 @@ interface IncomeDao {
     @Query("SELECT SUM(amount) FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTotalIncomeBetween(startTime: Long, endTime: Long): Flow<Double?>
 
+    @Query("SELECT SUM(amount) FROM incomes")
+    fun getTotalIncome(): Flow<Double?>
+
     @Update
     suspend fun updateIncome(income: Income)
 

@@ -22,10 +22,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         currency: String,
         category: ExpenseCategory,
         merchant: String?,
-        notes: String?
+        notes: String?,
+        timestamp: Long
     ) {
         viewModelScope.launch {
-            val timestamp = System.currentTimeMillis()
             val expense = Expense(
                 amount = amount,
                 currency = currency,

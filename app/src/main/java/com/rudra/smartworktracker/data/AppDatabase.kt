@@ -81,13 +81,15 @@ import kotlinx.coroutines.flow.Flow
         CreditCardTransaction::class,
         Savings::class,
         Colleague::class,
-        TravelAndExpense::class
+        TravelAndExpense::class,
+
+
     ],
     views = [
         MonthlySummary::class
     
     ],
-    version = 20,
+    version = 21,
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)

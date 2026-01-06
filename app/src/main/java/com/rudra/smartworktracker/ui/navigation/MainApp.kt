@@ -96,6 +96,7 @@ import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
+import com.rudra.smartworktracker.ui.screens.overtime.OvertimeScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -140,7 +141,9 @@ fun MainApp() {
         NavigationItem.Transfer,
         NavigationItem.Backup,
         NavigationItem.Settings,
-        NavigationItem.Team
+        NavigationItem.Team,
+        NavigationItem.Overtime
+
     )
 
     ModalNavigationDrawer(
@@ -247,6 +250,7 @@ fun MainApp() {
                         }
                     )
                 }
+
 
                 composable(
                     route = NavigationItem.Analytics.route,
@@ -496,6 +500,15 @@ popExitTransition = { defaultPopExitTransition() }
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
                     TeamScreen()
+                }
+                composable(
+                    route = NavigationItem.Overtime.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    OvertimeScreen()
                 }
             }
         }
@@ -772,6 +785,12 @@ sealed class NavigationItem(
         title = "Team",
         icon = Icons.Default.Group,
         description = "Manage your teams"
+    )
+    object Overtime : NavigationItem(
+        route = "Over Time",
+        title = "Overtime",
+        icon = Icons.Default.Group,
+        description = "Over time calculation"
     )
 
 }

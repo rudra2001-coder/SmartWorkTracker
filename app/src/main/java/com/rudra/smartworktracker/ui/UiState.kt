@@ -7,6 +7,7 @@ import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.V
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.HealthMetricType
+import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import java.time.LocalDate
 
@@ -20,7 +21,8 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val incomes: List<Income> = emptyList(), // Add this
-    val expenses: List<Expense> = emptyList() // Add this
+    val expenses: List<Expense> = emptyList(), // Add this
+    val workLogs: List<WorkLog> = emptyList() // Add this
 )
 
 data class MonthlyStats(
