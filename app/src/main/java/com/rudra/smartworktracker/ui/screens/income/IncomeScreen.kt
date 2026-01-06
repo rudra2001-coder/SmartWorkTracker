@@ -405,7 +405,7 @@ fun IncomeScreen(
                         text = "৳${String.format("%,.2f", savedIncome)}",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 40.sp,
+                            fontSize = 20.sp,
                             color = Color(0xFF2D3748)
                         )
                     )

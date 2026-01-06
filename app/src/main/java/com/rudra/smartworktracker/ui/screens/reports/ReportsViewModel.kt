@@ -286,7 +286,7 @@ class ReportsViewModel(
             selectedCategory = category,
             selectedDateRange = dateRange,
             customDateRange = customDateRange,
-            filteredItems = sortedItems,
+            filteredItems = sortedItems.take(100),
             totalWorkHours = totalWorkHours,
             totalIncome = totalIncome,
             totalExpense = totalExpense,
