@@ -18,6 +18,11 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses ORDER BY timestamp DESC")
     fun getAllExpenses(): Flow<List<Expense>>
+    @Query("SELECT * FROM expenses ORDER BY timestamp DESC LIMIT 5")
+    fun getLatest5Expenses(): Flow<List<Expense>>
+
+    @Query("SELECT * FROM expenses ORDER BY timestamp DESC LIMIT :pageSize OFFSET :offset")
+    fun getPaginatedExpenses(offset: Int, pageSize: Int): Flow<List<Expense>>
 
     @Query("SELECT * FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime ORDER BY timestamp DESC")
     fun getExpensesBetween(startTime: Long, endTime: Long): Flow<List<Expense>>

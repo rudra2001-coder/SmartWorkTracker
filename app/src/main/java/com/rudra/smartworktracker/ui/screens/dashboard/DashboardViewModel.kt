@@ -18,6 +18,7 @@ import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
+import com.rudra.smartworktracker.utils.DateTimeUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,8 +59,9 @@ class DashboardViewModel(
                 workLogRepository.getRecentActivities(),
                 expenseRepository.getExpensesByCategoryBetween(startTime, endTime),
                 workLogRepository.getMonthlyStats(),
-                incomeRepository.getAllIncomes(),
-                expenseRepository.getAllExpenses()
+                incomeRepository.getIncomes(1, 50),
+                expenseRepository.getExpenses(1, 50),
+                workLogRepository.getWorkLogs(1, 50)
             )
 
             combine(flows) { array ->
@@ -73,7 +75,34 @@ class DashboardViewModel(
                 val monthlyStats = array[7] as MonthlyStats
                 val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
                 val expenses = array[9] as? List<Expense> ?: emptyList()
+                val workLogs = array[10] as? List<WorkLog> ?: emptyList()
 
+                val dailyIncome = incomes.filter {
+                    val incomeDate = Calendar.getInstance()
+                    incomeDate.timeInMillis = it.timestamp
+                    today.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
+                            today.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
+                }.sumOf { it.amount }
+
+                val dailyExpense = expenses.filter {
+                    val expenseDate = Calendar.getInstance()
+                    expenseDate.timeInMillis = it.timestamp
+                    today.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
+                            today.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
+                }.sumOf { it.amount }
+
+                val dailySavings = dailyIncome - dailyExpense
+
+                val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
+                    val start = log.startTime?.let { DateTimeUtils.parseTime(it) } ?: 0L
+                    val end = log.endTime?.let { DateTimeUtils.parseTime(it) } ?: 0L
+                    (end - start).toDouble() / (1000 * 60 * 60)
+                }
+
+                val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
+                    val hours = (log.endTime?.let { DateTimeUtils.parseTime(it) } ?: 0L) - (log.startTime?.let { DateTimeUtils.parseTime(it) } ?: 0L)
+                    (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
+                }
 
                 val netSavings = totalIncome - totalExpense
                 val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
@@ -87,11 +116,17 @@ class DashboardViewModel(
                         totalIncome = totalIncome,
                         totalExpense = totalExpense,
                         netSavings = netSavings,
-                        totalMealCost = monthlyMealExpenses
+                        dailyIncome = dailyIncome,
+                        dailyExpense = dailyExpense,
+                        dailySavings = dailySavings,
+                        totalMealCost = monthlyMealExpenses,
+                        overtimeHours = overtimeHours,
+                        overtimeEarnings = overtimeEarnings
                     ),
                     expensesByCategory = expensesByCategoryMap,
                     incomes = incomes,
                     expenses = expenses,
+                    workLogs = workLogs
                 )
             }.collect { newState ->
                 _uiSate.value = newState

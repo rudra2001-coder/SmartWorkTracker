@@ -104,7 +104,10 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.MindfulBreak,
                     NavigationItem.Wisdom ,
                     NavigationItem.Focus,
-                    NavigationItem.WorkTimer
+                    NavigationItem.WorkTimer,
+                    NavigationItem.Overtime,
+                    NavigationItem.Scheduler
+
                 )
             ),
             FeatureSection(

@@ -52,4 +52,7 @@ interface WorkLogDao {
 
     @Query("SELECT * FROM work_logs WHERE date(date / 1000, 'unixepoch') = date('now')")
     fun getTodayWorkLog(): Flow<WorkLog?>
+
+    @Query("SELECT * FROM work_logs ORDER BY date DESC LIMIT :pageSize OFFSET :offset")
+    fun getPaginatedWorkLogs(offset: Int, pageSize: Int): Flow<List<WorkLog>>
 }

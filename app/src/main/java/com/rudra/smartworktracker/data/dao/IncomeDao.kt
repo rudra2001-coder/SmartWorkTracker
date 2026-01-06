@@ -17,14 +17,23 @@ interface IncomeDao {
     @Query("SELECT * FROM incomes ORDER BY timestamp DESC LIMIT 1")
     fun getLatestIncome(): Flow<Income?>
 
+    @Query("SELECT * FROM incomes ORDER BY timestamp DESC LIMIT 5")
+    fun getLatest5Incomes(): Flow<List<Income>>
+
     @Query("SELECT * FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getIncomesBetween(startTime: Long, endTime: Long): Flow<List<Income>>
 
     @Query("SELECT * FROM incomes ORDER BY timestamp DESC")
     fun getAllIncomes(): Flow<List<Income>>
 
+    @Query("SELECT * FROM incomes ORDER BY timestamp DESC LIMIT :pageSize OFFSET :offset")
+    fun getPaginatedIncomes(offset: Int, pageSize: Int): Flow<List<Income>>
+
     @Query("SELECT SUM(amount) FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTotalIncomeBetween(startTime: Long, endTime: Long): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM incomes")
+    fun getTotalIncome(): Flow<Double?>
 
     @Update
     suspend fun updateIncome(income: Income)

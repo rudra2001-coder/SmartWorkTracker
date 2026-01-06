@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken
 import com.rudra.smartworktracker.model.BreakPeriod
 import com.rudra.smartworktracker.model.WorkType
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Date
 
@@ -59,5 +60,15 @@ class TypeConverters {
     @TypeConverter
     fun toBreakPeriodList(list: List<BreakPeriod>?): String? {
         return Gson().toJson(list)
+    }
+
+    @TypeConverter
+    fun fromLocalDateTime(value: String?): LocalDateTime? {
+        return value?.let { LocalDateTime.parse(it) }
+    }
+
+    @TypeConverter
+    fun localDateTimeToString(dateTime: LocalDateTime?): String? {
+        return dateTime?.toString()
     }
 }

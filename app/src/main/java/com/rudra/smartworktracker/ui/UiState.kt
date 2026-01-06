@@ -7,6 +7,7 @@ import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.V
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.HealthMetricType
+import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import java.time.LocalDate
 
@@ -20,7 +21,8 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val incomes: List<Income> = emptyList(), // Add this
-    val expenses: List<Expense> = emptyList() // Add this
+    val expenses: List<Expense> = emptyList(), // Add this
+    val workLogs: List<WorkLog> = emptyList() // Add this
 )
 
 data class MonthlyStats(
@@ -38,12 +40,16 @@ data class FinancialSummary(
     val totalIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
     val netSavings: Double = 0.0,
+    val dailyIncome: Double = 0.0,
+    val dailyExpense: Double = 0.0,
+    val dailySavings: Double = 0.0,
     val totalMealCost: Double = 0.0,
     val expenseBreakdown: Map<String, Double> = emptyMap(),
     val totalLoan: Double = 0.0,
     val totalOfficeDays: Int = 0,
-    val totalOffDays: Int = 0
-
+    val totalOffDays: Int = 0,
+    val overtimeHours: Double = 0.0,
+    val overtimeEarnings: Double = 0.0
 ) {
     val savingsPercentage: Double
         get() = if (totalIncome > 0) (netSavings / totalIncome) * 100 else 0.0

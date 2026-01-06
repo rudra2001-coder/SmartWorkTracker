@@ -49,6 +49,11 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         return workLogDao.getAllWorkLogs()
     }
 
+    fun getWorkLogs(page: Int, pageSize: Int): Flow<List<WorkLog>> {
+        val offset = (page - 1) * pageSize
+        return workLogDao.getPaginatedWorkLogs(offset, pageSize)
+    }
+
     suspend fun deleteWorkLog(workLog: WorkLog) {
         workLogDao.deleteWorkLog(workLog)
     }

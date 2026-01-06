@@ -117,7 +117,10 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.ExpenseCategory.*
+import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
+import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -190,19 +193,20 @@ fun DashboardScreen(
 
             // Financial Summary Chart - Your component
             item {
-                FinancialSummaryChart(
-                    incomes = uiState.incomes,
-                    expenses = uiState.expenses
-                )
+                FinancialSummaryChart(financialSummary = uiState.financialSummary)
+            }
+
+            item {
+                OvertimeSummaryCard(financialSummary = uiState.financialSummary)
             }
 
             item {
                 MonthlyStatsCard(
-                  //  MonthlyStats= uiState.monthlyStats,
-                  //  monthlyStats = uiState.monthlyStats ,
-                   // summary = uiState.financialSummary,
+                    //  MonthlyStats= uiState.monthlyStats,
+                    //  monthlyStats = uiState.monthlyStats ,
+                    // summary = uiState.financialSummary,
                     stats = uiState.monthlyStats,
-               )
+                )
             }
 
             item {
@@ -234,37 +238,16 @@ fun DashboardScreen(
  */
 @Composable
 fun FinancialSummaryChart(
-    incomes: List<Income>,
-    expenses: List<Expense>
+    financialSummary: FinancialSummary
 ) {
-    val totalIncome = incomes.sumOf { it.amount }
-    val totalExpense = expenses.sumOf { it.amount }
-    val savings = totalIncome - totalExpense
     var animatedIncome by remember { mutableFloatStateOf(0f) }
     var animatedExpense by remember { mutableFloatStateOf(0f) }
     var animatedSavings by remember { mutableFloatStateOf(0f) }
-
-    val today = Calendar.getInstance()
-    val dailyIncome = incomes.filter {
-        val incomeDate = Calendar.getInstance()
-        incomeDate.timeInMillis = it.timestamp
-        today.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
-                today.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
-    }.sumOf { it.amount }
-
-    val dailyExpense = expenses.filter {
-        val expenseDate = Calendar.getInstance()
-        expenseDate.timeInMillis = it.timestamp
-        today.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
-                today.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
-    }.sumOf { it.amount }
-    val dailySavings = dailyIncome - dailyExpense
-
     var animatedDailyIncome by remember { mutableFloatStateOf(0f) }
     var animatedDailyExpense by remember { mutableFloatStateOf(0f) }
     var animatedDailySavings by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(totalIncome, totalExpense, savings, dailyIncome, dailyExpense, dailySavings) {
+    LaunchedEffect(financialSummary) {
         animatedIncome = 0f
         animatedExpense = 0f
         animatedSavings = 0f
@@ -273,17 +256,17 @@ fun FinancialSummaryChart(
         animatedDailySavings = 0f
 
         delay(300)
-        animatedIncome = totalIncome.toFloat()
+        animatedIncome = financialSummary.totalIncome.toFloat()
         delay(200)
-        animatedExpense = totalExpense.toFloat()
+        animatedExpense = financialSummary.totalExpense.toFloat()
         delay(200)
-        animatedSavings = savings.toFloat()
+        animatedSavings = financialSummary.netSavings.toFloat()
         delay(200)
-        animatedDailyIncome = dailyIncome.toFloat()
+        animatedDailyIncome = financialSummary.dailyIncome.toFloat()
         delay(200)
-        animatedDailyExpense = dailyExpense.toFloat()
+        animatedDailyExpense = financialSummary.dailyExpense.toFloat()
         delay(200)
-        animatedDailySavings = dailySavings.toFloat()
+        animatedDailySavings = financialSummary.dailySavings.toFloat()
     }
 
     Card(
@@ -349,7 +332,7 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Savings",
                     value = animatedSavings,
-                    color = if (savings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
+                    color = if (financialSummary.netSavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
                     icon = Icons.Default.CheckCircle
                 )
             }
@@ -375,8 +358,75 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Daily Savings",
                     value = animatedDailySavings,
-                    color = if (dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                    color = if (financialSummary.dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun OvertimeSummaryCard(financialSummary: FinancialSummary) {
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = true
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Bolt,
+                    contentDescription = "Overtime",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.padding(8.dp))
+                Text(
+                    "Overtime Summary",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FinancialMetricCard(
+                    title = "Overtime Hours",
+                    value = financialSummary.overtimeHours.toFloat(),
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.Bolt
+                )
+
+                FinancialMetricCard(
+                    title = "Overtime Earnings",
+                    value = financialSummary.overtimeEarnings.toFloat(),
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.AttachMoney
                 )
             }
         }
@@ -850,7 +900,7 @@ fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "৳${String.format("%.0f", amount)}",
+                text = "৳${"%.0f".format(amount)}",
                 style = typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -954,6 +1004,7 @@ fun DayActivityRow(date: LocalDate, workLog: WorkLogUi?) {
             WorkType.HOME_OFFICE -> HomeOfficeColor to "Home Office"
             WorkType.OFF_DAY -> OffDayColor to "Off Day"
             WorkType.EXTRA_WORK -> ExtraWorkColor to "Extra Work"
+            WorkType.OVERTIME -> ExtraWorkColor to "Overtime"
             null -> NoEntryColor to "No Entry"
         }
     }
@@ -1106,6 +1157,7 @@ fun TodayStatusCard(
             WorkType.HOME_OFFICE -> colorScheme.secondaryContainer
             WorkType.OFF_DAY -> colorScheme.tertiaryContainer
             WorkType.EXTRA_WORK -> colorScheme.errorContainer
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.surfaceVariant
         },
         label = "background_color"
@@ -1165,6 +1217,7 @@ private fun WorkTypeContent(workType: WorkType?) {
             WorkType.HOME_OFFICE -> "Home Office 🏠" to "Working comfortably from home"
             WorkType.OFF_DAY -> "Off Day 🌴" to "Enjoy your day off!"
             WorkType.EXTRA_WORK -> "Extra Work ⚡" to "Going above and beyond!"
+            WorkType.OVERTIME -> "Overtime 🚀" to "You are on fire!"
             null -> "Mark Your Day" to "Tap to select today's work type"
         }
     }
@@ -1261,6 +1314,7 @@ fun RowScope.AnimatedWorkTypeButton(
                         WorkType.HOME_OFFICE -> colorScheme.secondary
                         WorkType.OFF_DAY -> colorScheme.tertiary
                         WorkType.EXTRA_WORK -> colorScheme.error
+                        WorkType.OVERTIME -> colorScheme.errorContainer
                     }
                 } else {
                     colorScheme.surface
@@ -1290,6 +1344,7 @@ fun RowScope.AnimatedWorkTypeButton(
                         WorkType.HOME_OFFICE -> "Home"
                         WorkType.OFF_DAY -> "Off"
                         WorkType.EXTRA_WORK -> "Extra"
+                        WorkType.OVERTIME -> "Overtime 🚀"
                     },
                     style = typography.labelSmall
                 )
@@ -1320,6 +1375,7 @@ fun WorkTypeAnimation(workType: WorkType?) {
             WorkType.HOME_OFFICE -> colorScheme.secondary
             WorkType.OFF_DAY -> colorScheme.tertiary
             WorkType.EXTRA_WORK -> colorScheme.error
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.primary
         },
         label = "primary_color"
@@ -1331,6 +1387,7 @@ fun WorkTypeAnimation(workType: WorkType?) {
             WorkType.HOME_OFFICE -> colorScheme.tertiary
             WorkType.OFF_DAY -> colorScheme.primary
             WorkType.EXTRA_WORK -> colorScheme.secondary
+            WorkType.OVERTIME -> colorScheme.errorContainer
             null -> colorScheme.secondary
         },
         label = "secondary_color"
@@ -1366,10 +1423,11 @@ fun WorkTypeAnimation(workType: WorkType?) {
 val ExpenseCategory.color: Color
     @Composable
     get() = when (this) {
-        ExpenseCategory.MEAL -> Color(0xFFE91E63)
-        ExpenseCategory.TRANSPORT -> Color(0xFF9C27B0)
-        ExpenseCategory.SHOPPING -> Color(0xFF2196F3)
-        ExpenseCategory.BILLS -> Color(0xFF00BCD4)
-        ExpenseCategory.ENTERTAINMENT -> Color(0xFF4CAF50)
-        ExpenseCategory.OTHER -> Color(0xFF607D8B)
+        MEAL -> Color(0xFFE91E63)
+        TRANSPORT -> Color(0xFF9C27B0)
+        SHOPPING -> Color(0xFF2196F3)
+        BILLS -> Color(0xFF00BCD4)
+        ENTERTAINMENT -> Color(0xFF4CAF50)
+        OTHER -> Color(0xFF607D8B)
+
     }

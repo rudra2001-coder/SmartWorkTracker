@@ -1,6 +1,8 @@
 package com.rudra.smartworktracker.ui.screens.income
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,28 +14,39 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +67,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.AccountType
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,10 +84,16 @@ fun IncomeScreen(
     var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val savedIncome by viewModel.income.collectAsState()
+    val recentIncomes by viewModel.recentIncomes.collectAsState()
+    var selectedDate by remember { mutableStateOf<Date?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val incomeCategories = listOf("Salary", "Side Income", "Other Business Income", "Others")
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(incomeCategories[0]) }
+    val accountTypes = AccountType.values()
+    var accountTypeExpanded by remember { mutableStateOf(false) }
+    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -115,7 +139,8 @@ fun IncomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()), // Added scroll here
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Premium Header
@@ -301,6 +326,99 @@ fun IncomeScreen(
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Account Type Dropdown
+                    Text(
+                        text = "Account Type",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = accountTypeExpanded,
+                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            value = selectedAccountType.name,
+                            onValueChange = {},
+                            label = {
+                                Text("Select account type")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account Type",
+                                    tint = Color(0xFF6C63FF)
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
+                            },
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountTypeExpanded,
+                            onDismissRequest = { accountTypeExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            accountTypes.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            selectionOption.name,
+                                            color = Color(0xFF4A5568)
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedAccountType = selectionOption
+                                        accountTypeExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Date Field
+                    Text(
+                        text = "Date",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Date",
+                                tint = Color(0xFF6C63FF)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors,
+                        readOnly = true,
+                        enabled = false
+                    )
                 }
             }
 
@@ -313,7 +431,9 @@ fun IncomeScreen(
                             amount = incomeValue,
                             description = descriptionInput.text,
                             category = selectedCategory,
-                            source = "Primary Job"
+                            source = "Primary Job",
+                            accountType = selectedAccountType,
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis()
                         )
                         incomeInput = TextFieldValue("")
                         descriptionInput = TextFieldValue("")
@@ -366,12 +486,13 @@ fun IncomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Saved Income Display Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(bottom = 32.dp) // Added bottom padding for better scroll
                     .shadow(
                         elevation = 8.dp,
                         shape = RoundedCornerShape(16.dp),
@@ -396,18 +517,18 @@ fun IncomeScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "৳${String.format("%,.2f", savedIncome)}",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 40.sp,
+                            fontSize = 20.sp,
                             color = Color(0xFF2D3748)
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     // Visual indicator
                     LinearProgressIndicator(
@@ -420,7 +541,7 @@ fun IncomeScreen(
                         trackColor = Color(0xFFE2E8F0)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "Keep tracking your income!",
@@ -429,6 +550,69 @@ fun IncomeScreen(
                         )
                     )
                 }
+            }
+
+            // Recent Incomes
+            Text(
+                text = "Recent Incomes",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2D3748)
+                ),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            LazyColumn(modifier = Modifier.height(300.dp)) {
+                items(recentIncomes) { income ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = income.description, fontWeight = FontWeight.Bold)
+                                Text(text = "৳${income.amount}", color = Color.Gray)
+                            }
+                            IconButton(onClick = { viewModel.deleteIncome(income) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Income")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState()
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            selectedDate = Date(it)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }

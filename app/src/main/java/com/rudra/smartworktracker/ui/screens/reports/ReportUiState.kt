@@ -4,6 +4,7 @@ import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.WorkLog
 
+
 sealed interface ReportListItem {
     val date: Long
     val amount: Double

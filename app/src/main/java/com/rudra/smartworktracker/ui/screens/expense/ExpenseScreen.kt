@@ -1,6 +1,9 @@
 package com.rudra.smartworktracker.ui.screens.expense
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,29 +15,46 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.MoneyOff
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,22 +69,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.model.ExpenseCategory
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.text.style.TextAlign
-import android.widget.Toast
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.ShoppingCart
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +87,14 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var merchant by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(ExpenseCategory.MEAL) }
+    var selectedDate by remember { mutableStateOf<Date?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val recentExpenses by viewModel.recentExpenses.collectAsState()
+
+    val accountTypes = AccountType.values()
+    var accountTypeExpanded by remember { mutableStateOf(false) }
+    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -141,7 +162,8 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Premium Header
@@ -165,12 +187,40 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Icon Badge
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(primaryGradient)
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoneyOff,
+                            contentDescription = "Expense",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = "Log Your Expense",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2D3748)
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Track and manage your spending",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFF718096)
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -204,7 +254,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF4A5568)
                         ),
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
 
                     OutlinedTextField(
@@ -223,7 +273,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         shape = RoundedCornerShape(12.dp),
                         colors = textFieldColors
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     // Categories Section
                     Text(
@@ -235,75 +285,170 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(ExpenseCategory.values()) { category ->
-                            val isSelected = selectedCategory == category
-                            val gradient = categoryGradients[category] ?: Brush.horizontalGradient(
-                                listOf(Color(0xFFD4D4D4), Color(0xFFA0A0A0))
-                            )
+                    val categories = ExpenseCategory.entries.chunked(4)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        categories.forEach { rowCategories ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                rowCategories.forEach { category ->
+                                    val isSelected = selectedCategory == category
+                                    val gradient = categoryGradients[category] ?: Brush.horizontalGradient(
+                                        listOf(Color(0xFFD4D4D4), Color(0xFFA0A0A0))
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .shadow(
+                                                elevation = if (isSelected) 8.dp else 4.dp,
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                brush = if (isSelected) gradient
+                                                else Brush.linearGradient(
+                                                    colors = listOf(Color.White, Color.White)
+                                                ),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .border(
+                                                width = if (isSelected) 2.dp else 1.dp,
+                                                color = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFE2E8F0),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .clickable { selectedCategory = category }
+                                            .padding(12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            val icon = when (category) {
+                                                ExpenseCategory.MEAL -> Icons.Default.ShoppingCart
+                                                ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsCar
+                                                ExpenseCategory.SHOPPING -> Icons.Default.Store
+                                                ExpenseCategory.ENTERTAINMENT -> Icons.Default.Movie
+                                                ExpenseCategory.BILLS -> Icons.Default.Receipt
+                                                ExpenseCategory.OTHER -> Icons.AutoMirrored.Filled.List
+                                            }
 
-                            Box(
-                                modifier = Modifier
-                                    .shadow(
-                                        elevation = if (isSelected) 8.dp else 4.dp,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        brush = if (isSelected) gradient else Brush.linearGradient(
-                                            colors = listOf(Color.White, Color.White)
-                                        ),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .border(
-                                        width = if (isSelected) 2.dp else 1.dp,
-                                        color = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFE2E8F0),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { selectedCategory = category }
-                                    .padding(12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    // Category icon based on type
-                                    val icon = when (category) {
-                                        ExpenseCategory.MEAL -> Icons.Default.ShoppingCart
-                                        ExpenseCategory.TRANSPORT -> androidx.compose.material.icons.Icons.Default.DirectionsCar
-                                        ExpenseCategory.SHOPPING -> Icons.Default.Store
-                                        ExpenseCategory.ENTERTAINMENT -> androidx.compose.material.icons.Icons.Default.Movie
-                                        ExpenseCategory.BILLS -> androidx.compose.material.icons.Icons.Default.Receipt
-                                        ExpenseCategory.OTHER -> Icons.Default.List
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = category.name,
+                                                tint = if (isSelected) Color.White else Color(0xFF4A5568),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+
+                                            Text(
+                                                text = category.name.lowercase()
+                                                    .replaceFirstChar { it.uppercase() },
+                                                style = TextStyle(
+                                                    fontSize = 10.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (isSelected) Color.White else Color(0xFF4A5568)
+                                                ),
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
-
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = category.name,
-                                        tint = if (isSelected) Color.White else Color(0xFF4A5568),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-
-                                    Text(
-                                        text = category.name.lowercase().replaceFirstChar { it.uppercase() },
-                                        style = TextStyle(
-                                            fontSize = 10.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) Color.White else Color(0xFF4A5568)
-                                        ),
-                                        maxLines = 1
-                                    )
+                                }
+                                val remaining = 4 - rowCategories.size
+                                if (remaining > 0) {
+                                    Spacer(modifier = Modifier.weight(remaining.toFloat()))
                                 }
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Account Type Dropdown
+                    Text(
+                        text = "Account Type",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = accountTypeExpanded,
+                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            value = selectedAccountType.name,
+                            onValueChange = {},
+                            label = {
+                                Text("Select account type")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account Type",
+                                    tint = Color(0xFFFF6B6B)
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
+                            },
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountTypeExpanded,
+                            onDismissRequest = { accountTypeExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            accountTypes.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            selectionOption.name,
+                                            color = Color(0xFF4A5568)
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedAccountType = selectionOption
+                                        accountTypeExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Merchant Field
+                    Text(
+                        text = "Merchant (Optional)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = merchant,
+                        onValueChange = { merchant = it },
+                        label = { Text("Store name, restaurant, etc.") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Store,
+                                contentDescription = "Merchant",
+                                tint = Color(0xFFFF6B6B)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // Notes Field
                     Text(
                         text = "Notes (Optional)",
@@ -327,11 +472,44 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(100.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = textFieldColors,
                         maxLines = 4
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Date Field
+                    Text(
+                        text = "Date",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Date",
+                                tint = Color(0xFFFF6B6B)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = textFieldColors,
+                        readOnly = true,
+                        enabled = false
+                    )
+
                 }
             }
 
@@ -344,7 +522,9 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                             currency = "BDT",
                             category = selectedCategory,
                             merchant = merchant.ifBlank { null },
-                            notes = notes.ifBlank { null }
+                            notes = notes.ifBlank { null },
+                            accountType = selectedAccountType,
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis()
                         )
                         amount = ""
                         merchant = ""
@@ -379,7 +559,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Save,
+                            imageVector = Icons.Default.Save,
                             contentDescription = "Save",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
@@ -397,6 +577,70 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         )
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Recent Expenses
+            Text(
+                text = "Recent Expenses",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2D3748)
+                ),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            LazyColumn(modifier = Modifier.height(300.dp)) {
+                items(recentExpenses) { expense ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = expense.notes ?: "", fontWeight = FontWeight.Bold)
+                                Text(text = "৳${expense.amount}", color = Color.Gray)
+                            }
+                            IconButton(onClick = { viewModel.deleteExpense(expense) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Expense")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState()
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            selectedDate = Date(it)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }
