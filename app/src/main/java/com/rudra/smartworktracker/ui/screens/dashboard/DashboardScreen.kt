@@ -117,8 +117,10 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.ExpenseCategory.*
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
+import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
@@ -191,17 +193,11 @@ fun DashboardScreen(
 
             // Financial Summary Chart - Your component
             item {
-                FinancialSummaryChart(
-                    incomes = uiState.incomes,
-                    expenses = uiState.expenses,
-                    workLogs = uiState.workLogs
-                )
+                FinancialSummaryChart(financialSummary = uiState.financialSummary)
             }
 
             item {
-                OvertimeSummaryCard(
-                    workLogs = uiState.workLogs
-                )
+                OvertimeSummaryCard(financialSummary = uiState.financialSummary)
             }
 
             item {
@@ -242,49 +238,16 @@ fun DashboardScreen(
  */
 @Composable
 fun FinancialSummaryChart(
-    incomes: List<Income>,
-    expenses: List<Expense>,
-    workLogs: List<WorkLog>
+    financialSummary: FinancialSummary
 ) {
-    val totalIncome = incomes.sumOf { it.amount }
-    val totalExpense = expenses.sumOf { it.amount }
-    val savings = totalIncome - totalExpense
     var animatedIncome by remember { mutableFloatStateOf(0f) }
     var animatedExpense by remember { mutableFloatStateOf(0f) }
     var animatedSavings by remember { mutableFloatStateOf(0f) }
-
-    val today = Calendar.getInstance()
-    val dailyIncome = incomes.filter {
-        val incomeDate = Calendar.getInstance()
-        incomeDate.timeInMillis = it.timestamp
-        today.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
-                today.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
-    }.sumOf { it.amount }
-
-    val dailyExpense = expenses.filter {
-        val expenseDate = Calendar.getInstance()
-        expenseDate.timeInMillis = it.timestamp
-        today.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
-                today.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
-    }.sumOf { it.amount }
-    val dailySavings = dailyIncome - dailyExpense
-
     var animatedDailyIncome by remember { mutableFloatStateOf(0f) }
     var animatedDailyExpense by remember { mutableFloatStateOf(0f) }
     var animatedDailySavings by remember { mutableFloatStateOf(0f) }
-    val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
-        val start = log.startTime?.let { parseTime(it) } ?: 0L
-        val end = log.endTime?.let { parseTime(it) } ?: 0L
-        (end - start).toDouble() / (1000 * 60 * 60)
-    }
 
-    val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
-        val hours = (log.endTime?.let { parseTime(it) } ?: 0L) - (log.startTime?.let { parseTime(it) } ?: 0L)
-        (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
-    }
-
-
-    LaunchedEffect(totalIncome, totalExpense, savings, dailyIncome, dailyExpense, dailySavings) {
+    LaunchedEffect(financialSummary) {
         animatedIncome = 0f
         animatedExpense = 0f
         animatedSavings = 0f
@@ -293,17 +256,17 @@ fun FinancialSummaryChart(
         animatedDailySavings = 0f
 
         delay(300)
-        animatedIncome = totalIncome.toFloat()
+        animatedIncome = financialSummary.totalIncome.toFloat()
         delay(200)
-        animatedExpense = totalExpense.toFloat()
+        animatedExpense = financialSummary.totalExpense.toFloat()
         delay(200)
-        animatedSavings = savings.toFloat()
+        animatedSavings = financialSummary.netSavings.toFloat()
         delay(200)
-        animatedDailyIncome = dailyIncome.toFloat()
+        animatedDailyIncome = financialSummary.dailyIncome.toFloat()
         delay(200)
-        animatedDailyExpense = dailyExpense.toFloat()
+        animatedDailyExpense = financialSummary.dailyExpense.toFloat()
         delay(200)
-        animatedDailySavings = dailySavings.toFloat()
+        animatedDailySavings = financialSummary.dailySavings.toFloat()
     }
 
     Card(
@@ -369,7 +332,7 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Savings",
                     value = animatedSavings,
-                    color = if (savings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
+                    color = if (financialSummary.netSavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
                     icon = Icons.Default.CheckCircle
                 )
             }
@@ -395,7 +358,7 @@ fun FinancialSummaryChart(
                 FinancialMetricCard(
                     title = "Daily Savings",
                     value = animatedDailySavings,
-                    color = if (dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                    color = if (financialSummary.dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
                 )
             }
@@ -404,17 +367,7 @@ fun FinancialSummaryChart(
 }
 
 @Composable
-fun OvertimeSummaryCard(workLogs: List<WorkLog>) {
-    val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
-        val start = log.startTime?.let { parseTime(it) } ?: 0L
-        val end = log.endTime?.let { parseTime(it) } ?: 0L
-        (end - start).toDouble() / (1000 * 60 * 60)
-    }
-
-    val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
-        val hours = (log.endTime?.let { parseTime(it) } ?: 0L) - (log.startTime?.let { parseTime(it) } ?: 0L)
-        (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
-    }
+fun OvertimeSummaryCard(financialSummary: FinancialSummary) {
 
     Card(
         modifier = Modifier
@@ -464,14 +417,14 @@ fun OvertimeSummaryCard(workLogs: List<WorkLog>) {
             ) {
                 FinancialMetricCard(
                     title = "Overtime Hours",
-                    value = overtimeHours.toFloat(),
+                    value = financialSummary.overtimeHours.toFloat(),
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.Default.Bolt
                 )
 
                 FinancialMetricCard(
                     title = "Overtime Earnings",
-                    value = overtimeEarnings.toFloat(),
+                    value = financialSummary.overtimeEarnings.toFloat(),
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.Default.AttachMoney
                 )
@@ -480,44 +433,6 @@ fun OvertimeSummaryCard(workLogs: List<WorkLog>) {
     }
 }
 
-//private fun parseTime(time: String): Long {
-//    val parts = time.split(":")
-//    val calendar = Calendar.getInstance()
-//
-//    // Safe access with default values
-//    val hour = parts.getOrElse(0) { "0" }.toIntOrNull() ?: 0
-//    val minute = parts.getOrElse(1) { "0" }.toIntOrNull() ?: 0
-//
-//    calendar.set(Calendar.HOUR_OF_DAY, hour)
-//    calendar.set(Calendar.MINUTE, minute)
-//    calendar.set(Calendar.SECOND, 0)
-//    calendar.set(Calendar.MILLISECOND, 0)
-//
-//    return calendar.timeInMillis
-//}
-private fun parseTime(time: String): Long {
-    // Handle null/empty input
-    val cleanTime = time.trim()
-    if (cleanTime.isEmpty()) {
-        return getTimeInMillis(0, 0)
-    }
-
-    // Parse with safety
-    val parts = cleanTime.split(":")
-    val hour = parts.getOrElse(0) { "0" }.toIntOrNull()?.coerceIn(0..23) ?: 0
-    val minute = parts.getOrElse(1) { "0" }.toIntOrNull()?.coerceIn(0..59) ?: 0
-
-    return getTimeInMillis(hour, minute)
-}
-
-private fun getTimeInMillis(hour: Int, minute: Int): Long {
-    return Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, hour)
-        set(Calendar.MINUTE, minute)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-}
 @Composable
 fun FinancialMetricCard(
     title: String,
@@ -985,7 +900,7 @@ fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "৳${String.format("%.0f", amount)}",
+                text = "৳${"%.0f".format(amount)}",
                 style = typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1508,10 +1423,11 @@ fun WorkTypeAnimation(workType: WorkType?) {
 val ExpenseCategory.color: Color
     @Composable
     get() = when (this) {
-        ExpenseCategory.MEAL -> Color(0xFFE91E63)
-        ExpenseCategory.TRANSPORT -> Color(0xFF9C27B0)
-        ExpenseCategory.SHOPPING -> Color(0xFF2196F3)
-        ExpenseCategory.BILLS -> Color(0xFF00BCD4)
-        ExpenseCategory.ENTERTAINMENT -> Color(0xFF4CAF50)
-        ExpenseCategory.OTHER -> Color(0xFF607D8B)
+        MEAL -> Color(0xFFE91E63)
+        TRANSPORT -> Color(0xFF9C27B0)
+        SHOPPING -> Color(0xFF2196F3)
+        BILLS -> Color(0xFF00BCD4)
+        ENTERTAINMENT -> Color(0xFF4CAF50)
+        OTHER -> Color(0xFF607D8B)
+
     }

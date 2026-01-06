@@ -18,6 +18,11 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         return incomeDao.getAllIncomes()
     }
 
+    fun getIncomes(page: Int, pageSize: Int): Flow<List<Income>> {
+        val offset = (page - 1) * pageSize
+        return incomeDao.getPaginatedIncomes(offset, pageSize)
+    }
+
     fun getTotalIncomeBetween(startTime: Long, endTime: Long): Flow<Double?> {
         return incomeDao.getTotalIncomeBetween(startTime, endTime)
     }

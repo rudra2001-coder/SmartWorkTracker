@@ -11,6 +11,11 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         return expenseDao.getAllExpenses()
     }
 
+    fun getExpenses(page: Int, pageSize: Int): Flow<List<Expense>> {
+        val offset = (page - 1) * pageSize
+        return expenseDao.getPaginatedExpenses(offset, pageSize)
+    }
+
     fun getExpensesBetween(startTime: Long, endTime: Long): Flow<List<Expense>> {
         return expenseDao.getExpensesBetween(startTime, endTime)
     }
