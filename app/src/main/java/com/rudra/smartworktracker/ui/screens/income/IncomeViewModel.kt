@@ -19,9 +19,12 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
 
     private val _income = MutableStateFlow(0.0)
     val income: StateFlow<Double> = _income.asStateFlow()
+    private val _recentIncomes = MutableStateFlow<List<Income>>(emptyList())
+    val recentIncomes: StateFlow<List<Income>> = _recentIncomes.asStateFlow()
 
     init {
         loadTotalIncome()
+        loadRecentIncomes()
     }
 
     private fun loadTotalIncome() {
@@ -31,8 +34,21 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
             }
         }
     }
+    private fun loadRecentIncomes() {
+        viewModelScope.launch {
+            db.incomeDao().getLatest5Incomes().collect { incomes ->
+                _recentIncomes.value = incomes
+            }
+        }
+    }
 
-    fun saveIncome(amount: Double, description: String, category: String, source: String, timestamp: Long) {
+    fun deleteIncome(income: Income) {
+        viewModelScope.launch {
+            db.incomeDao().deleteIncome(income)
+        }
+    }
+
+    fun saveIncome(amount: Double, description: String, category: String, source: String, accountType: AccountType, timestamp: Long) {
         viewModelScope.launch {
             val newIncome = Income(
                 amount = amount,
@@ -46,7 +62,7 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
             val transaction = FinancialTransaction(
                 type = TransactionType.INCOME,
                 amount = amount,
-                source = AccountType.BALANCE,
+                source = accountType,
                 destination = null,
                 note = "$description - $category",
                 date = timestamp

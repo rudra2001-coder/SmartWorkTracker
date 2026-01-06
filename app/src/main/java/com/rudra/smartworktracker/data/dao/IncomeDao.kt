@@ -17,6 +17,9 @@ interface IncomeDao {
     @Query("SELECT * FROM incomes ORDER BY timestamp DESC LIMIT 1")
     fun getLatestIncome(): Flow<Income?>
 
+    @Query("SELECT * FROM incomes ORDER BY timestamp DESC LIMIT 5")
+    fun getLatest5Incomes(): Flow<List<Income>>
+
     @Query("SELECT * FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getIncomesBetween(startTime: Long, endTime: Long): Flow<List<Income>>
 

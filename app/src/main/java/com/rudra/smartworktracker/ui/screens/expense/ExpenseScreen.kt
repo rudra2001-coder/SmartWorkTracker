@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +24,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.Movie
@@ -37,8 +41,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -46,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +74,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.model.ExpenseCategory
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -80,6 +90,11 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val recentExpenses by viewModel.recentExpenses.collectAsState()
+
+    val accountTypes = AccountType.values()
+    var accountTypeExpanded by remember { mutableStateOf(false) }
+    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -345,6 +360,68 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                     }
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // Account Type Dropdown
+                    Text(
+                        text = "Account Type",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = accountTypeExpanded,
+                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            value = selectedAccountType.name,
+                            onValueChange = {},
+                            label = {
+                                Text("Select account type")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account Type",
+                                    tint = Color(0xFFFF6B6B)
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
+                            },
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountTypeExpanded,
+                            onDismissRequest = { accountTypeExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            accountTypes.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            selectionOption.name,
+                                            color = Color(0xFF4A5568)
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedAccountType = selectionOption
+                                        accountTypeExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // Merchant Field
                     Text(
                         text = "Merchant (Optional)",
@@ -446,6 +523,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                             category = selectedCategory,
                             merchant = merchant.ifBlank { null },
                             notes = notes.ifBlank { null },
+                            accountType = selectedAccountType,
                             timestamp = selectedDate?.time ?: System.currentTimeMillis()
                         )
                         amount = ""
@@ -497,6 +575,46 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                             ),
                             color = Color.White
                         )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Recent Expenses
+            Text(
+                text = "Recent Expenses",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2D3748)
+                ),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            LazyColumn(modifier = Modifier.height(300.dp)) {
+                items(recentExpenses) { expense ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = expense.notes ?: "", fontWeight = FontWeight.Bold)
+                                Text(text = "৳${expense.amount}", color = Color.Gray)
+                            }
+                            IconButton(onClick = { viewModel.deleteExpense(expense) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Expense")
+                            }
+                        }
                     }
                 }
             }

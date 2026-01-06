@@ -14,14 +14,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
@@ -35,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +67,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.AccountType
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -78,12 +84,16 @@ fun IncomeScreen(
     var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val savedIncome by viewModel.income.collectAsState()
+    val recentIncomes by viewModel.recentIncomes.collectAsState()
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val incomeCategories = listOf("Salary", "Side Income", "Other Business Income", "Others")
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(incomeCategories[0]) }
+    val accountTypes = AccountType.values()
+    var accountTypeExpanded by remember { mutableStateOf(false) }
+    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -318,6 +328,68 @@ fun IncomeScreen(
                     }
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // Account Type Dropdown
+                    Text(
+                        text = "Account Type",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = accountTypeExpanded,
+                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            value = selectedAccountType.name,
+                            onValueChange = {},
+                            label = {
+                                Text("Select account type")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account Type",
+                                    tint = Color(0xFF6C63FF)
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
+                            },
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountTypeExpanded,
+                            onDismissRequest = { accountTypeExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            accountTypes.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            selectionOption.name,
+                                            color = Color(0xFF4A5568)
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedAccountType = selectionOption
+                                        accountTypeExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     // Date Field
                     Text(
                         text = "Date",
@@ -360,6 +432,7 @@ fun IncomeScreen(
                             description = descriptionInput.text,
                             category = selectedCategory,
                             source = "Primary Job",
+                            accountType = selectedAccountType,
                             timestamp = selectedDate?.time ?: System.currentTimeMillis()
                         )
                         incomeInput = TextFieldValue("")
@@ -476,6 +549,45 @@ fun IncomeScreen(
                             color = Color(0xFF718096)
                         )
                     )
+                }
+            }
+
+            // Recent Incomes
+            Text(
+                text = "Recent Incomes",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2D3748)
+                ),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            LazyColumn(modifier = Modifier.height(300.dp)) {
+                items(recentIncomes) { income ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = income.description, fontWeight = FontWeight.Bold)
+                                Text(text = "৳${income.amount}", color = Color.Gray)
+                            }
+                            IconButton(onClick = { viewModel.deleteIncome(income) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Income")
+                            }
+                        }
+                    }
                 }
             }
         }
