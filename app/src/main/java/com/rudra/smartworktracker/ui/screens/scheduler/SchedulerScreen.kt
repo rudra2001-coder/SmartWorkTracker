@@ -864,7 +864,7 @@ fun ScheduleItem(
 
                     .shadow(
                     elevation = if (schedule.isEnabled) 3.dp else 1.dp,
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ),
             shape = RoundedCornerShape(20.dp),
             tonalElevation = if (schedule.isEnabled) 2.dp else 0.dp,
