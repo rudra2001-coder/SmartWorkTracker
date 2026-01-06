@@ -26,6 +26,7 @@ import com.rudra.smartworktracker.data.dao.IncomeDao
 import com.rudra.smartworktracker.data.dao.LoanDao
 import com.rudra.smartworktracker.data.dao.MonthlyInputDao
 import com.rudra.smartworktracker.data.dao.SavingsDao
+import com.rudra.smartworktracker.data.dao.ScheduleDao
 import com.rudra.smartworktracker.data.dao.SettingsDao
 import com.rudra.smartworktracker.data.dao.SummaryDao
 import com.rudra.smartworktracker.data.dao.UserProfileDao
@@ -54,6 +55,7 @@ import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.FocusSession
 import com.rudra.smartworktracker.model.Habit
 import com.rudra.smartworktracker.model.HealthMetric
+import com.rudra.smartworktracker.model.Schedule
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkSession
 import kotlinx.coroutines.flow.Flow
@@ -82,14 +84,14 @@ import kotlinx.coroutines.flow.Flow
         Savings::class,
         Colleague::class,
         TravelAndExpense::class,
-
+        Schedule::class
 
     ],
     views = [
         MonthlySummary::class
     
     ],
-    version = 21,
+    version = 22,
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -117,6 +119,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun creditCardTransactionDao(): CreditCardTransactionDao
     abstract fun savingsDao(): SavingsDao
     abstract fun colleagueDao(): ColleagueDao
+    abstract fun scheduleDao(): ScheduleDao
 
     abstract fun travelExpenseDao(): TravelExpenseDao
 

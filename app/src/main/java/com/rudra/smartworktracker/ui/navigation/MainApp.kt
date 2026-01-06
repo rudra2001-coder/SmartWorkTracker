@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.RealEstateAgent
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -88,15 +89,16 @@ import com.rudra.smartworktracker.ui.screens.income.IncomeScreen
 import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.loans.LoansScreen
 import com.rudra.smartworktracker.ui.screens.onboarding.OnboardingScreen
+import com.rudra.smartworktracker.ui.screens.overtime.OvertimeScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
+import com.rudra.smartworktracker.ui.screens.scheduler.SchedulerScreen
 import com.rudra.smartworktracker.ui.screens.settings.SettingsScreen
 import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
-import com.rudra.smartworktracker.ui.screens.overtime.OvertimeScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -142,7 +144,8 @@ fun MainApp() {
         NavigationItem.Backup,
         NavigationItem.Settings,
         NavigationItem.Team,
-        NavigationItem.Overtime
+        NavigationItem.Overtime,
+        NavigationItem.Scheduler
 
     )
 
@@ -510,6 +513,15 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     OvertimeScreen()
                 }
+                composable(
+                    route = NavigationItem.Scheduler.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    SchedulerScreen()
+                }
             }
         }
     }
@@ -791,6 +803,12 @@ sealed class NavigationItem(
         title = "Overtime",
         icon = Icons.Default.Group,
         description = "Over time calculation"
+    )
+    object Scheduler : NavigationItem(
+        route = "scheduler",
+        title = "Scheduler",
+        icon = Icons.Default.Schedule,
+        description = "Schedule your tasks"
     )
 
 }
