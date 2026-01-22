@@ -71,4 +71,21 @@ class TypeConverters {
     fun localDateTimeToString(dateTime: LocalDateTime?): String? {
         return dateTime?.toString()
     }
+    @TypeConverter
+    fun fromIntSet(value: String?): Set<Int>? {
+        if (value == null) {
+            return null
+        }
+        val type = object : TypeToken<Set<Int>>() {}.type
+        return Gson().fromJson(value, type)
+    }
+
+    @TypeConverter
+    fun toIntSet(set: Set<Int>?): String? {
+        if (set == null) {
+            return null
+        }
+        return Gson().toJson(set)
+    }
+
 }

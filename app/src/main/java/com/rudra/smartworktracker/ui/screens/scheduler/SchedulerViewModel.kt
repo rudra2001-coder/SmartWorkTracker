@@ -1,7 +1,10 @@
 package com.rudra.smartworktracker.ui.screens.scheduler
 
+import android.content.Context
+import android.media.AudioManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudra.smartworktracker.alarm.AlarmScheduler
 import com.rudra.smartworktracker.data.repository.ScheduleRepository
 import com.rudra.smartworktracker.model.Schedule
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,254 +13,344 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-
-// Add these data classes at the top level of the file
-data class ScheduleHistory(
-    val id: String = System.currentTimeMillis().toString() + (0..1000).random(),
-    val scheduleId: Long?,
-    val type: HistoryType,
-    val timestamp: LocalDateTime = LocalDateTime.now(),
-    val details: String? = null,
-    val scheduleTitle: String? = null,
-    val scheduleTime: String? = null
-) {
-    fun formattedTime(): String {
-        val now = LocalDateTime.now()
-        val daysAgo = java.time.Duration.between(timestamp, now).toDays()
-        return when {
-            daysAgo == 0L -> "Today"
-            daysAgo == 1L -> "Yesterday"
-            daysAgo < 7L -> "$daysAgo days ago"
-            else -> timestamp.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-        }
-    }
-
-    fun formattedTimestamp(): String {
-        return timestamp.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
-    }
-}
-
-enum class HistoryType {
-    CREATED, UPDATED, TRIGGERED, DELETED
-}
+import java.time.LocalTime
 
 data class SchedulerUiState(
     val schedules: List<Schedule> = emptyList(),
-    val history: List<ScheduleHistory> = emptyList(),
     val newScheduleTitle: String = "",
-    val newScheduleHour: Int = 0,
-    val newScheduleMinute: Int = 0,
+    val newScheduleDescription: String = "",
+    val newScheduleHour: Int = LocalTime.now().hour,
+    val newScheduleMinute: Int = LocalTime.now().minute,
     val newScheduleIsRepeating: Boolean = false,
+    val selectedDays: List<Int> = emptyList(),
+    val history: List<ScheduleHistory> = emptyList(),
+    val selectedRingtoneUri: String? = null,
+    val selectedRingtoneName: String = "Default",
+    val vibrationPattern: String = "default",
+    val volumeLevel: Int = 80,
+    val selectedCategory: String = "General",
+    val isImportant: Boolean = false,
+    val snoozeDuration: Int = 5,
+    val maxSnoozeCount: Int = 3,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val selectedColorTag: Int? = null,
+    val showAdvancedOptions: Boolean = false
 )
 
-class SchedulerViewModel(private val scheduleRepository: ScheduleRepository) : ViewModel() {
+class SchedulerViewModel(
+    private val scheduleRepository: ScheduleRepository,
+    private val context: Context? = null
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SchedulerUiState())
     val uiState: StateFlow<SchedulerUiState> = _uiState.asStateFlow()
 
-    private val _history = mutableListOf<ScheduleHistory>()
+    private var alarmScheduler: AlarmScheduler? = null
+    private var audioManager: AudioManager? = null
 
     init {
-        loadSchedules()
-        loadInitialHistory()
-    }
+        context?.let {
+            alarmScheduler = AlarmScheduler(it)
+            audioManager = it.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        }
 
-    private fun loadSchedules() {
         scheduleRepository.getAllSchedules()
             .onEach { schedules ->
-                _uiState.value = _uiState.value.copy(
-                    schedules = schedules,
-                    isLoading = false
-                )
+                _uiState.value = _uiState.value.copy(schedules = schedules)
+                alarmScheduler?.rescheduleAll(schedules.filter { it.isEnabled })
             }
             .launchIn(viewModelScope)
     }
 
-    private fun loadInitialHistory() {
-        // In a real app, you would load from database
-        // For now, we'll create some sample history
-        val sampleHistory = listOf(
-            ScheduleHistory(
-                scheduleId = null,
-                type = HistoryType.CREATED,
-                details = "Welcome to Schedule Manager!",
-                scheduleTitle = "Getting Started",
-                scheduleTime = "Now"
+    fun addSchedule() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
+            val time = LocalTime.of(
+                _uiState.value.newScheduleHour,
+                _uiState.value.newScheduleMinute
             )
+
+            val newSchedule = Schedule(
+                title = _uiState.value.newScheduleTitle,
+                description = _uiState.value.newScheduleDescription,
+                time = time,
+                isRepeating = _uiState.value.newScheduleIsRepeating,
+                repeatingDays = if (_uiState.value.newScheduleIsRepeating) {
+                    _uiState.value.selectedDays.toSet()
+                } else {
+                    emptySet()
+                },
+                ringtoneUri = _uiState.value.selectedRingtoneUri,
+                ringtoneName = _uiState.value.selectedRingtoneName,
+                vibrationPattern = _uiState.value.vibrationPattern,
+                volumeLevel = _uiState.value.volumeLevel,
+                category = _uiState.value.selectedCategory,
+                snoozeDuration = _uiState.value.snoozeDuration,
+                maxSnoozeCount = _uiState.value.maxSnoozeCount,
+                isImportant = _uiState.value.isImportant,
+                colorTag = _uiState.value.selectedColorTag
+            )
+
+            try {
+                scheduleRepository.insertSchedule(newSchedule)
+                alarmScheduler?.schedule(newSchedule)
+                
+                // Add to history
+                addHistoryEntry(
+                    scheduleId = newSchedule.id,
+                    type = HistoryType.CREATED,
+                    details = "Created schedule '${newSchedule.title}'",
+                    ringtoneName = newSchedule.ringtoneName
+                )
+                
+                // Reset form
+                resetForm()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun updateSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            val updatedSchedule = schedule.copy(updatedAt = java.time.LocalDateTime.now())
+            scheduleRepository.updateSchedule(updatedSchedule)
+            
+            if (updatedSchedule.isEnabled) {
+                alarmScheduler?.schedule(updatedSchedule)
+            } else {
+                alarmScheduler?.cancel(updatedSchedule)
+            }
+            
+            addHistoryEntry(
+                scheduleId = updatedSchedule.id,
+                type = HistoryType.UPDATED,
+                details = "Updated schedule '${updatedSchedule.title}'",
+                ringtoneName = updatedSchedule.ringtoneName
+            )
+        }
+    }
+
+    fun deleteSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            alarmScheduler?.cancel(schedule)
+            scheduleRepository.deleteSchedule(schedule)
+            
+            addHistoryEntry(
+                scheduleId = schedule.id,
+                type = HistoryType.DELETED,
+                details = "Deleted schedule '${schedule.title}'",
+                ringtoneName = schedule.ringtoneName
+            )
+        }
+    }
+
+    fun toggleSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            val updatedSchedule = schedule.copy(isEnabled = !schedule.isEnabled)
+            scheduleRepository.updateSchedule(updatedSchedule)
+            
+            if (updatedSchedule.isEnabled) {
+                alarmScheduler?.schedule(updatedSchedule)
+                addHistoryEntry(
+                    scheduleId = updatedSchedule.id,
+                    type = HistoryType.UPDATED,
+                    details = "Enabled schedule '${updatedSchedule.title}'"
+                )
+            } else {
+                alarmScheduler?.cancel(updatedSchedule)
+                addHistoryEntry(
+                    scheduleId = updatedSchedule.id,
+                    type = HistoryType.UPDATED,
+                    details = "Disabled schedule '${updatedSchedule.title}'"
+                )
+            }
+        }
+    }
+
+    fun changeScheduleRingtone(schedule: Schedule, ringtoneUri: String?, ringtoneName: String) {
+        viewModelScope.launch {
+            val updatedSchedule = schedule.copy(
+                ringtoneUri = ringtoneUri,
+                ringtoneName = ringtoneName
+            )
+            scheduleRepository.updateSchedule(updatedSchedule)
+            
+            if (updatedSchedule.isEnabled) {
+                alarmScheduler?.schedule(updatedSchedule)
+            }
+            
+            addHistoryEntry(
+                scheduleId = updatedSchedule.id,
+                type = HistoryType.RINGTONE_CHANGED,
+                details = "Changed ringtone to '$ringtoneName'",
+                ringtoneName = ringtoneName
+            )
+        }
+    }
+
+    fun testAlarmNow(schedule: Schedule) {
+        viewModelScope.launch {
+            val testTime = LocalTime.now().plusSeconds(5)
+            val testSchedule = schedule.copy(
+                time = testTime,
+                isRepeating = false,
+                isEnabled = true
+            )
+            
+            alarmScheduler?.schedule(testSchedule)
+            
+            addHistoryEntry(
+                scheduleId = schedule.id,
+                type = HistoryType.TRIGGERED,
+                details = "Test alarm triggered",
+                ringtoneName = schedule.ringtoneName
+            )
+        }
+    }
+
+    fun clearHistory() {
+        _uiState.value = _uiState.value.copy(history = emptyList())
+    }
+
+    fun deleteHistory(history: ScheduleHistory) {
+        val newHistory = _uiState.value.history.toMutableList()
+        newHistory.remove(history)
+        _uiState.value = _uiState.value.copy(history = newHistory)
+    }
+
+    fun selectRingtone(uri: String?, name: String) {
+        _uiState.value = _uiState.value.copy(
+            selectedRingtoneUri = uri,
+            selectedRingtoneName = name
         )
-        _history.addAll(sampleHistory)
-        _uiState.value = _uiState.value.copy(history = _history.toList())
+    }
+
+    fun setVolumeLevel(level: Int) {
+        _uiState.value = _uiState.value.copy(volumeLevel = level)
+    }
+
+    fun setVibrationPattern(pattern: String) {
+        _uiState.value = _uiState.value.copy(vibrationPattern = pattern)
+    }
+
+    fun setSnoozeDuration(minutes: Int) {
+        _uiState.value = _uiState.value.copy(snoozeDuration = minutes)
+    }
+
+    fun setMaxSnoozeCount(count: Int) {
+        _uiState.value = _uiState.value.copy(maxSnoozeCount = count)
+    }
+
+    fun setCategory(category: String) {
+        _uiState.value = _uiState.value.copy(selectedCategory = category)
+    }
+
+    fun setIsImportant(isImportant: Boolean) {
+        _uiState.value = _uiState.value.copy(isImportant = isImportant)
+    }
+
+    fun toggleAdvancedOptions() {
+        _uiState.value = _uiState.value.copy(
+            showAdvancedOptions = !_uiState.value.showAdvancedOptions
+        )
+    }
+
+    fun setColorTag(color: Int?) {
+        _uiState.value = _uiState.value.copy(selectedColorTag = color)
+    }
+
+    private fun addHistoryEntry(
+        scheduleId: Long?,
+        type: HistoryType,
+        details: String? = null,
+        ringtoneName: String? = null
+    ) {
+        val historyEntry = ScheduleHistory(
+            scheduleId = scheduleId,
+            type = type,
+            details = details,
+            ringtoneName = ringtoneName
+        )
+        
+        val newHistory = listOf(historyEntry) + _uiState.value.history.take(99)
+        _uiState.value = _uiState.value.copy(history = newHistory)
+    }
+
+    private fun resetForm() {
+        _uiState.value = SchedulerUiState(
+            schedules = _uiState.value.schedules,
+            history = _uiState.value.history,
+            newScheduleHour = LocalTime.now().hour,
+            newScheduleMinute = LocalTime.now().minute
+        )
     }
 
     fun onTitleChange(title: String) {
         _uiState.value = _uiState.value.copy(newScheduleTitle = title)
     }
 
+    fun onDescriptionChange(description: String) {
+        _uiState.value = _uiState.value.copy(newScheduleDescription = description)
+    }
+
     fun onTimeChange(hour: Int, minute: Int) {
-        _uiState.value = _uiState.value.copy(
-            newScheduleHour = hour,
-            newScheduleMinute = minute
-        )
+        _uiState.value = _uiState.value.copy(newScheduleHour = hour, newScheduleMinute = minute)
     }
 
     fun onIsRepeatingChange(isRepeating: Boolean) {
         _uiState.value = _uiState.value.copy(newScheduleIsRepeating = isRepeating)
     }
 
-    fun addSchedule() {
-        viewModelScope.launch {
-            try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
-
-                val newSchedule = Schedule(
-                    title = _uiState.value.newScheduleTitle,
-                    hour = _uiState.value.newScheduleHour,
-                    minute = _uiState.value.newScheduleMinute,
-                    isRepeating = _uiState.value.newScheduleIsRepeating,
-                    createdAt = LocalDateTime.now()
-                )
-
-                scheduleRepository.insertSchedule(newSchedule)
-
-                // Add to history
-                addHistory(
-                    ScheduleHistory(
-                        scheduleId = newSchedule.id,
-                        type = HistoryType.CREATED,
-                        details = "New schedule created",
-                        scheduleTitle = newSchedule.title,
-                        scheduleTime = "${newSchedule.hour.toString().padStart(2, '0')}:${newSchedule.minute.toString().padStart(2, '0')}"
-                    )
-                )
-
-                // Reset input fields
-                _uiState.value = _uiState.value.copy(
-                    newScheduleTitle = "",
-                    newScheduleHour = 0,
-                    newScheduleMinute = 0,
-                    newScheduleIsRepeating = false,
-                    isLoading = false,
-                    error = null
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Failed to add schedule: ${e.message}"
-                )
-            }
+    fun onDaySelected(day: Int) {
+        val currentDays = _uiState.value.selectedDays.toMutableList()
+        if (currentDays.contains(day)) {
+            currentDays.remove(day)
+        } else {
+            currentDays.add(day)
         }
+        _uiState.value = _uiState.value.copy(selectedDays = currentDays)
     }
-
-    fun deleteSchedule(schedule: Schedule) {
-        viewModelScope.launch {
-            try {
-                // First add to history before deleting
-                addHistory(
-                    ScheduleHistory(
-                        scheduleId = schedule.id,
-                        type = HistoryType.DELETED,
-                        details = "Schedule deleted permanently",
-                        scheduleTitle = schedule.title,
-                        scheduleTime = "${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}"
-                    )
-                )
-
-                scheduleRepository.deleteSchedule(schedule)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Failed to delete schedule: ${e.message}"
-                )
-            }
-        }
+    
+    fun getAvailableRingtoneNames(): List<String> {
+        return listOf(
+            "Default",
+            "Alarm",
+            "Notification",
+            "Ringtone",
+            "Melody",
+            "Chime",
+            "Beep",
+            "Buzzer"
+        )
     }
-
-    fun toggleSchedule(schedule: Schedule) {
-        viewModelScope.launch {
-            try {
-                val updatedSchedule = schedule.copy(isEnabled = !schedule.isEnabled)
-                scheduleRepository.updateSchedule(updatedSchedule)
-
-                // Add to history
-                addHistory(
-                    ScheduleHistory(
-                        scheduleId = schedule.id,
-                        type = HistoryType.UPDATED,
-                        details = if (updatedSchedule.isEnabled)
-                            "Schedule enabled"
-                        else
-                            "Schedule disabled",
-                        scheduleTitle = schedule.title,
-                        scheduleTime = "${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}"
-                    )
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Failed to update schedule: ${e.message}"
-                )
-            }
-        }
+    
+    fun getCategories(): List<String> {
+        return listOf(
+            "General",
+            "Work",
+            "Personal",
+            "Meeting",
+            "Exercise",
+            "Medication",
+            "Study",
+            "Appointment"
+        )
     }
-
-    fun deleteHistory(history: ScheduleHistory) {
-        viewModelScope.launch {
-            _history.remove(history)
-            _uiState.value = _uiState.value.copy(history = _history.toList())
-        }
-    }
-
-    fun clearHistory() {
-        viewModelScope.launch {
-            _history.clear()
-            _uiState.value = _uiState.value.copy(history = emptyList())
-
-            // Add a history entry for clearing
-            addHistory(
-                ScheduleHistory(
-                    scheduleId = null,
-                    type = HistoryType.UPDATED,
-                    details = "All history cleared",
-                    scheduleTitle = "System",
-                    scheduleTime = "Now"
-                )
-            )
-        }
-    }
-
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    fun triggerSchedule(schedule: Schedule) {
-        viewModelScope.launch {
-            addHistory(
-                ScheduleHistory(
-                    scheduleId = schedule.id,
-                    type = HistoryType.TRIGGERED,
-                    details = "Schedule triggered manually",
-                    scheduleTitle = schedule.title,
-                    scheduleTime = "${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}"
-                )
-            )
-        }
-    }
-
-    private fun addHistory(history: ScheduleHistory) {
-        // Keep only last 50 history items to prevent memory issues
-        if (_history.size >= 50) {
-            _history.removeAt(_history.size - 1)
-        }
-        _history.add(0, history) // Add to beginning for chronological order
-        _uiState.value = _uiState.value.copy(history = _history.toList())
-    }
-
-    fun refresh() {
-        _uiState.value = _uiState.value.copy(isLoading = true)
-        loadSchedules()
+    
+    fun getColorTags(): List<Pair<Int, String>> {
+        return listOf(
+            Pair(0xFF4CAF50.toInt(), "Green"),
+            Pair(0xFF2196F3.toInt(), "Blue"),
+            Pair(0xFFFF9800.toInt(), "Orange"),
+            Pair(0xFFF44336.toInt(), "Red"),
+            Pair(0xFF9C27B0.toInt(), "Purple"),
+            Pair(0xFF00BCD4.toInt(), "Cyan"),
+            Pair(0xFFFFC107.toInt(), "Amber"),
+            Pair(0xFF795548.toInt(), "Brown")
+        )
     }
 }
-

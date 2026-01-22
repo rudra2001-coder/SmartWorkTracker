@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ScheduleDao {
-    @Query("SELECT * FROM schedules ORDER BY hour, minute ASC")
+    @Query("SELECT * FROM schedules ORDER BY time ASC")
     fun getAllSchedules(): Flow<List<Schedule>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSchedule(schedule: Schedule)
+    suspend fun insertSchedule(schedule: Schedule): Long
 
     @Update
     suspend fun updateSchedule(schedule: Schedule)

@@ -91,7 +91,7 @@ import kotlinx.coroutines.flow.Flow
         MonthlySummary::class
     
     ],
-    version = 23,
+    version = 25,
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)

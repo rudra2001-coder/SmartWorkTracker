@@ -1,0 +1,13 @@
+<!-- res/drawable/ic_alarm_simple.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,20c4.4,0 8,-3.6 8,-8s-3.6,-8 -8,-8s-8,3.6 -8,8s3.6,8 8,8zM12,22c-5.5,0 -10,-4.5 -10,-10
+            s4.5,-10 10,-10s10,4.5 10,10s-4.5,10 -10,10zM12.5,7v5.2l3.5,2.1l-0.7,1.2L11,13V7h1.5zM7.5,3L9,4.5L7.9,5.6L6.4,4.1zM16.5,3
+            L18,4.5L16.9,5.6L15.4,4.1z" />
+</vector>
