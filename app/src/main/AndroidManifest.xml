@@ -35,14 +35,9 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-
-
-
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
-
         android:fullBackupContent="@xml/data_extraction_rules"
         android:requestLegacyExternalStorage="true"
         android:icon="@drawable/playstore"
@@ -79,12 +74,16 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ui.screens.scheduler.RingtonePickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SmartWorkTracker" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.SmartWorkTracker">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

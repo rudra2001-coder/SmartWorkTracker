@@ -32,7 +32,7 @@ class AlarmScheduler(private val context: Context) {
         val intent = createAlarmIntent(schedule)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            schedule.id.toInt(),
+            schedule.id?.toInt() ?: 0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -61,7 +61,7 @@ class AlarmScheduler(private val context: Context) {
         val alarmTime = calculateNextAlarmTimeForDay(schedule.time, dayOfWeek)
 
         // Create unique request code for each day
-        val requestCode = (schedule.id * 10 + dayOfWeek).toInt()
+        val requestCode = ((schedule.id ?: 0L) * 10 + dayOfWeek).toInt()
 
         val intent = createAlarmIntent(schedule)
         val pendingIntent = PendingIntent.getBroadcast(
@@ -128,12 +128,12 @@ class AlarmScheduler(private val context: Context) {
         if (schedule.isRepeating && schedule.repeatingDays.isNotEmpty()) {
             // Cancel all alarms for each day
             schedule.repeatingDays.forEach { dayOfWeek ->
-                val requestCode = (schedule.id * 10 + dayOfWeek).toInt()
+                val requestCode = ((schedule.id ?: 0L) * 10 + dayOfWeek).toInt()
                 cancelAlarmWithRequestCode(requestCode)
             }
         } else {
             // Cancel single alarm
-            cancelAlarmWithRequestCode(schedule.id.toInt())
+            cancelAlarmWithRequestCode(schedule.id?.toInt() ?: 0)
         }
     }
 
