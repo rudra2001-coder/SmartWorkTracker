@@ -21,6 +21,9 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
     private val _pendingSwaps = MutableStateFlow<List<DutySwap>>(emptyList())
     val pendingSwaps: StateFlow<List<DutySwap>> = _pendingSwaps.asStateFlow()
 
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent = _uiEvent.asSharedFlow()
+
     init {
         updateDutyCalendar()
         
@@ -52,10 +55,9 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
                 val today = LocalDate.now()
                 for (i in 0..30) {
                     val date = today.plusDays(i.toLong())
-                    val dayValue = date.dayOfWeek.value // 1 (Mon) to 7 (Sun)
+                    val dayValue = date.dayOfWeek.value 
                     
                     if (teammate.dutySchedule.regularDutyDays.contains(dayValue)) {
-                        // Check if there's already an explicit duty or holiday
                         val hasExplicit = teammate.dutySchedule.assignedDuties.any { it.date == date }
                         val isHoliday = teammate.dutySchedule.offDays.contains(date)
                         
@@ -131,7 +133,6 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
             } else {
                 currentOffDays.add(date)
             }
-            // If it's a holiday, ensure manual duty is removed
             val updatedDuties = teammate.dutySchedule.assignedDuties.filterNot { it.date == date }
             teammate.copy(dutySchedule = teammate.dutySchedule.copy(offDays = currentOffDays, assignedDuties = updatedDuties))
         }
@@ -153,7 +154,6 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
     fun getTeammateDutyStats(teammateId: String): DutyStats {
         val teammate = _teams.value.flatMap { it.teammates }.find { it.id == teammateId } ?: return DutyStats(0, 0, 0, 0.0)
         
-        // Include both manual and auto duties for stats
         val manualDuties = teammate.dutySchedule.assignedDuties
         val totalDutiesCount = manualDuties.size
         
@@ -194,10 +194,53 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
         }
     }
 
-    fun initiateDutySwap(duty: AssignedDuty) { /* Implementation */ }
-    fun approveDutySwap(swap: DutySwap) { /* Implementation */ }
-    fun rejectDutySwap(swap: DutySwap) { /* Implementation */ }
-    fun autoScheduleDuties(id: String, now: LocalDate, days: Int) { /* Logic now integrated into updateDutyCalendar */ }
+    fun initiateDutySwap(requesterId: String, responderId: String, dutyDate: LocalDate) {
+        val swap = DutySwap(
+            requesterId = requesterId,
+            responderId = responderId,
+            requestDate = dutyDate,
+            swapDate = LocalDate.now().plusDays(1),
+            reason = "Automatic Swap Request"
+        )
+        val currentSwaps = _pendingSwaps.value.toMutableList()
+        currentSwaps.add(swap)
+        _pendingSwaps.value = currentSwaps
+        
+        viewModelScope.launch {
+            _uiEvent.emit("Swap Request Sent Successfully")
+        }
+    }
+
+    fun approveDutySwap(swap: DutySwap) {
+        val currentSwaps = _pendingSwaps.value.toMutableList()
+        val index = currentSwaps.indexOfFirst { it.id == swap.id }
+        if (index != -1) {
+            currentSwaps[index] = swap.copy(status = SwapStatus.APPROVED)
+            _pendingSwaps.value = currentSwaps
+            
+            // Actually perform the swap in duties if needed
+            // This would involve finding the duties on those dates and swapping owners
+            
+            viewModelScope.launch {
+                _uiEvent.emit("Swap Request Approved")
+            }
+        }
+    }
+
+    fun rejectDutySwap(swap: DutySwap) {
+        val currentSwaps = _pendingSwaps.value.toMutableList()
+        val index = currentSwaps.indexOfFirst { it.id == swap.id }
+        if (index != -1) {
+            currentSwaps[index] = swap.copy(status = SwapStatus.REJECTED)
+            _pendingSwaps.value = currentSwaps
+            
+            viewModelScope.launch {
+                _uiEvent.emit("Swap Request Rejected")
+            }
+        }
+    }
+
+    fun autoScheduleDuties(id: String, now: LocalDate, days: Int) {}
 }
 
 data class DutyShift(val startTime: LocalTime, val endTime: LocalTime, val type: String = "Regular", val notes: String = "")

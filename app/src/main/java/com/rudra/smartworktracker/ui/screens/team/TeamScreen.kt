@@ -66,6 +66,13 @@ fun TeamScreen() {
         )
     )
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        teamViewModel.uiEvent.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -93,6 +100,7 @@ fun TeamScreen() {
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             AnimatedVisibility(
                 visible = selectedTab == 0,
@@ -170,7 +178,9 @@ fun TeamScreen() {
                         selectedDate = selectedDate,
                         onDateSelected = { date -> selectedDate = date },
                         onDutyClick = { /* Show details */ },
-                        onSwapRequest = { duty -> teamViewModel.initiateDutySwap(duty) },
+                        onSwapRequest = { duty -> 
+                            // Calendar tab swap logic if needed
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                     
@@ -212,6 +222,7 @@ fun TeamScreen() {
                 onRemoveDuty = { duty -> teamViewModel.removeDuty(duty) },
                 onToggleHoliday = { teammate, date -> teamViewModel.toggleHoliday(selectedTeam!!.name, teammate.id, date) },
                 onSetWeeklySchedule = { teammate, days, start, end -> teamViewModel.setWeeklySchedule(selectedTeam!!.name, teammate.id, days, start, end) },
+                onSwapRequest = { requester, responder, date -> teamViewModel.initiateDutySwap(requester.id, responder.id, date) },
                 getTeammateStats = { teammateId -> teamViewModel.getTeammateDutyStats(teammateId) }
             )
         }
@@ -371,8 +382,8 @@ fun TeamCard(team: Team, onTeamSelected: () -> Unit, onAddTeammate: () -> Unit, 
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ActionButton(text = "Add Member", icon = Icons.Default.PersonAdd, onClick = onAddTeammate, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
-                ActionButton(text = "Manage Duty", icon = Icons.Default.CalendarToday, onClick = onManageDuty, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+                ActionButton(text = "Add Member", icon = Icons.Default.PersonAdd, onClick = onAddTeammate, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f) )
+                ActionButton(text = "Manage Duty", icon = Icons.Default.CalendarToday, onClick = onManageDuty, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f) )
             }
             AnimatedVisibility(visible = expanded) {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -610,6 +621,7 @@ fun DutyCalendarDialog(
     onRemoveDuty: (AssignedDuty) -> Unit,
     onToggleHoliday: (Teammate, LocalDate) -> Unit,
     onSetWeeklySchedule: (Teammate, List<Int>, LocalTime, LocalTime) -> Unit,
+    onSwapRequest: (Teammate, Teammate, LocalDate) -> Unit,
     getTeammateStats: (String) -> DutyStats
 ) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
@@ -620,9 +632,7 @@ fun DutyCalendarDialog(
     var isPickingStartTime by remember { mutableStateOf(true) }
     var dutyNotes by remember { mutableStateOf("") }
     
-    val stats = remember(selectedTeammate) { 
-        selectedTeammate?.let { getTeammateStats(it.id) } 
-    }
+    var showSwapSelection by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.95f), shape = RoundedCornerShape(24.dp)) {
@@ -711,7 +721,7 @@ fun DutyCalendarDialog(
                         }
                         
                         Button(
-                            onClick = { onAssignDuty(teammate, selectedDate, DutyShift(startTime, endTime, notes = dutyNotes)) },
+                            onClick = { onAssignDuty(teammate, selectedDate, DutyShift(startTime, endTime, dutyNotes)) },
                             modifier = Modifier.weight(1.2f),
                             enabled = !isHoliday
                         ) {
@@ -719,6 +729,16 @@ fun DutyCalendarDialog(
                             Spacer(Modifier.width(4.dp))
                             Text("Save Duty")
                         }
+                    }
+                    
+                    Button(
+                        onClick = { showSwapSelection = true },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Request Duty Swap")
                     }
                 }
 
@@ -759,6 +779,17 @@ fun DutyCalendarDialog(
         }
     }
 
+    if (showSwapSelection && selectedTeammate != null) {
+        SwapSelectionDialog(
+            teammates = team.teammates.filter { it.id != selectedTeammate!!.id },
+            onDismiss = { showSwapSelection = false },
+            onTeammateSelected = { responder ->
+                onSwapRequest(selectedTeammate!!, responder, selectedDate)
+                showSwapSelection = false
+            }
+        )
+    }
+
     if (showTimePicker) {
         val timeState = rememberTimePickerState(
             initialHour = if (isPickingStartTime) startTime.hour else endTime.hour,
@@ -776,6 +807,42 @@ fun DutyCalendarDialog(
             dismissButton = { TextButton(onClick = { showTimePicker = false }) { Text("Cancel") } },
             text = { TimePicker(state = timeState) }
         )
+    }
+}
+
+@Composable
+fun SwapSelectionDialog(
+    teammates: List<Teammate>,
+    onDismiss: () -> Unit,
+    onTeammateSelected: (Teammate) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(shape = RoundedCornerShape(24.dp)) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text("Select Swap Partner", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(16.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                    items(teammates) { teammate ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onTeammateSelected(teammate) }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                                Text(teammate.name.take(1), style = MaterialTheme.typography.labelSmall)
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text(teammate.name)
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                }
+            }
+        }
     }
 }
 
