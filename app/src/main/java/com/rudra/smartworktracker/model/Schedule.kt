@@ -2,6 +2,8 @@ package com.rudra.smartworktracker.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.rudra.smartworktracker.data.entity.BaseEntity
+import com.rudra.smartworktracker.data.entity.SyncStatus
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -18,15 +20,22 @@ data class Schedule(
     val ringtoneName: String = "Default",
     val vibrationPattern: String = "default",
     val volumeLevel: Int = 80,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
     val description: String? = null,
     val category: String = "General",
     val snoozeDuration: Int = 5, // minutes
     val maxSnoozeCount: Int = 3,
     val isImportant: Boolean = false,
-    val colorTag: Int? = null
-) {
+    val colorTag: Int? = null,
+
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity {
     fun getNextTriggerTime(): LocalDateTime {
         val now = LocalDateTime.now()
         val todayAtTime = now.with(time)

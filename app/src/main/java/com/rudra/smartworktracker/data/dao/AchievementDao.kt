@@ -19,4 +19,7 @@ interface AchievementDao {
 
     @Query("SELECT * FROM achievements ORDER BY unlocked DESC")
     fun getAllAchievements(): Flow<List<Achievement>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAchievement(achievement: Achievement)
 }

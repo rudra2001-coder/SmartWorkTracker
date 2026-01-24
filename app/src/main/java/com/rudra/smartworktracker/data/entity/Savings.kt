@@ -8,5 +8,15 @@ data class Savings(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val amount: Double,
-    val timestamp: Long
-)
+    val timestamp: Long,
+
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity

@@ -116,6 +116,9 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
                         viewModel.logWaterIntake(250.0) // Standard glass size
                         showHydrationPopup = false
                     },
+                    onStretch = { viewModel.saveHealthMetric(HealthMetricType.EXERCISE, 5.0, "Quick Stretch") },
+                    onEyeExercise = { viewModel.saveHealthMetric(HealthMetricType.BREAKS, 1.0, "Eye Care") },
+                    onLogWork = { viewModel.showMetricInput(HealthMetricType.SCREEN_TIME) },
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -132,7 +135,7 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
                     nutritionData = healthData.nutritionData,
                     dailyGoals = healthAnalytics.nutritionGoals,
                     onAddMeal = {
-                        viewModel.logMeal()
+                        viewModel.showMealInput()
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -185,6 +188,99 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
                     },
                     onDismiss = { viewModel.showMetricInput(metricType) }
                 )
+            }
+        }
+
+        // Meal Input Dialog
+        if (uiState.showMealDialog) {
+            MealInputDialog(
+                onSave = { c, p, cr, f ->
+                    viewModel.logMeal(c, p, cr, f)
+                    viewModel.showMealInput()
+                },
+                onDismiss = { viewModel.showMealInput() }
+            )
+        }
+    }
+}
+
+@Composable
+fun MealInputDialog(
+    onSave: (Double, Double, Double, Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var calories by remember { mutableStateOf("") }
+    var protein by remember { mutableStateOf("") }
+    var carbs by remember { mutableStateOf("") }
+    var fiber by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Log Meal", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                
+                OutlinedTextField(
+                    value = calories,
+                    onValueChange = { calories = it },
+                    label = { Text("Calories (kcal)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                OutlinedTextField(
+                    value = protein,
+                    onValueChange = { protein = it },
+                    label = { Text("Protein (g)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = carbs,
+                    onValueChange = { carbs = it },
+                    label = { Text("Carbs (g)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = fiber,
+                    onValueChange = { fiber = it },
+                    label = { Text("Fiber (g)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            onSave(
+                                calories.toDoubleOrNull() ?: 0.0,
+                                protein.toDoubleOrNull() ?: 0.0,
+                                carbs.toDoubleOrNull() ?: 0.0,
+                                fiber.toDoubleOrNull() ?: 0.0
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Log Meal")
+                    }
+                }
             }
         }
     }
@@ -311,6 +407,9 @@ fun DashboardTab(
     onMetricClick: (HealthMetricType) -> Unit,
     onAddBreak: () -> Unit,
     onAddWater: () -> Unit,
+    onStretch: () -> Unit,
+    onEyeExercise: () -> Unit,
+    onLogWork: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -385,6 +484,7 @@ fun DashboardTab(
                 eyeStrainLevel = healthAnalytics.eyeStrainLevel,
                 lastEyeBreak = dailyRoutine.lastEyeBreakMinutes,
                 recommendedEyeExercises = listOf("20-20-20 Rule", "Palming", "Eye Rolling"),
+                onDoExercise = onEyeExercise,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -393,11 +493,11 @@ fun DashboardTab(
         item {
             QuickWorkActions(
                 onLogBreak = onAddBreak,
-                onStretch = { /* Start stretching routine */ },
-                onEyeExercise = { /* Start eye exercises */ },
+                onStretch = onStretch,
+                onEyeExercise = onEyeExercise,
                 onHydrate = onAddWater,
-                onLogMeal = { /* Log meal */ },
-                onLogWork = { /* Log work session */ },
+                onLogMeal = { /* Will be handled by tab change or specific action */ },
+                onLogWork = onLogWork,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -854,6 +954,7 @@ fun EyeHealthSection(
     eyeStrainLevel: Int,
     lastEyeBreak: Int,
     recommendedEyeExercises: List<String>,
+    onDoExercise: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -931,7 +1032,7 @@ fun EyeHealthSection(
                 }
 
                 Button(
-                    onClick = { /* Start eye exercise */ },
+                    onClick = onDoExercise,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF2196F3)
                     ),

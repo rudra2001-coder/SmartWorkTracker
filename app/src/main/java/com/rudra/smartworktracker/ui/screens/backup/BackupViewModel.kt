@@ -4,286 +4,148 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rudra.smartworktracker.data.AppDatabase
-import kotlinx.coroutines.Dispatchers
+import androidx.work.*
+import com.rudra.smartworktracker.data.backup.AutoBackupWorker
+import com.rudra.smartworktracker.data.backup.BackupManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
-import java.util.zip.ZipOutputStream
-import kotlin.system.exitProcess
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
-class BackupViewModel(private val db: AppDatabase, private val context: Context) : ViewModel() {
+class BackupViewModel(private val context: Context) : ViewModel() {
+
+    private val backupManager = BackupManager(context)
+    private val prefs = context.getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
 
     private val _backupState = MutableStateFlow<BackupState>(BackupState.Idle)
     val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
 
-    companion object {
-        private const val TEMP_RESTORE_FILE = "restore_backup.zip"
-        private const val PREFS_EXTENSION = ".xml"
-        private const val APP_FILES_DIR = "app_files"
-        private const val BUFFER_SIZE = 8192
+    private val _lastBackupTime = MutableStateFlow<Long>(0L)
+    val lastBackupTime: StateFlow<Long> = _lastBackupTime.asStateFlow()
+
+    private val _nextBackupTime = MutableStateFlow<Long>(0L)
+    val nextBackupTime: StateFlow<Long> = _nextBackupTime.asStateFlow()
+
+    private val _isAutoBackupEnabled = MutableStateFlow(false)
+    val isAutoBackupEnabled: StateFlow<Boolean> = _isAutoBackupEnabled.asStateFlow()
+
+    init {
+        loadBackupStatus()
     }
 
-    private fun getDatabaseFiles(context: Context): List<File> {
-        val dbName = db.openHelper.databaseName ?: "app_database"
-        val dbPath = context.getDatabasePath(dbName)
-
-        val databaseFiles = mutableListOf<File>()
-
-        // Main database file
-        if (dbPath.exists()) {
-            databaseFiles.add(dbPath)
-        }
-
-        // Journal files (if they exist)
-        val shmFile = File(dbPath.parent, "$dbName-shm")
-        val walFile = File(dbPath.parent, "$dbName-wal")
-
-        if (shmFile.exists()) databaseFiles.add(shmFile)
-        if (walFile.exists()) databaseFiles.add(walFile)
-
-        return databaseFiles
-    }
-
-    private fun getSharedPrefsFiles(context: Context): List<File> {
-        val prefsDir = File(context.filesDir.parent + "/shared_prefs/")
-        return if (prefsDir.exists() && prefsDir.isDirectory) {
-            prefsDir.listFiles { file ->
-                file.name.startsWith("smart_work_tracker") && file.name.endsWith(PREFS_EXTENSION)
-            }?.toList() ?: emptyList()
+    fun loadBackupStatus() {
+        _lastBackupTime.value = prefs.getLong("last_auto_backup_time", 0L)
+        _isAutoBackupEnabled.value = prefs.getBoolean("auto_backup_enabled", false)
+        
+        if (_isAutoBackupEnabled.value) {
+            calculateNextBackupTime()
         } else {
-            emptyList()
+            _nextBackupTime.value = 0L
         }
     }
 
-    private fun getAppFiles(): List<File> {
-        val appFilesDir = File(context.filesDir, APP_FILES_DIR)
-        return if (appFilesDir.exists() && appFilesDir.isDirectory) {
-            appFilesDir.walk().filter { it.isFile }.toList()
-        } else {
-            emptyList()
+    private fun calculateNextBackupTime() {
+        val nextBackup = Calendar.getInstance()
+        nextBackup.set(Calendar.HOUR_OF_DAY, 0)
+        nextBackup.set(Calendar.MINUTE, 5)
+        nextBackup.set(Calendar.SECOND, 0)
+        
+        if (nextBackup.before(Calendar.getInstance())) {
+            nextBackup.add(Calendar.DAY_OF_YEAR, 1)
         }
+        _nextBackupTime.value = nextBackup.timeInMillis
     }
 
-    fun createBackup(backupFileUri: Uri) {
+    fun toggleAutoBackup(enabled: Boolean) {
         viewModelScope.launch {
-            _backupState.value = BackupState.InProgress
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    performBackup(backupFileUri)
-                }
-                _backupState.value = result
-            } catch (e: Exception) {
-                _backupState.value = BackupState.Error("Backup failed: ${e.localizedMessage ?: "Unknown error"}")
-            }
-        }
-    }
-
-    private suspend fun performBackup(backupFileUri: Uri): BackupState {
-        return try {
-            val filesToBackup = getFilesForBackup()
-
-            if (filesToBackup.isEmpty()) {
-                return BackupState.Error("No data found to backup")
-            }
-
-            context.contentResolver.openOutputStream(backupFileUri)?.use { outputStream ->
-                ZipOutputStream(BufferedOutputStream(outputStream)).use { zos ->
-                    for (file in filesToBackup) {
-                        if (file.exists()) {
-                            addFileToZip(zos, file, getRelativePath(file))
-                        }
-                    }
-                }
-            } ?: return BackupState.Error("Failed to open output stream")
-
-            BackupState.Success("Backup created successfully")
-        } catch (e: SecurityException) {
-            BackupState.Error("Permission denied: Cannot create backup file")
-        } catch (e: Exception) {
-            BackupState.Error("Backup failed: ${e.localizedMessage ?: "Unknown error"}")
-        }
-    }
-
-    private fun getFilesForBackup(): List<File> {
-        val files = mutableListOf<File>()
-
-        // Database files
-        files.addAll(getDatabaseFiles(context))
-
-        // Shared preferences
-        files.addAll(getSharedPrefsFiles(context))
-
-        // App files
-        files.addAll(getAppFiles())
-
-        return files.filter { it.exists() && it.canRead() }
-    }
-
-    private fun getRelativePath(file: File): String {
-        return when {
-            file.absolutePath.contains("/databases/") -> "databases/${file.name}"
-            file.absolutePath.contains("/shared_prefs/") -> "shared_prefs/${file.name}"
-            file.absolutePath.contains("/$APP_FILES_DIR/") -> {
-                val relativePath = file.absolutePath.substringAfter("$APP_FILES_DIR/")
-                "$APP_FILES_DIR/$relativePath"
-            }
-            else -> file.name
-        }
-    }
-
-    private fun addFileToZip(zos: ZipOutputStream, file: File, entryPath: String) {
-        if (!file.exists() || !file.canRead()) return
-
-        try {
-            val entry = ZipEntry(entryPath).apply {
-                time = file.lastModified()
-                size = file.length()
-            }
-            zos.putNextEntry(entry)
-            file.inputStream().buffered(BUFFER_SIZE).use { input ->
-                input.copyTo(zos, BUFFER_SIZE)
-            }
-            zos.closeEntry()
-        } catch (e: Exception) {
-            throw RuntimeException("Failed to add file to zip: ${file.name}", e)
-        }
-    }
-
-    fun restoreBackup(backupZipUri: Uri) {
-        viewModelScope.launch {
-            _backupState.value = BackupState.InProgress
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    performRestore(backupZipUri)
-                }
-                _backupState.value = result
-            } catch (e: Exception) {
-                _backupState.value = BackupState.Error("Restore failed: ${e.localizedMessage ?: "Unknown error"}")
-            }
-        }
-    }
-
-    private suspend fun performRestore(backupZipUri: Uri): BackupState {
-        var tempFile: File? = null
-        return try {
-            tempFile = backupZipUri.toTempFile(context)
-
-            if (!isValidBackupFile(tempFile)) {
-                return BackupState.Error("Invalid backup file format")
-            }
-
-            val restoredFiles = restoreFilesFromZip(tempFile)
-
-            if (restoredFiles > 0) {
-                BackupState.Success("$restoredFiles files restored successfully. Restarting app...").also {
-                    // Small delay to ensure message is shown
-                    kotlinx.coroutines.delay(1000)
-                    restartApp()
-                }
+            prefs.edit().putBoolean("auto_backup_enabled", enabled).apply()
+            _isAutoBackupEnabled.value = enabled
+            
+            if (enabled) {
+                scheduleDailyBackup()
+                calculateNextBackupTime()
             } else {
-                BackupState.Error("No files were restored from backup")
+                cancelDailyBackup()
+                _nextBackupTime.value = 0L
             }
-        } catch (e: SecurityException) {
-            BackupState.Error("Permission denied: Cannot restore backup")
-        } catch (e: Exception) {
-            BackupState.Error("Restore failed: ${e.localizedMessage ?: "Unknown error"}")
-        } finally {
-            // Clean up temp file
-            tempFile?.delete()
         }
     }
 
-    private fun isValidBackupFile(file: File): Boolean {
-        if (!file.exists() || file.length() == 0L) return false
+    private fun scheduleDailyBackup() {
+        val constraints = Constraints.Builder()
+            .setRequiresStorageNotLow(true)
+            .build()
 
-        return try {
-            ZipFile(file).use { zip ->
-                zip.entries().asSequence().any { entry ->
-                    !entry.isDirectory && (
-                            entry.name.contains("databases/") ||
-                                    entry.name.contains("shared_prefs/") ||
-                                    entry.name.startsWith(APP_FILES_DIR)
-                            )
-                }
-            }
-        } catch (e: Exception) {
-            false
+        val currentDate = Calendar.getInstance()
+        val dueDate = Calendar.getInstance()
+        dueDate.set(Calendar.HOUR_OF_DAY, 0)
+        dueDate.set(Calendar.MINUTE, 5)
+        dueDate.set(Calendar.SECOND, 0)
+
+        if (dueDate.before(currentDate)) {
+            dueDate.add(Calendar.HOUR_OF_DAY, 24)
         }
+
+        val initialDelay = dueDate.timeInMillis - currentDate.timeInMillis
+
+        val dailyBackupRequest = PeriodicWorkRequestBuilder<AutoBackupWorker>(24, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+            .addTag("daily_backup")
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "daily_backup_work",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            dailyBackupRequest
+        )
     }
 
-    private fun restoreFilesFromZip(backupZip: File): Int {
-        var restoredCount = 0
+    private fun cancelDailyBackup() {
+        WorkManager.getInstance(context).cancelUniqueWork("daily_backup_work")
+    }
 
-        ZipFile(backupZip).use { zip ->
-            for (entry in zip.entries()) {
-                if (!entry.isDirectory) {
-                    val outputFile = getOutputFileForEntry(entry.name)
-                    if (outputFile != null && restoreSingleFile(zip, entry, outputFile)) {
-                        restoredCount++
+    fun createBackup(uri: Uri) {
+        viewModelScope.launch {
+            _backupState.value = BackupState.InProgress
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val success = backupManager.exportToJson(outputStream)
+                    if (success) {
+                        _backupState.value = BackupState.Success("Manual backup created successfully")
+                        loadBackupStatus()
+                    } else {
+                        _backupState.value = BackupState.Error("Failed to create backup")
                     }
+                } ?: run {
+                    _backupState.value = BackupState.Error("Could not open output stream")
                 }
+            } catch (e: Exception) {
+                _backupState.value = BackupState.Error("Backup failed: ${e.localizedMessage}")
             }
-        }
-
-        return restoredCount
-    }
-
-    private fun getOutputFileForEntry(entryName: String): File? {
-        return when {
-            entryName.startsWith("databases/") -> {
-                val dbName = entryName.substringAfter("databases/")
-                File(context.getDatabasePath(dbName).parent, dbName)
-            }
-            entryName.startsWith("shared_prefs/") -> {
-                val prefsName = entryName.substringAfter("shared_prefs/")
-                File(context.filesDir.parent + "/shared_prefs/", prefsName)
-            }
-            entryName.startsWith("$APP_FILES_DIR/") -> {
-                val relativePath = entryName.substringAfter("$APP_FILES_DIR/")
-                File(File(context.filesDir, APP_FILES_DIR), relativePath)
-            }
-            else -> null
         }
     }
 
-    private fun restoreSingleFile(zip: ZipFile, entry: ZipEntry, outputFile: File): Boolean {
-        return try {
-            outputFile.parentFile?.mkdirs()
-
-            zip.getInputStream(entry).use { input ->
-                FileOutputStream(outputFile).use { output ->
-                    input.copyTo(output, BUFFER_SIZE)
+    fun restoreBackup(uri: Uri) {
+        viewModelScope.launch {
+            _backupState.value = BackupState.InProgress
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val result = backupManager.importFromJson(inputStream)
+                    if (result.isSuccess) {
+                        _backupState.value = BackupState.Success("Data restored successfully")
+                    } else {
+                        _backupState.value = BackupState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
+                    }
+                } ?: run {
+                    _backupState.value = BackupState.Error("Could not open input stream")
                 }
+            } catch (e: Exception) {
+                _backupState.value = BackupState.Error("Restore failed: ${e.localizedMessage}")
             }
-            true
-        } catch (e: Exception) {
-            false
         }
-    }
-
-    private fun Uri.toTempFile(context: Context): File {
-        val tempFile = File(context.cacheDir, TEMP_RESTORE_FILE)
-
-        context.contentResolver.openInputStream(this)?.use { input ->
-            FileOutputStream(tempFile).use { output ->
-                input.copyTo(output, BUFFER_SIZE)
-            }
-        } ?: throw IllegalArgumentException("Cannot open backup file")
-
-        return tempFile
-    }
-
-    private fun restartApp() {
-        // This will restart the app
-        exitProcess(0)
     }
 }
 

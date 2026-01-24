@@ -502,7 +502,7 @@ popExitTransition = { defaultPopExitTransition() }
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    TeamScreen()
+                    TeamScreen(onNavigateBack = { navController.popBackStack() })
                 }
                 composable(
                     route = NavigationItem.Overtime.route,

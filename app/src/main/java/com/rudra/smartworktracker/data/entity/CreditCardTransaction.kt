@@ -18,8 +18,18 @@ import androidx.room.PrimaryKey
 data class CreditCardTransaction(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+    
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+    
     val cardId: Int,
     val amount: Double,
     val description: String,
-    val date: Long
-)
+    val date: Long,
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity

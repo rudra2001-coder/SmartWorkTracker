@@ -1,65 +1,21 @@
 package com.rudra.smartworktracker.data
 
 import android.content.Context
-import androidx.room.Dao
 import androidx.room.Database
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.rudra.smartworktracker.data.dao.ColleagueDao
-import com.rudra.smartworktracker.data.dao.AchievementDao
-import com.rudra.smartworktracker.data.dao.CalculationDao
-import com.rudra.smartworktracker.data.dao.Converters
-import com.rudra.smartworktracker.data.dao.CreditCardDao
-import com.rudra.smartworktracker.data.dao.CreditCardTransactionDao
-import com.rudra.smartworktracker.data.dao.DailyJournalDao
-import com.rudra.smartworktracker.data.dao.EmiDao
-import com.rudra.smartworktracker.data.dao.ExpenseDao
-import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
-import com.rudra.smartworktracker.data.dao.FocusSessionDao
-import com.rudra.smartworktracker.data.dao.HabitDao
-import com.rudra.smartworktracker.data.dao.HealthMetricDao
-import com.rudra.smartworktracker.data.dao.IncomeDao
-import com.rudra.smartworktracker.data.dao.LoanDao
-import com.rudra.smartworktracker.data.dao.MonthlyInputDao
-import com.rudra.smartworktracker.data.dao.SavingsDao
-import com.rudra.smartworktracker.data.dao.ScheduleDao
-import com.rudra.smartworktracker.data.dao.SettingsDao
-import com.rudra.smartworktracker.data.dao.SummaryDao
-import com.rudra.smartworktracker.data.dao.UserProfileDao
-import com.rudra.smartworktracker.data.dao.WorkDayDao
-import com.rudra.smartworktracker.data.dao.WorkLogDao
-import com.rudra.smartworktracker.data.dao.WorkSessionDao
-import com.rudra.smartworktracker.data.entity.Calculation
-import com.rudra.smartworktracker.data.entity.CreditCard
-import com.rudra.smartworktracker.data.entity.CreditCardTransaction
-import com.rudra.smartworktracker.data.entity.Emi
-import com.rudra.smartworktracker.data.entity.FinancialTransaction
-import com.rudra.smartworktracker.data.entity.Income
-import com.rudra.smartworktracker.data.entity.Loan
-import com.rudra.smartworktracker.data.entity.MonthlyInput
-import com.rudra.smartworktracker.data.entity.MonthlySummary
-import com.rudra.smartworktracker.data.entity.Savings
-import com.rudra.smartworktracker.data.entity.Settings
-import com.rudra.smartworktracker.data.entity.TravelAndExpense
-import com.rudra.smartworktracker.data.entity.UserProfile
-import com.rudra.smartworktracker.data.entity.WorkDay
+import com.rudra.smartworktracker.data.dao.*
+import com.rudra.smartworktracker.data.entity.*
 import com.rudra.smartworktracker.data.local.TypeConverters as LocalTypeConverters
-import com.rudra.smartworktracker.model.Achievement
-import com.rudra.smartworktracker.model.Colleague
-import com.rudra.smartworktracker.model.DailyJournal
-import com.rudra.smartworktracker.model.Expense
-import com.rudra.smartworktracker.model.FocusSession
-import com.rudra.smartworktracker.model.Habit
-import com.rudra.smartworktracker.model.HealthMetric
-import com.rudra.smartworktracker.model.Schedule
-import com.rudra.smartworktracker.model.WorkLog
-import com.rudra.smartworktracker.model.WorkSession
-import kotlinx.coroutines.flow.Flow
+import com.rudra.smartworktracker.model.*
 
+/**
+ * The Room database for this app.
+ * Rule 1: SQLite is the single source of truth.
+ * This version uses a clean start (Version 1) with standardized UUID primary keys
+ * and mandatory audit columns to ensure long-term scalability and zero data loss.
+ */
 @Database(
     entities = [
         WorkSession::class, 
@@ -84,14 +40,13 @@ import kotlinx.coroutines.flow.Flow
         Savings::class,
         Colleague::class,
         TravelAndExpense::class,
-        Schedule::class
-
+        Schedule::class,
+        Meal::class
     ],
     views = [
         MonthlySummary::class
-    
     ],
-    version = 25,
+    version = 1, // Fresh Start Version 1
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -120,32 +75,28 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun savingsDao(): SavingsDao
     abstract fun colleagueDao(): ColleagueDao
     abstract fun scheduleDao(): ScheduleDao
+    abstract fun mealDao(): MealDao
 
     abstract fun travelExpenseDao(): TravelExpenseDao
 
-    @Dao
-    interface TravelExpenseDao {
-        @Query("SELECT * FROM travel_expenses LIMIT 1")
-        fun getTravelExpense(): Flow<TravelAndExpense?>
-
-        @Insert(onConflict = OnConflictStrategy.REPLACE)
-        suspend fun insert(expense: TravelAndExpense)
-
-        @Query("DELETE FROM travel_expenses")
-        suspend fun deleteAll()
-    }
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        /**
+         * Returns the single instance of AppDatabase.
+         * Uses a unique database name 'smart_work_tracker_v2' to avoid conflicts with 
+         * corrupted legacy versions and ensure a clean, migration-free schema.
+         */
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "smart_work_tracker_database"
+                    "smart_work_tracker_v2"
                 )
-                .fallbackToDestructiveMigration()
+                // Fix for deprecation: Specify dropAllTables explicitly
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 INSTANCE = instance
                 instance

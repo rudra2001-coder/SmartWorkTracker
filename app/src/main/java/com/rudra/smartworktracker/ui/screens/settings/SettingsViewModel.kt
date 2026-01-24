@@ -1,24 +1,34 @@
 package com.rudra.smartworktracker.ui.screens.settings
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudra.smartworktracker.data.backup.BackupManager
 import com.rudra.smartworktracker.data.entity.UserProfile
-import com.rudra.smartworktracker.data.repository.ExpenseRepository
-import com.rudra.smartworktracker.data.repository.IncomeRepository
-import com.rudra.smartworktracker.data.repository.SettingsRepository
-import com.rudra.smartworktracker.data.repository.UserProfileRepository
-import com.rudra.smartworktracker.data.repository.WorkLogRepository
+import com.rudra.smartworktracker.data.repository.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
+    application: Application,
     private val userProfileRepository: UserProfileRepository,
     private val workLogRepository: WorkLogRepository,
     private val incomeRepository: IncomeRepository,
     private val expenseRepository: ExpenseRepository,
     private val settingsRepository: SettingsRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val backupManager = BackupManager(application)
+
+    private val _backupResult = MutableSharedFlow<String>()
+    val backupResult: SharedFlow<String> = _backupResult
+
+    private val _restoreResult = MutableSharedFlow<Result<Unit>>()
+    val restoreResult: SharedFlow<Result<Unit>> = _restoreResult
 
     val userProfile = userProfileRepository.userProfile.stateIn(
         scope = viewModelScope,
@@ -40,15 +50,6 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = true
     )
-    val vibrationEnabled = settingsRepository.vibration.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = true
-    )
-
-    fun updateUserProfile(userProfile: UserProfile) {
-        // To be implemented
-    }
 
     fun setMealRate(rate: Double) {
         viewModelScope.launch {
@@ -68,9 +69,25 @@ class SettingsViewModel(
         }
     }
 
-    fun setVibration(enabled: Boolean) {
+    fun createBackup(uri: Uri) {
         viewModelScope.launch {
-            settingsRepository.setVibration(enabled)
+            val context = getApplication<Application>()
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                val success = backupManager.exportToJson(outputStream)
+                if (success) {
+                    _backupResult.emit(uri.path ?: "Backup successful")
+                }
+            }
+        }
+    }
+
+    fun restoreBackup(uri: Uri) {
+        viewModelScope.launch {
+            val context = getApplication<Application>()
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val result = backupManager.importFromJson(inputStream)
+                _restoreResult.emit(result)
+            }
         }
     }
 

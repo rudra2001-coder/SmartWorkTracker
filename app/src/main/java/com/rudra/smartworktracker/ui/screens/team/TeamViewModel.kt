@@ -9,20 +9,24 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.DayOfWeek
+import java.time.format.DateTimeFormatter
+import kotlin.math.min
 
 class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager) : ViewModel() {
 
     private val _teams = MutableStateFlow(loadAndCleanTeams())
     val teams: StateFlow<List<Team>> = _teams.asStateFlow()
 
-    private val _dutyCalendar = MutableStateFlow<Map<LocalDate, List<AssignedDuty>>>(emptyMap())
-    val dutyCalendar: StateFlow<Map<LocalDate, List<AssignedDuty>>> = _dutyCalendar.asStateFlow()
+    private val _dutyCalendar = MutableStateFlow<Map<LocalDate, List<CalendarDuty>>>(emptyMap())
+    val dutyCalendar: StateFlow<Map<LocalDate, List<CalendarDuty>>> = _dutyCalendar.asStateFlow()
 
     private val _pendingSwaps = MutableStateFlow<List<DutySwap>>(emptyList())
     val pendingSwaps: StateFlow<List<DutySwap>> = _pendingSwaps.asStateFlow()
 
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent = _uiEvent.asSharedFlow()
+
+    private var notificationManager: DutyNotificationManager? = null
 
     init {
         updateDutyCalendar()
@@ -34,6 +38,10 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
         }
     }
 
+    fun setNotificationManager(manager: DutyNotificationManager) {
+        this.notificationManager = manager
+    }
+
     private fun updateTeams(newTeams: List<Team>) {
         _teams.value = newTeams
         sharedPreferenceManager.saveTeams(newTeams)
@@ -41,14 +49,18 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
     }
 
     private fun updateDutyCalendar() {
-        val calendarMap = mutableMapOf<LocalDate, MutableList<AssignedDuty>>()
+        val calendarMap = mutableMapOf<LocalDate, MutableList<CalendarDuty>>()
         
         _teams.value.forEach { team ->
             team.teammates.forEach { teammate ->
                 // Add explicit assigned duties
                 teammate.dutySchedule.assignedDuties.forEach { duty ->
                     val list = calendarMap.getOrPut(duty.date) { mutableListOf() }
-                    list.add(duty.copy()) 
+                    list.add(CalendarDuty(
+                        teammateId = teammate.id,
+                        teammateName = teammate.name,
+                        duty = duty.copy()
+                    )) 
                 }
                 
                 // Add regular schedule duties for the next 30 days if not overridden
@@ -63,12 +75,16 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
                         
                         if (!hasExplicit && !isHoliday) {
                             val list = calendarMap.getOrPut(date) { mutableListOf() }
-                            list.add(AssignedDuty(
-                                date = date,
-                                startTime = teammate.dutySchedule.dutyStartTime,
-                                endTime = teammate.dutySchedule.dutyEndTime,
-                                dutyType = "Regular (Auto)",
-                                notes = "Weekly Schedule"
+                            list.add(CalendarDuty(
+                                teammateId = teammate.id,
+                                teammateName = teammate.name,
+                                duty = AssignedDuty(
+                                    date = date,
+                                    startTime = teammate.dutySchedule.dutyStartTime,
+                                    endTime = teammate.dutySchedule.dutyEndTime,
+                                    dutyType = "Regular (Auto)",
+                                    notes = "Weekly Schedule"
+                                )
                             ))
                         }
                     }
@@ -194,17 +210,23 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
         }
     }
 
-    fun initiateDutySwap(requesterId: String, responderId: String, dutyDate: LocalDate) {
+    fun initiateDutySwap(requesterId: String, responderId: String, dutyDate: LocalDate, swapDate: LocalDate = dutyDate.plusDays(1)) {
+        val requester = _teams.value.flatMap { it.teammates }.find { it.id == requesterId }
         val swap = DutySwap(
             requesterId = requesterId,
             responderId = responderId,
             requestDate = dutyDate,
-            swapDate = LocalDate.now().plusDays(1),
-            reason = "Automatic Swap Request"
+            swapDate = swapDate,
+            reason = "Duty Swap Request"
         )
         val currentSwaps = _pendingSwaps.value.toMutableList()
         currentSwaps.add(swap)
         _pendingSwaps.value = currentSwaps
+        
+        notificationManager?.sendSwapRequestNotification(
+            requester?.name ?: "A teammate",
+            dutyDate.format(DateTimeFormatter.ofPattern("MMM d"))
+        )
         
         viewModelScope.launch {
             _uiEvent.emit("Swap Request Sent Successfully")
@@ -218,13 +240,56 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
             currentSwaps[index] = swap.copy(status = SwapStatus.APPROVED)
             _pendingSwaps.value = currentSwaps
             
-            // Actually perform the swap in duties if needed
-            // This would involve finding the duties on those dates and swapping owners
+            val teams = _teams.value
+            var requesterInfo: Pair<String, Teammate>? = null
+            var responderInfo: Pair<String, Teammate>? = null
+            
+            teams.forEach { team ->
+                team.teammates.forEach { teammate ->
+                    if (teammate.id == swap.requesterId) requesterInfo = team.name to teammate
+                    if (teammate.id == swap.responderId) responderInfo = team.name to teammate
+                }
+            }
+            
+            if (requesterInfo != null && responderInfo != null) {
+                val (reqTeam, req) = requesterInfo!!
+                val (resTeam, res) = responderInfo!!
+                
+                val reqDuty = getOrCreateDuty(req, swap.requestDate)
+                val resDuty = getOrCreateDuty(res, swap.swapDate)
+                
+                updateTeammate(reqTeam, req.id) { r ->
+                    val filtered = r.dutySchedule.assignedDuties.filterNot { it.date == swap.requestDate || it.date == swap.swapDate }
+                    val newDuty = resDuty.copy(date = swap.swapDate, isSwapped = true, swappedWith = res.name)
+                    r.copy(dutySchedule = r.dutySchedule.copy(assignedDuties = filtered + newDuty))
+                }
+                
+                updateTeammate(resTeam, res.id) { r ->
+                    val filtered = r.dutySchedule.assignedDuties.filterNot { it.date == swap.requestDate || it.date == swap.swapDate }
+                    val newDuty = reqDuty.copy(date = swap.requestDate, isSwapped = true, swappedWith = req.name)
+                    r.copy(dutySchedule = r.dutySchedule.copy(assignedDuties = filtered + newDuty))
+                }
+                
+                notificationManager?.sendSwapApprovalNotification(
+                    swap.requestDate.format(DateTimeFormatter.ofPattern("MMM d"))
+                )
+            }
             
             viewModelScope.launch {
-                _uiEvent.emit("Swap Request Approved")
+                _uiEvent.emit("Swap Request Approved and Duties Exchanged")
             }
         }
+    }
+
+    private fun getOrCreateDuty(teammate: Teammate, date: LocalDate): AssignedDuty {
+        return teammate.dutySchedule.assignedDuties.find { it.date == date }
+            ?: AssignedDuty(
+                date = date,
+                startTime = teammate.dutySchedule.dutyStartTime,
+                endTime = teammate.dutySchedule.dutyEndTime,
+                dutyType = "Regular (Auto)",
+                notes = "Scheduled"
+            )
     }
 
     fun rejectDutySwap(swap: DutySwap) {
@@ -242,6 +307,12 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
 
     fun autoScheduleDuties(id: String, now: LocalDate, days: Int) {}
 }
+
+data class CalendarDuty(
+    val teammateId: String,
+    val teammateName: String,
+    val duty: AssignedDuty
+)
 
 data class DutyShift(val startTime: LocalTime, val endTime: LocalTime, val type: String = "Regular", val notes: String = "")
 data class DutyStats(val totalDuties: Int, val upcomingDuties: Int, val completedSwaps: Int, val overtimeHours: Double = 0.0)

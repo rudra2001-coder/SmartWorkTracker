@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.HealthMetric
 import com.rudra.smartworktracker.model.HealthMetricType
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -54,6 +55,8 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
             HealthData()
         )
 
+    private var timerJob: Job? = null
+
     init {
         viewModelScope.launch {
             healthData.collect { data ->
@@ -61,7 +64,17 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 updateDailyWorkRoutine(data)
             }
         }
-        loadTodayWorkRoutine()
+        startRealTimeTimer()
+    }
+
+    private fun startRealTimeTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(60000) // Update every minute
+                updateDailyWorkRoutine(healthData.value)
+            }
+        }
     }
 
     fun saveHealthMetric(type: HealthMetricType, value: Double, notes: String = "") {
@@ -76,9 +89,9 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                     HealthMetricType.SLEEP -> value in 0.0..16.0
                     HealthMetricType.BREAKS -> value in 0.0..20.0
                     HealthMetricType.EXERCISE -> value in 0.0..480.0
-                    HealthMetricType.SCREEN_TIME -> value in 0.0..24.0
+                    HealthMetricType.SCREEN_TIME -> value in 0.0..1440.0 // minutes
                     HealthMetricType.POSTURE -> value in 0.0..1.0
-                    HealthMetricType.FOCUS -> value in 0.0..480.0
+                    HealthMetricType.FOCUS -> value in 0.0..1440.0
                     HealthMetricType.CALORIES -> value in 0.0..10000.0
                     HealthMetricType.PROTEIN -> value in 0.0..500.0
                     HealthMetricType.CARBS -> value in 0.0..1000.0
@@ -97,8 +110,6 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                     notes = if (notes.isNotEmpty()) notes else null
                 )
                 healthMetricDao.insertHealthMetric(metric)
-
-                updateWorkRoutineAfterLog(type, value)
 
                 _uiState.update {
                     it.copy(
@@ -134,14 +145,6 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 notes = breakType.name
             )
             healthMetricDao.insertHealthMetric(metric)
-            
-            _dailyWorkRoutine.update { current ->
-                current.copy(
-                    breaksTaken = current.breaksTaken + 1,
-                    lastBreakTime = System.currentTimeMillis(),
-                    productivityScore = min(100, current.productivityScore + 5)
-                )
-            }
         }
     }
 
@@ -149,8 +152,9 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
         saveHealthMetric(HealthMetricType.WATER, amount, "Quick log")
     }
 
-    fun logWorkSession(duration: Double, taskType: String = "Work") {
-        saveHealthMetric(HealthMetricType.SCREEN_TIME, duration, taskType)
+    fun logWorkSession(durationMinutes: Double, taskType: String = "Work") {
+        saveHealthMetric(HealthMetricType.SCREEN_TIME, durationMinutes, taskType)
+        saveHealthMetric(HealthMetricType.FOCUS, durationMinutes * 0.8, taskType) // Est. 80% focus
     }
 
     fun logPostureCheck(isGoodPosture: Boolean) {
@@ -164,8 +168,13 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun logMeal() {
-        // Implementation placeholder
+    fun logMeal(calories: Double, protein: Double, carbs: Double, fiber: Double) {
+        viewModelScope.launch {
+            if (calories > 0) saveHealthMetric(HealthMetricType.CALORIES, calories, "Meal")
+            if (protein > 0) saveHealthMetric(HealthMetricType.PROTEIN, protein, "Meal")
+            if (carbs > 0) saveHealthMetric(HealthMetricType.CARBS, carbs, "Meal")
+            if (fiber > 0) saveHealthMetric(HealthMetricType.FIBER, fiber, "Meal")
+        }
     }
 
     fun updateGoal(type: HealthMetricType, value: Double) {
@@ -181,44 +190,6 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 delay(2000)
                 _uiState.update { it.copy(goalUpdated = false) }
             }
-        }
-    }
-
-    private fun updateWorkRoutineAfterLog(type: HealthMetricType, value: Double) {
-        when (type) {
-            HealthMetricType.WATER -> {
-                _dailyWorkRoutine.update { current ->
-                    current.copy(
-                        waterConsumed = current.waterConsumed + value,
-                        completedHealthGoals = current.completedHealthGoals + if (current.waterConsumed + value >= 3000) 1 else 0
-                    )
-                }
-            }
-            HealthMetricType.SCREEN_TIME -> {
-                _dailyWorkRoutine.update { current ->
-                    current.copy(
-                        screenTimeHours = current.screenTimeHours + value / 60,
-                        eyeStrainLevel = calculateEyeStrainLevel(current.screenTimeHours + value / 60)
-                    )
-                }
-            }
-            HealthMetricType.BREAKS -> {
-                _dailyWorkRoutine.update { current ->
-                    current.copy(
-                        breaksTaken = current.breaksTaken + value.toInt(),
-                        productivityScore = min(100, current.productivityScore + 5)
-                    )
-                }
-            }
-            else -> {}
-        }
-    }
-
-    private fun calculateEyeStrainLevel(screenTimeHours: Double): Int {
-        return when {
-            screenTimeHours < 4 -> 1
-            screenTimeHours < 8 -> 2
-            else -> 3
         }
     }
 
@@ -257,7 +228,7 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
         val workSessionStats = calculateWorkSessionStats(todaysWorkMetrics)
         val sleepPattern = calculateSleepPattern(groupedMetrics[HealthMetricType.SLEEP])
         val workHoursTrend = calculateWorkHoursTrend(metrics)
-        val productivityTrend = calculateProductivityTrend(todaysWorkMetrics)
+        val productivityTrend = calculateProductivityTrend(metrics)
 
         return HealthData(
             currentValues = currentValues,
@@ -282,7 +253,7 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
             totalScreenTime = screenTime,
             totalBreaks = breaks,
             totalFocusTime = focusTime,
-            averageFocusSession = if (metrics.isNotEmpty()) focusTime / metrics.size else 0.0
+            averageFocusSession = if (metrics.any { it.type == HealthMetricType.FOCUS }) focusTime / metrics.filter { it.type == HealthMetricType.FOCUS }.size else 0.0
         )
     }
 
@@ -315,6 +286,14 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
             carbs = metrics.filter { it.type == HealthMetricType.CARBS }.sumOf { it.value },
             fiber = metrics.filter { it.type == HealthMetricType.FIBER }.sumOf { it.value }
         )
+    }
+
+    private fun calculateEyeStrainLevel(screenTimeHours: Double): Int {
+        return when {
+            screenTimeHours < 4 -> 1
+            screenTimeHours < 8 -> 2
+            else -> 3
+        }
     }
 
     private fun calculateAnalytics(data: HealthData): HealthAnalytics {
@@ -352,7 +331,7 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
     private fun calculateConsistency(entries: List<HealthMetricEntry>, type: HealthMetricType): Int {
         val typeEntries = entries.filter { it.type == type }
         if (typeEntries.isEmpty()) return 0
-        return (typeEntries.size * 100 / 10)
+        return min(100, (typeEntries.size * 10))
     }
 
     private fun calculateDailyStreak(entries: List<HealthMetricEntry>): Int {
@@ -384,43 +363,49 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
 
     private fun calculateProductivityScore(stats: WorkSessionStats): Int {
         val breakScore = min(100, stats.totalBreaks * 10)
-        val focusScore = min(100, (stats.averageFocusSession / 60 * 20).toInt())
+        val focusScore = min(100, (stats.totalFocusTime / 480 * 100).toInt()) // Assume 8h focus is 100%
         return (breakScore * 0.4 + focusScore * 0.6).toInt()
-    }
-
-    private fun loadTodayWorkRoutine() {
-        _dailyWorkRoutine.value = DailyWorkRoutine(
-            startTime = LocalTime.of(9, 0),
-            endTime = LocalTime.of(17, 0),
-            breaksTaken = 0,
-            waterConsumed = 0.0,
-            screenTimeHours = 0.0,
-            completedHealthGoals = 0
-        )
     }
 
     private fun updateDailyWorkRoutine(data: HealthData) {
         val currentTime = LocalTime.now()
-        val nextBreakIn = calculateNextBreakTime()
+        val stats = data.workSessionStats
+        val lastBreakTime = data.recentEntries.find { it.type == HealthMetricType.BREAKS }?.timestamp ?: 0L
         
+        val minutesSinceBreak = if (lastBreakTime == 0L) 60 else (System.currentTimeMillis() - lastBreakTime) / (1000 * 60)
+        val nextBreakIn = max(0, 50 - minutesSinceBreak.toInt())
+
         _dailyWorkRoutine.update { current ->
             current.copy(
-                currentWorkHours = calculateWorkHoursToday(current.startTime, currentTime),
+                startTime = LocalTime.of(9, 0),
+                currentWorkHours = calculateWorkHoursToday(LocalTime.of(9, 0), currentTime),
                 nextBreakInMinutes = nextBreakIn,
                 shouldTakeBreak = nextBreakIn <= 5,
-                nextBreakType = if (current.breaksTaken < 2) "Eye Break" else "Physical Break"
+                nextBreakType = if (stats.totalBreaks < 2) "Eye Break" else "Physical Break",
+                breaksTaken = stats.totalBreaks,
+                waterConsumed = data.currentValues[HealthMetricType.WATER] ?: 0.0,
+                screenTimeHours = stats.totalScreenTime / 60.0,
+                focusHours = stats.totalFocusTime / 60.0,
+                productivityScore = calculateProductivityScore(stats),
+                completedHealthGoals = calculateCompletedGoals(data),
+                lastBreakTime = lastBreakTime,
+                lastEyeBreakMinutes = minutesSinceBreak.toInt()
             )
         }
     }
 
-    private fun calculateNextBreakTime(): Int {
-        val lastBreak = _dailyWorkRoutine.value.lastBreakTime
-        return if (lastBreak == 0L) {
-            50
-        } else {
-            val minutesSinceBreak = (System.currentTimeMillis() - lastBreak) / (1000 * 60)
-            max(0, 50 - minutesSinceBreak.toInt())
-        }
+    private fun calculateCompletedGoals(data: HealthData): Int {
+        var completed = 0
+        val current = data.currentValues
+        val stats = data.workSessionStats
+        
+        if ((current[HealthMetricType.WATER] ?: 0.0) >= 2000) completed++
+        if (stats.totalBreaks >= 5) completed++
+        if ((current[HealthMetricType.EXERCISE] ?: 0.0) >= 30) completed++
+        if ((current[HealthMetricType.SLEEP] ?: 0.0) >= 7) completed++
+        if (data.nutritionData.calories in 1800.0..2800.0) completed++
+        
+        return completed
     }
 
     private fun calculateWorkHoursToday(startTime: LocalTime, currentTime: LocalTime): Int {
@@ -434,6 +419,10 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
 
     fun showMetricInput(type: HealthMetricType) {
         _uiState.update { it.copy(showInputDialog = !it.showInputDialog, selectedMetric = type) }
+    }
+
+    fun showMealInput() {
+        _uiState.update { it.copy(showMealDialog = !it.showMealDialog) }
     }
 
     fun getHealthTips(): List<String> = listOf(
@@ -453,12 +442,12 @@ data class DailyWorkRoutine(
     val breaksTaken: Int = 0,
     val waterConsumed: Double = 0.0,
     val screenTimeHours: Double = 0.0,
-    val goodPostureTime: Int = 0,
+    val goodPostureTime: Int = 75,
     val focusHours: Double = 0.0,
     val completedTasks: Int = 0,
     val productivityScore: Int = 0,
     val completedHealthGoals: Int = 0,
-    val totalHealthGoals: Int = 8,
+    val totalHealthGoals: Int = 5,
     val lastBreakTime: Long = 0L,
     val lastEyeBreakMinutes: Int = 0,
     val screenTimeTrend: Float = 0f,
@@ -495,6 +484,7 @@ data class HealthUiState(
     val goalUpdated: Boolean = false,
     val showConfetti: Boolean = false,
     val showInputDialog: Boolean = false,
+    val showMealDialog: Boolean = false,
     val selectedMetric: HealthMetricType? = null,
     val lastSavedMetric: Pair<HealthMetricType, Double>? = null
 )

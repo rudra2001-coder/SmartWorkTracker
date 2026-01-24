@@ -21,6 +21,7 @@ class SettingsViewModelFactory(private val application: Application) : ViewModel
             val settingsRepository = SettingsRepository(application)
             @Suppress("UNCHECKED_CAST")
             return SettingsViewModel(
+                application,
                 userProfileRepository,
                 workLogRepository,
                 incomeRepository,

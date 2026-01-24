@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.rudra.smartworktracker.data.entity.WorkDay
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WorkDayDao {
@@ -16,4 +17,7 @@ interface WorkDayDao {
 
     @Query("SELECT * FROM work_days WHERE date LIKE :month || '%' ORDER BY date ASC")
     suspend fun getWorkDaysForMonth(month: String): List<WorkDay>
+
+    @Query("SELECT * FROM work_days")
+    fun getAllWorkDays(): Flow<List<WorkDay>>
 }

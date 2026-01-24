@@ -97,6 +97,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.ui.graphics)
     ksp(libs.androidx.room.compiler)
 
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // Animation
     implementation(libs.lottie.compose)
     implementation("nl.dionsegijn:konfetti-compose:2.0.2")

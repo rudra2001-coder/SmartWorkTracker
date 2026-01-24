@@ -54,10 +54,12 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.ScheduleRepository
 import com.rudra.smartworktracker.model.Schedule
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -1493,7 +1495,7 @@ fun ScheduleItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                     Text(
-                        "Created: ${schedule.createdAt.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))}",
+                        "Created: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(schedule.createdAt))}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )

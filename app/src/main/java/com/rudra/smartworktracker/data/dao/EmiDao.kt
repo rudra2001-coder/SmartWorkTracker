@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.data.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.rudra.smartworktracker.data.entity.Emi
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface EmiDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEmi(emi: Emi)
 
     @Update
@@ -20,4 +21,7 @@ interface EmiDao {
 
     @Query("SELECT * FROM emis WHERE loanId = :loanId")
     fun getEmisForLoan(loanId: Int): Flow<List<Emi>>
+
+    @Query("SELECT * FROM emis")
+    fun getAllEmis(): Flow<List<Emi>>
 }
