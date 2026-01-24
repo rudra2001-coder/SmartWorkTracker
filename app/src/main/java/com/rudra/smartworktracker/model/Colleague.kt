@@ -2,12 +2,18 @@ package com.rudra.smartworktracker.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.rudra.smartworktracker.data.entity.BaseEntity
+import com.rudra.smartworktracker.data.entity.SyncStatus
 import java.time.LocalDate
 
 @Entity(tableName = "colleagues")
 data class Colleague(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+
     val fullName: String,
     val designation: String,
     val department: String,
@@ -37,5 +43,11 @@ data class Colleague(
     val isImportant: Boolean = false,
     val worksClosely: Boolean = false,
     val onLeave: Boolean = false,
-    val needToFollowUpSoon: Boolean = false
-)
+    val needToFollowUpSoon: Boolean = false,
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity

@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.data.entity
 
 import androidx.room.DatabaseView
+import androidx.room.Ignore
 
 @DatabaseView("""
     SELECT
@@ -8,8 +9,8 @@ import androidx.room.DatabaseView
         SUM(CASE WHEN workType = 'OFFICE' THEN 1 ELSE 0 END) AS totalWorkDays,
         SUM(CASE WHEN category = 'MEAL' THEN 1 ELSE 0 END) AS totalMeals,
         SUM(CASE WHEN category = 'MEAL' THEN amount ELSE 0 END) AS totalMealCost,
-        0.0 AS totalOvertimeHours, -- Placeholder
-        0.0 AS totalOvertimePay, -- Placeholder
+        0.0 AS totalOvertimeHours,
+        0.0 AS totalOvertimePay,
         SUM(amount) AS totalExpense
     FROM
         work_logs
@@ -19,11 +20,27 @@ import androidx.room.DatabaseView
         month
 """)
 data class MonthlySummary(
-    val month: String, // YYYY-MM
+    val month: String,
     val totalWorkDays: Int,
     val totalMeals: Int,
     val totalMealCost: Double,
     val totalOvertimeHours: Double,
     val totalOvertimePay: Double,
+    
+    // Marked with @Ignore to resolve KSP/Room warnings about missing query results
+    @Ignore
+    val uuid: String? = null,
+
     val totalExpense: Double
-)
+) {
+    // Required empty constructor for Room view mapping
+    constructor(
+        month: String,
+        totalWorkDays: Int,
+        totalMeals: Int,
+        totalMealCost: Double,
+        totalOvertimeHours: Double,
+        totalOvertimePay: Double,
+        totalExpense: Double
+    ) : this(month, totalWorkDays, totalMeals, totalMealCost, totalOvertimeHours, totalOvertimePay, null, totalExpense)
+}

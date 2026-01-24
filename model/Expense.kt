@@ -5,18 +5,16 @@ import androidx.room.PrimaryKey
 import com.rudra.smartworktracker.data.entity.BaseEntity
 import com.rudra.smartworktracker.data.entity.SyncStatus
 
-@Entity(tableName = "achievements")
-data class Achievement(
-    @PrimaryKey val id: String,
-
-    // UUID field for future primary key transition - Rule 1.1
-    val uuid: String? = null,
-    val name: String,
-    val description: String,
-    val type: AchievementType,
-    val threshold: Int, // e.g., 7 for a 7-day streak
-    val unlocked: Boolean = false,
-    val unlockedTimestamp: Long? = null,
+@Entity(tableName = "expenses")
+data class Expense(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amount: Double = 0.0,
+    val currency: String = "",
+    val category: ExpenseCategory = ExpenseCategory.OTHER,
+    val merchant: String? = null,
+    val notes: String? = null,
+    val timestamp: Long = 0L,
+    val imageUri: String? = null,
 
     // Audit fields - Rule 1.2
     override val createdAt: Long = System.currentTimeMillis(),
@@ -25,7 +23,11 @@ data class Achievement(
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
 
-enum class AchievementType {
-    STREAK,
-    FOCUS
+enum class ExpenseCategory {
+    MEAL,
+    OTHER,
+    TRANSPORT,
+    ENTERTAINMENT,
+    BILLS,
+    SHOPPING
 }

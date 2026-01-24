@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.rudra.smartworktracker.data.entity.Settings
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SettingsDao {
@@ -14,8 +15,6 @@ interface SettingsDao {
     @Query("SELECT * FROM settings WHERE id = 1")
     suspend fun getSettings(): Settings?
 
-
-
-
-
+    @Query("SELECT * FROM settings")
+    fun getAllSettings(): Flow<List<Settings>>
 }

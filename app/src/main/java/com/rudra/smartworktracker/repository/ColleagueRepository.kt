@@ -11,7 +11,7 @@ class ColleagueRepository(private val colleagueDao: ColleagueDao) {
     fun getColleagueById(id: Int): Flow<Colleague> = colleagueDao.getColleagueById(id)
 
     suspend fun insert(colleague: Colleague) {
-        colleagueDao.insert(colleague)
+        colleagueDao.insertColleague(colleague)
     }
 
     suspend fun update(colleague: Colleague) {

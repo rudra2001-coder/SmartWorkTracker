@@ -14,4 +14,7 @@ interface CalculationDao {
 
     @Query("SELECT * FROM calculations WHERE id = 1")
     fun getCalculation(): Flow<Calculation?>
+
+    @Query("SELECT * FROM calculations")
+    fun getCalculations(): Flow<List<Calculation>>
 }

@@ -27,29 +27,29 @@ import com.rudra.smartworktracker.model.WisdomCategory
 
 @Composable
 fun WisdomScreen(viewModel: WisdomViewModel = viewModel()) {
-    val wisdomList = remember { viewModel.getWisdom() }
-    val groupedWisdom = remember { wisdomList.groupBy { it.category } }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        groupedWisdom.forEach { (category, wisdoms) ->
-            item {
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-            items(wisdoms) { wisdom ->
-                WisdomItem(wisdom = wisdom)
-            }
-        }
-    }
+//    val wisdomList = remember { viewModel.getWisdom() }
+//    val groupedWisdom = remember { wisdomList.groupBy { it.category } }
+//
+//    LazyColumn(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(16.dp),
+//        verticalArrangement = Arrangement.spacedBy(16.dp)
+//    ) {
+//        groupedWisdom.forEach { (category, wisdoms) ->
+//            item {
+//                Text(
+//                    text = category.name,
+//                    style = MaterialTheme.typography.headlineMedium,
+//                    fontWeight = FontWeight.Bold,
+//                    modifier = Modifier.padding(bottom = 8.dp)
+//                )
+//            }
+//            items(wisdoms) { wisdom ->
+//                WisdomItem(wisdom = wisdom)
+//            }
+//        }
+//    }
 }
 
 @Composable

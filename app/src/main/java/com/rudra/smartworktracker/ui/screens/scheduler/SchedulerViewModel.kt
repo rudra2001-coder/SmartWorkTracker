@@ -116,7 +116,7 @@ class SchedulerViewModel(
 
     fun updateSchedule(schedule: Schedule) {
         viewModelScope.launch {
-            val updatedSchedule = schedule.copy(updatedAt = java.time.LocalDateTime.now())
+            val updatedSchedule = schedule.copy(updatedAt = System.currentTimeMillis())
             scheduleRepository.updateSchedule(updatedSchedule)
             
             if (updatedSchedule.isEnabled) {

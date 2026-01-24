@@ -8,9 +8,20 @@ data class CreditCard(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val cardName: String,
+
+
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+
     val cardNumber: String, // Last 4 digits
     val cardLimit: Double,
     var currentBalance: Double = 0.0,
     val statementDate: Int, // Day of month
-    val dueDate: Int // Day of month
-)
+    val dueDate: Int, // Day of month
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity

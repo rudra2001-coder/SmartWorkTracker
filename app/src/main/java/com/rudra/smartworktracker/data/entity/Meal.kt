@@ -9,5 +9,14 @@ data class Meal(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val date: Date,
-    val mealCount: Int
-)
+    val mealCount: Int,
+
+    // UUID field for future primary key transition - Rule 1.1
+    val uuid: String? = null,
+
+    // Audit fields - Rule 1.2
+    override val createdAt: Long = System.currentTimeMillis(),
+    override val updatedAt: Long = System.currentTimeMillis(),
+    override val isDeleted: Boolean = false,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
+) : BaseEntity

@@ -13,13 +13,13 @@ import kotlinx.coroutines.flow.Flow
 interface ColleagueDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(colleague: com.rudra.smartworktracker.model.Colleague)
+    suspend fun insertColleague(colleague: Colleague)
 
     @Update
-    suspend fun update(colleague: com.rudra.smartworktracker.model.Colleague)
+    suspend fun update(colleague: Colleague)
 
     @Query("SELECT * FROM colleagues ORDER BY fullName ASC")
-    fun getAllColleagues(): Flow<List<com.rudra.smartworktracker.model.Colleague>>
+    fun getAllColleagues(): Flow<List<Colleague>>
 
     @Query("SELECT * FROM colleagues WHERE id = :id")
     fun getColleagueById(id: Int): Flow<Colleague>

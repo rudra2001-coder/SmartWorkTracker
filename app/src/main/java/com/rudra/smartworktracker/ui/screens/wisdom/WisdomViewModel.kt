@@ -6,9 +6,9 @@ import com.rudra.smartworktracker.model.Wisdom
 
 class WisdomViewModel : ViewModel() {
 
-    private val repository = WisdomRepository()
-
-    fun getWisdom(): List<Wisdom> {
-        return repository.getWisdom()
-    }
+//    private val repository = WisdomRepository()
+//
+//    fun getWisdom(): List<Wisdom> {
+//        return repository.getWisdom()
+//    }
 }
