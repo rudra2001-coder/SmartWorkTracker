@@ -86,7 +86,7 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                     HealthMetricType.WEIGHT -> value in 40.0..200.0
                     HealthMetricType.HEIGHT -> value in 100.0..250.0
                     HealthMetricType.WATER -> value in 0.0..10000.0
-                    HealthMetricType.SLEEP -> value in 0.0..16.0
+                    HealthMetricType.SLEEP -> value in 0.0..24.0
                     HealthMetricType.BREAKS -> value in 0.0..20.0
                     HealthMetricType.EXERCISE -> value in 0.0..480.0
                     HealthMetricType.SCREEN_TIME -> value in 0.0..1440.0 // minutes
@@ -151,11 +151,6 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
     fun logWaterIntake(amount: Double) {
         // Find today's existing water intake and add to it
         viewModelScope.launch {
-            val today = LocalDate.now()
-            val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val endOfDay = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            
-            // Log as a new entry. The processHealthData will sum them up.
             saveHealthMetric(HealthMetricType.WATER, amount, "Water Intake")
         }
     }
@@ -217,6 +212,9 @@ class HealthMetricsViewModel(application: Application) : AndroidViewModel(applic
                 type == HealthMetricType.FIBER || type == HealthMetricType.EXERCISE ||
                 type == HealthMetricType.SCREEN_TIME || type == HealthMetricType.FOCUS) {
                 entriesForType.sumOf { it.value }
+            } else if (type == HealthMetricType.SLEEP) {
+                // Default to 8.0 if no sleep data is recorded today
+                entriesForType.maxByOrNull { it.timestamp }?.value ?: 8.0
             } else {
                 entriesForType.maxByOrNull { it.timestamp }?.value
             }
