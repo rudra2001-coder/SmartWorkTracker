@@ -1,13 +1,19 @@
 package com.rudra.smartworktracker.ui.screens.onboarding
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,10 +32,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rudra.smartworktracker.R
-import com.rudra.smartworktracker.ui.theme.*
+import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
+    val scrollState = rememberScrollState()
+    var showButton by remember { mutableStateOf(false) }
+
     // Animation values
     val infiniteTransition = rememberInfiniteTransition()
     val pulseScale by infiniteTransition.animateFloat(
@@ -49,6 +59,14 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
             repeatMode = RepeatMode.Reverse
         )
     )
+
+    // Show button when scrolled to bottom
+    LaunchedEffect(scrollState.value, scrollState.maxValue) {
+        // Calculate if we're near the bottom
+        // scrollState.maxValue is (contentHeight - viewportHeight)
+        val isNearBottom = scrollState.value >= (scrollState.maxValue - 100)
+        showButton = isNearBottom
+    }
 
     Box(
         modifier = Modifier
@@ -71,12 +89,11 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top spacer
-            Spacer(modifier = Modifier.weight(0.2f))
+            Spacer(modifier = Modifier.height(60.dp))
 
             // App Logo/Illustration
             Box(
@@ -88,8 +105,6 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
                         translationY = offsetY
                     }
             ) {
-                // You can replace this with your actual logo or illustration
-                // For now using a placeholder with premium styling
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -109,7 +124,7 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
                         )
                 ) {
                     Image(
-                       painter = painterResource(id = R.drawable.onbord),
+                        painter = painterResource(id = R.drawable.onbord),
                         contentDescription = "App Logo",
                         modifier = Modifier
                             .fillMaxSize()
@@ -152,127 +167,248 @@ fun OnboardingScreen(onOnboardingFinished: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Features List
+                Text(
+                    text = "Transform how you work with intelligent time tracking, team management, and expense analysis all in one powerful platform.",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        lineHeight = 24.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Main Features Section
+                Text(
+                    text = "Key Features",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Enhanced Features List
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        )
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    FeatureItem(
-                        icon = "✓",
+                    EnhancedFeatureItem(
+                        icon = Icons.Default.Star,
                         title = "Advanced Time Tracking",
-                        description = "Precision monitoring with AI-powered insights"
+                        description = "AI-powered insights with precision monitoring. Track every minute with intelligent categorization.",
+                        gradientColors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
                     )
-                    FeatureItem(
-                        icon = "✓",
+
+                    EnhancedFeatureItem(
+                        icon = Icons.Default.Done,
                         title = "Team Management",
-                        description = "Real-time collaboration & performance analytics"
+                        description = "Real-time collaboration tools with performance analytics. Manage projects and track team productivity.",
+                        gradientColors = listOf(
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                        )
                     )
-                    FeatureItem(
-                        icon = "✓",
+
+                    EnhancedFeatureItem(
+                        icon = Icons.Default.KeyboardArrowRight,
                         title = "Expense Analysis",
-                        description = "Smart expense categorization & forecasting"
+                        description = "Smart expense categorization & forecasting. Get insights into spending patterns and optimize budgets.",
+                        gradientColors = listOf(
+                            MaterialTheme.colorScheme.tertiary,
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f)
+                        )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Stats Section
+                Text(
+                    text = "Trusted by Professionals",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatItem(
+                        value = "50,000+",
+                        label = "Active Users",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    StatItem(
+                        value = "94%",
+                        label = "Satisfaction",
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    StatItem(
+                        value = "2.5x",
+                        label = "Productivity",
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // How it Works Section
+                Text(
+                    text = "How It Works",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    StepItem(
+                        number = 1,
+                        title = "Set Up Your Profile",
+                        description = "Create your account and customize your workspace in minutes."
+                    )
+                    StepItem(
+                        number = 2,
+                        title = "Add Your Team",
+                        description = "Invite team members and set up projects for collaboration."
+                    )
+                    StepItem(
+                        number = 3,
+                        title = "Start Tracking",
+                        description = "Begin tracking time and expenses with our intuitive interface."
+                    )
+                    StepItem(
+                        number = 4,
+                        title = "Analyze & Optimize",
+                        description = "Review insights and optimize your workflow for maximum efficiency."
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(60.dp))
+
+                // Testimonial Section
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(24.dp)
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⭐⭐⭐⭐⭐",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "\"Smart Work Tracker transformed our agency's productivity. We've increased billable hours by 40% and improved team collaboration significantly.\"",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                lineHeight = 24.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "- Sarah Chen, Project Manager",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(80.dp))
+
+                // Scroll indicator
+                if (!showButton) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Scroll to continue",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "Scroll down"
+                            )
+                        }
+                    }
+                }
             }
+        }
 
-            Spacer(modifier = Modifier.weight(0.5f))
-
-            // Get Started Button
-            FloatingActionButton(
+        // Get Started Button
+        AnimatedVisibility(
+            visible = showButton,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+        ) {
+            Button(
                 onClick = onOnboardingFinished,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
+                    .height(56.dp)
                     .shadow(
-                        elevation = 12.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        spotColor = MaterialTheme.colorScheme.primary
                     ),
-                containerColor = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                ) {
-                    Text(
-                        text = "GET STARTED",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Get Started",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Footer text
-            Text(
-                text = "Join 50,000+ professionals worldwide",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
-
-@Composable
-fun FeatureItem(
-    icon: String,
-    title: String,
-    description: String
-) {
-    Row(
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = icon,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
-            )
-        }
-
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            ) {
+                Text(
+                    text = "Get Started",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.ArrowForward, contentDescription = null)
+            }
         }
     }
 }
@@ -280,69 +416,143 @@ fun FeatureItem(
 @Composable
 fun AnimatedBackgroundElements(offsetY: Float) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // Floating circles
-        CircleElement(
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-            size = 120.dp,
-            offsetY = offsetY * 2,
-            offsetX = -40f,
-            top = 0.1f
-        )
-        CircleElement(
-            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.06f),
-            size = 80.dp,
-            offsetY = -offsetY * 1.5f,
-            offsetX = 60f,
-            top = 0.3f
-        )
-        CircleElement(
-            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.04f),
-            size = 100.dp,
-            offsetY = offsetY * 1.2f,
-            offsetX = -80f,
-            top = 0.7f
-        )
+        repeat(5) { index ->
+            val size = (100 + index * 40).dp
+            val alpha = 0.05f + (index * 0.02f)
+            Box(
+                modifier = Modifier
+                    .offset(
+                        x = (index * 60).dp,
+                        y = (index * 150).dp + offsetY.dp
+                    )
+                    .size(size)
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        rotationZ = index * 45f
+                    }
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape
+                    )
+            )
+        }
     }
 }
 
 @Composable
-fun CircleElement(
-    color: Color,
-    size: Dp,
-    offsetY: Float,
-    offsetX: Float,
-    top: Float
+fun EnhancedFeatureItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    gradientColors: List<Color>
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                translationY = offsetY
-                translationX = offsetX
-            }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(20.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (top * 600).dp)
-                .size(size)
-                .background(
-                    color = color,
-                    shape = androidx.compose.foundation.shape.CircleShape
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.linearGradient(gradientColors),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StatItem(value: String, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.ExtraBold
+            ),
+            color = color
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun OnboardingScreenPreview() {
-    SmartWorkTrackerTheme {
+fun StepItem(number: Int, title: String, description: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            modifier = Modifier.size(32.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            OnboardingScreen(onOnboardingFinished = {})
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = number.toString(),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
         }
     }
 }
