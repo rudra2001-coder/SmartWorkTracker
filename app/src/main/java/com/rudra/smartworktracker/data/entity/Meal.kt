@@ -10,7 +10,7 @@ data class Meal(
     val id: Long = 0,
     val date: Date,
     val mealCount: Int,
-
+    val lastUpdated: Long = System.currentTimeMillis(),
     // UUID field for future primary key transition - Rule 1.1
     val uuid: String? = null,
 
