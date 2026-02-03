@@ -37,6 +37,18 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         return workLogDao.getRecentWorkLogs()
     }
 
+    fun getOvertimeLogs(): Flow<List<WorkLog>> {
+        return workLogDao.getOvertimeLogs()
+    }
+
+    fun getOvertimeLogsByMonth(monthYear: String): Flow<List<WorkLog>> {
+        return workLogDao.getOvertimeLogsByMonth(monthYear)
+    }
+
+    fun getOvertimeLogsByYear(year: String): Flow<List<WorkLog>> {
+        return workLogDao.getOvertimeLogsByYear(year)
+    }
+
     suspend fun insertWorkLog(workLog: WorkLog) {
         workLogDao.insertWorkLog(workLog)
     }

@@ -1,4 +1,3 @@
-
 package com.rudra.smartworktracker.ui.screens.overtime
 
 import android.app.DatePickerDialog
@@ -6,31 +5,33 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.model.WorkLog
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,163 +43,91 @@ fun OvertimeScreen(viewModel: OvertimeViewModel = viewModel()) {
     var overtimeRate by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf<Date?>(Date()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showAddSheet by remember { mutableStateOf(false) }
+    
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+    
+    val startTimePickerState = rememberTimePickerState(initialHour = 9, initialMinute = 0)
+    val endTimePickerState = rememberTimePickerState(initialHour = 18, initialMinute = 0)
+
+    val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
 
-    val secondaryGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF36D1DC), // Cyan
-            Color(0xFF5B86E5)  // Light blue
-        )
-    )
+    val monthlyLogs by viewModel.monthlyOvertimeLogs.collectAsState()
+    val yearlyLogs by viewModel.yearlyOvertimeLogs.collectAsState()
+    val monthlySummary by viewModel.monthlySummary.collectAsState(initial = OvertimeSummary())
+    val yearlySummary by viewModel.yearlySummary.collectAsState(initial = OvertimeSummary())
 
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Color(0xFFFF6B6B),
-        unfocusedBorderColor = Color(0xFFE2E8F0),
-        focusedLabelColor = Color(0xFFFF6B6B),
-        unfocusedLabelColor = Color(0xFF718096),
-    )
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var logToDelete by remember { mutableStateOf<WorkLog?>(null) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFFFF5F5),
-                        Color(0xFFFFEBEB)
-                    )
-                )
-            )
-    ) {
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddSheet = true },
+                containerColor = Color(0xFFFF6B6B),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Overtime")
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(padding)
+                .background(Color(0xFFF8F9FA))
+                .padding(16.dp)
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(20.dp), clip = true),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = "Overtime",
-                        tint = Color(0xFFFF6B6B),
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Log Your Overtime",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            OvertimeHeader()
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp), clip = true),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                    OutlinedTextField(
-                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
-                        onValueChange = {},
-                        label = { Text("Date") },
-                        leadingIcon = { Icon(Icons.Default.CalendarToday, "Date") },
-                        modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors,
-                        readOnly = true,
-                        enabled = false
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = startTime,
-                        onValueChange = { startTime = it },
-                        label = { Text("Start Time (HH:mm)") },
-                        leadingIcon = { Icon(Icons.Default.Schedule, "Start Time") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = endTime,
-                        onValueChange = { endTime = it },
-                        label = { Text("End Time (HH:mm)") },
-                        leadingIcon = { Icon(Icons.Default.Schedule, "End Time") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = overtimeRate,
-                        onValueChange = { overtimeRate = it },
-                        label = { Text("Overtime Rate (per hour)") },
-                        leadingIcon = { Icon(Icons.Default.AttachMoney, "Rate") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-                }
-            }
+            OvertimeSummaryView(monthlySummary, yearlySummary, viewModel.getMonthName(), viewModel.getYearString())
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = {
-                    if (startTime.isNotBlank() && endTime.isNotBlank() && overtimeRate.isNotBlank() && selectedDate != null) {
-                        viewModel.saveOvertime(
-                            date = selectedDate!!,
-                            startTime = startTime,
-                            endTime = endTime,
-                            overtimeRate = overtimeRate.toDoubleOrNull() ?: 0.0
-                        )
-                        Toast.makeText(context, "✓ Overtime Saved!", Toast.LENGTH_SHORT).show()
-                        startTime = ""
-                        endTime = ""
-                        overtimeRate = ""
-                    } else {
-                        Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            Text(
+                text = "Overtime History",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            OvertimeLogsList(monthlyLogs, yearlyLogs, viewModel) { log ->
+                logToDelete = log
+                showDeleteDialog = true
+            }
+        }
+
+        if (showAddSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAddSheet = false },
+                sheetState = sheetState,
+                containerColor = Color.White,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(secondaryGradient)
-                        .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Save, "Save", tint = Color.White)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Save Overtime",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                AddOvertimeContent(
+                    startTime = startTime,
+                    endTime = endTime,
+                    overtimeRate = overtimeRate,
+                    selectedDate = selectedDate,
+                    onStartTimeChange = { startTime = it },
+                    onEndTimeChange = { endTime = it },
+                    onOvertimeRateChange = { overtimeRate = it },
+                    onShowDatePicker = { showDatePicker = true },
+                    onShowStartTimePicker = { showStartTimePicker = true },
+                    onShowEndTimePicker = { showEndTimePicker = true },
+                    onSave = {
+                        if (viewModel.saveOvertime(selectedDate!!, startTime, endTime, overtimeRate.toDoubleOrNull() ?: 0.0)) {
+                            Toast.makeText(context, "✓ Overtime Saved!", Toast.LENGTH_SHORT).show()
+                            startTime = ""
+                            endTime = ""
+                            overtimeRate = ""
+                            showAddSheet = false
+                        } else {
+                            Toast.makeText(context, "Invalid time format. Please use HH:mm", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                }
+                )
             }
         }
 
@@ -215,6 +144,298 @@ fun OvertimeScreen(viewModel: OvertimeViewModel = viewModel()) {
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
             ).show()
+        }
+
+        if (showStartTimePicker) {
+            TimePickerDialog(
+                onDismissRequest = { showStartTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        startTime = String.format("%02d:%02d", startTimePickerState.hour, startTimePickerState.minute)
+                        showStartTimePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showStartTimePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                TimePicker(state = startTimePickerState)
+            }
+        }
+
+        if (showEndTimePicker) {
+            TimePickerDialog(
+                onDismissRequest = { showEndTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        endTime = String.format("%02d:%02d", endTimePickerState.hour, endTimePickerState.minute)
+                        showEndTimePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEndTimePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                TimePicker(state = endTimePickerState)
+            }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Overtime Log") },
+                text = { Text("Are you sure you want to delete this log?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            logToDelete?.let { log ->
+                                viewModel.deleteOvertime(log)
+                                Toast.makeText(context, "Log Deleted", Toast.LENGTH_SHORT).show()
+                            }
+                            showDeleteDialog = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun OvertimeHeader() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Bolt, "Overtime", tint = Color(0xFFFF6B6B), modifier = Modifier.size(32.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Overtime Tracking", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+    }
+}
+
+@Composable
+private fun OvertimeSummaryView(monthlySummary: OvertimeSummary, yearlySummary: OvertimeSummary, monthName: String, year: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(Modifier.padding(16.dp)) {
+            SummaryColumn("This Month ($monthName)", monthlySummary, Modifier.weight(1f))
+            VerticalDivider(modifier = Modifier.height(60.dp).padding(horizontal = 8.dp))
+            SummaryColumn("This Year ($year)", yearlySummary, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun SummaryColumn(title: String, summary: OvertimeSummary, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(title, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("${String.format("%.2f", summary.totalHours)}h", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("৳${String.format("%.2f", summary.totalEarnings)}", color = Color(0xFF00C853), fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun AddOvertimeContent(
+    startTime: String, endTime: String, overtimeRate: String, selectedDate: Date?,
+    onStartTimeChange: (String) -> Unit, onEndTimeChange: (String) -> Unit, onOvertimeRateChange: (String) -> Unit,
+    onShowDatePicker: () -> Unit, onShowStartTimePicker: () -> Unit, onShowEndTimePicker: () -> Unit, onSave: () -> Unit
+) {
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = Color(0xFFFF6B6B),
+        unfocusedBorderColor = Color(0xFFE2E8F0),
+        focusedLabelColor = Color(0xFFFF6B6B),
+        unfocusedLabelColor = Color(0xFF718096),
+        disabledBorderColor = Color(0xFFE2E8F0),
+        disabledLabelColor = Color(0xFF718096),
+        disabledTextColor = Color.Black
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .navigationBarsPadding()
+    ) {
+        Text(
+            text = "Add New Overtime",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        OutlinedTextField(
+            value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+            onValueChange = {}, label = { Text("Date") },
+            leadingIcon = { Icon(Icons.Default.CalendarToday, "Date") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onShowDatePicker),
+            shape = RoundedCornerShape(12.dp), colors = textFieldColors, readOnly = true, enabled = false
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = startTime, onValueChange = onStartTimeChange, label = { Text("Start Time") },
+                leadingIcon = { 
+                    Icon(
+                        Icons.Default.Schedule, 
+                        "Start Time", 
+                        modifier = Modifier.clickable { onShowStartTimePicker() }
+                    ) 
+                }, 
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onShowStartTimePicker() },
+                shape = RoundedCornerShape(12.dp), colors = textFieldColors,
+                placeholder = { Text("09:00") },
+                readOnly = true,
+                enabled = false
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedTextField(
+                value = endTime, onValueChange = onEndTimeChange, label = { Text("End Time") },
+                leadingIcon = { 
+                    Icon(
+                        Icons.Default.Schedule, 
+                        "End Time", 
+                        modifier = Modifier.clickable { onShowEndTimePicker() }
+                    ) 
+                }, 
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onShowEndTimePicker() },
+                shape = RoundedCornerShape(12.dp), colors = textFieldColors,
+                placeholder = { Text("18:00") },
+                readOnly = true,
+                enabled = false
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = overtimeRate, onValueChange = onOvertimeRateChange, label = { Text("Overtime Rate (per hour)") },
+            leadingIcon = { Icon(Icons.Default.AttachMoney, "Rate") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = textFieldColors
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onSave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
+        ) {
+            Icon(Icons.Default.Save, "Save", tint = Color.White)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Save Overtime", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+    }
+}
+
+@Composable
+private fun OvertimeLogsList(monthlyLogs: List<WorkLog>, yearlyLogs: List<WorkLog>, viewModel: OvertimeViewModel, onDeleteClick: (WorkLog) -> Unit) {
+    Column {
+        TabRow(
+            selectedTabIndex = viewModel.selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFFFF6B6B),
+            divider = {}
+        ) {
+            Tab(selected = viewModel.selectedTab == 0, onClick = { viewModel.selectedTab = 0 }, text = { Text("Monthly") })
+            Tab(selected = viewModel.selectedTab == 1, onClick = { viewModel.selectedTab = 1 }, text = { Text("Yearly") })
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            val logs = if (viewModel.selectedTab == 0) monthlyLogs else yearlyLogs
+            items(logs) { log ->
+                OvertimeLogItem(log, viewModel, onDelete = { onDeleteClick(log) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun OvertimeLogItem(log: WorkLog, viewModel: OvertimeViewModel, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()).format(log.date), fontWeight = FontWeight.Bold)
+                Text("${log.startTime} - ${log.endTime}", style = MaterialTheme.typography.bodyMedium)
+                val duration = viewModel.calculateDuration(log.startTime, log.endTime)
+                val earnings = duration * (log.overtimeRate ?: 0.0)
+                Text("Hours: ${String.format("%.2f", duration)}h, Earned: ৳${String.format("%.2f", earnings)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Delete Log", tint = Color.Gray.copy(alpha = 0.6f))
+            }
+        }
+    }
+}
+
+@Composable
+fun VerticalDivider(modifier: Modifier = Modifier) {
+    Box(modifier.width(1.dp).fillMaxHeight().background(color = Color.LightGray.copy(alpha = 0.5f)))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    dismissButton: @Composable (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .width(IntrinsicSize.Min)
+                .height(IntrinsicSize.Min)
+                .background(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface),
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
+                    text = "Select Time",
+                    style = MaterialTheme.typography.labelMedium
+                )
+                content()
+                Row(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .fillMaxWidth()
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    dismissButton?.invoke()
+                    confirmButton()
+                }
+            }
         }
     }
 }
