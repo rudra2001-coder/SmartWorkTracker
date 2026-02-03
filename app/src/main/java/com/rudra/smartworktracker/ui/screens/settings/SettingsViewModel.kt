@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.backup.BackupManager
-import com.rudra.smartworktracker.data.entity.UserProfile
 import com.rudra.smartworktracker.data.repository.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,7 +18,8 @@ class SettingsViewModel(
     private val workLogRepository: WorkLogRepository,
     private val incomeRepository: IncomeRepository,
     private val expenseRepository: ExpenseRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val savingsRepository: SavingsRepository
 ) : AndroidViewModel(application) {
 
     private val backupManager = BackupManager(application)
@@ -98,6 +98,8 @@ class SettingsViewModel(
             incomeRepository.clearAll()
             expenseRepository.clearAll()
             settingsRepository.clearAll()
+            // Added clearing savings data as well
+            savingsRepository.clearAll()
         }
     }
 }

@@ -18,11 +18,12 @@ data class DashboardUiState(
     val recentActivities: List<WorkLogUi> = emptyList(),
     val financialSummary: FinancialSummary = FinancialSummary(),
     val expensesByCategory: Map<ExpenseCategory, Double> = emptyMap(),
+    val incomesByCategory: Map<String, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val incomes: List<Income> = emptyList(), // Add this
-    val expenses: List<Expense> = emptyList(), // Add this
-    val workLogs: List<WorkLog> = emptyList() // Add this
+    val incomes: List<Income> = emptyList(),
+    val expenses: List<Expense> = emptyList(),
+    val workLogs: List<WorkLog> = emptyList()
 )
 
 data class MonthlyStats(
@@ -39,6 +40,7 @@ data class MonthlyStats(
 data class FinancialSummary(
     val totalIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
+    val totalSavings: Double = 0.0,
     val netSavings: Double = 0.0,
     val dailyIncome: Double = 0.0,
     val dailyExpense: Double = 0.0,
@@ -114,7 +116,6 @@ data class SettingsUiState(
     }
 }
 
-// Additional UI State classes for other screens
 data class AddEntryUiState(
     val expenseAmount: String = "",
     val expenseCategory: ExpenseCategory = ExpenseCategory.OTHER,
@@ -168,7 +169,6 @@ enum class EntryType {
     EXPENSE, WORK_TIME, MEAL
 }
 
-// State for work log details
 data class WorkLogDetailUiState(
     val workLog: WorkLogUi? = null,
     val isLoading: Boolean = false,
@@ -176,7 +176,6 @@ data class WorkLogDetailUiState(
     val isEditing: Boolean = false
 )
 
-// State for expense tracking
 data class ExpensesUiState(
     val expenses: List<ExpenseUi> = emptyList(),
     val selectedCategory: String? = null,
@@ -195,7 +194,6 @@ data class ExpenseUi(
     val receiptUrl: String? = null
 )
 
-// Extension functions for useful calculations
 val DashboardUiState.hasData: Boolean
     get() = !isLoading && errorMessage == null && recentActivities.isNotEmpty()
 
@@ -205,7 +203,6 @@ val FinancialSummary.hasFinancialData: Boolean
 val MonthlyStats.hasWorkData: Boolean
     get() = totalDays > 0
 
-// Helper function to create default states
 fun defaultDashboardUiState(): DashboardUiState {
     return DashboardUiState(
         userName = "User",

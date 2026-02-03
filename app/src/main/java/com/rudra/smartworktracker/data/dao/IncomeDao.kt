@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.rudra.smartworktracker.data.entity.Income
+import com.rudra.smartworktracker.model.IncomeByCategory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -34,6 +35,9 @@ interface IncomeDao {
 
     @Query("SELECT SUM(amount) FROM incomes")
     fun getTotalIncome(): Flow<Double?>
+
+    @Query("SELECT category, SUM(amount) as total FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime GROUP BY category")
+    fun getIncomesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<IncomeByCategory>>
 
     @Update
     suspend fun updateIncome(income: Income)

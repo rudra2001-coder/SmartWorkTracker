@@ -19,4 +19,12 @@ class SavingsRepository(private val savingsDao: SavingsDao) {
         val savings = Savings(amount = -amount, timestamp = System.currentTimeMillis())
         savingsDao.insert(savings)
     }
+
+    fun getSavingsBetween(startTime: Long, endTime: Long): Flow<Double?> {
+        return savingsDao.getSavingsBetween(startTime, endTime)
+    }
+
+    suspend fun clearAll() {
+        savingsDao.deleteAll()
+    }
 }

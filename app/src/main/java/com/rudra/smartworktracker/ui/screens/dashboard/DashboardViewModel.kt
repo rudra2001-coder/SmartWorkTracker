@@ -9,6 +9,7 @@ import com.rudra.smartworktracker.data.repository.*
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseByCategory
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.IncomeByCategory
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.DashboardUiState
@@ -25,6 +26,7 @@ class DashboardViewModel(
     private val workLogRepository: WorkLogRepository,
     private val expenseRepository: ExpenseRepository,
     private val incomeRepository: IncomeRepository,
+    private val savingsRepository: SavingsRepository,
     private val settingsRepository: SettingsRepository,
     private val userProfileRepository: UserProfileRepository
 ) : ViewModel() {
@@ -47,9 +49,11 @@ class DashboardViewModel(
                 expenseRepository.getTotalExpensesBetween(startTime, endTime),
                 expenseRepository.getMealExpensesBetween(startTime, endTime),
                 incomeRepository.getTotalIncomeBetween(startTime, endTime),
+                savingsRepository.getSavingsBetween(startTime, endTime),
                 settingsRepository.mealRate,
                 workLogRepository.getRecentActivities(),
                 expenseRepository.getExpensesByCategoryBetween(startTime, endTime),
+                incomeRepository.getIncomesByCategoryBetween(startTime, endTime),
                 workLogRepository.getMonthlyStats(),
                 incomeRepository.getIncomes(1, 50),
                 expenseRepository.getExpenses(1, 50),
@@ -62,13 +66,15 @@ class DashboardViewModel(
                 val totalExpense = array[1] as? Double ?: 0.0
                 val monthlyMealExpenses = array[2] as? Double ?: 0.0
                 val totalIncome = array[3] as? Double ?: 0.0
-                val recentActivities = array[5] as? List<WorkLog> ?: emptyList()
-                val expensesByCategory = array[6] as? List<ExpenseByCategory> ?: emptyList()
-                val monthlyStats = array[7] as MonthlyStats
-                val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
-                val expenses = array[9] as? List<Expense> ?: emptyList()
-                val workLogs = array[10] as? List<WorkLog> ?: emptyList()
-                val userProfile = array[11] as? com.rudra.smartworktracker.data.entity.UserProfile
+                val totalSavings = array[4] as? Double ?: 0.0
+                val recentActivities = array[6] as? List<WorkLog> ?: emptyList()
+                val expensesByCategory = array[7] as? List<ExpenseByCategory> ?: emptyList()
+                val incomesByCategory = array[8] as? List<IncomeByCategory> ?: emptyList()
+                val monthlyStats = array[9] as MonthlyStats
+                val incomes = array[10] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
+                val expenses = array[11] as? List<Expense> ?: emptyList()
+                val workLogs = array[12] as? List<WorkLog> ?: emptyList()
+                val userProfile = array[13] as? com.rudra.smartworktracker.data.entity.UserProfile
 
                 val dailyIncome = incomes.filter {
                     val incomeDate = Calendar.getInstance()
@@ -101,6 +107,7 @@ class DashboardViewModel(
 
                 val netSavings = totalIncome - totalExpense
                 val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
+                val incomesByCategoryMap = incomesByCategory.associate { it.category to it.total }
 
                 DashboardUiState(
                     userName = userProfile?.name,
@@ -110,6 +117,7 @@ class DashboardViewModel(
                     financialSummary = FinancialSummary(
                         totalIncome = totalIncome,
                         totalExpense = totalExpense,
+                        totalSavings = totalSavings,
                         netSavings = netSavings,
                         dailyIncome = dailyIncome,
                         dailyExpense = dailyExpense,
@@ -119,6 +127,7 @@ class DashboardViewModel(
                         overtimeEarnings = overtimeEarnings
                     ),
                     expensesByCategory = expensesByCategoryMap,
+                    incomesByCategory = incomesByCategoryMap,
                     incomes = incomes,
                     expenses = expenses,
                     workLogs = workLogs
@@ -201,9 +210,10 @@ class DashboardViewModel(
                         val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
                         val expenseRepository = ExpenseRepository(appDatabase.expenseDao())
                         val incomeRepository = IncomeRepository(appDatabase.incomeDao())
+                        val savingsRepository = SavingsRepository(appDatabase.savingsDao())
                         val settingsRepository = SettingsRepository(context)
                         val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
-                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, settingsRepository, userProfileRepository) as T
+                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, savingsRepository, settingsRepository, userProfileRepository) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }
