@@ -90,6 +90,8 @@ import com.rudra.smartworktracker.ui.screens.journal.DailyJournalScreen
 import com.rudra.smartworktracker.ui.screens.loans.LoansScreen
 import com.rudra.smartworktracker.ui.screens.onboarding.OnboardingScreen
 import com.rudra.smartworktracker.ui.screens.overtime.OvertimeScreen
+import com.rudra.smartworktracker.ui.screens.profile.ProfileScreen
+import com.rudra.smartworktracker.ui.screens.profile.ProfileSetupScreen
 import com.rudra.smartworktracker.ui.screens.report.MonthlyReportScreen
 import com.rudra.smartworktracker.ui.screens.reports.ReportsScreen
 import com.rudra.smartworktracker.ui.screens.savings.SavingsScreen
@@ -145,7 +147,8 @@ fun MainApp() {
         NavigationItem.Settings,
         NavigationItem.Team,
         NavigationItem.Overtime,
-        NavigationItem.Scheduler
+        NavigationItem.Scheduler,
+        NavigationItem.UserProfile
 
     )
 
@@ -522,6 +525,18 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     SchedulerScreen()
                 }
+                composable(NavigationItem.UserProfile.route) {
+                    ProfileScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToSetup = { navController.navigate("profile_setup") }
+                    )
+                }
+                composable("profile_setup") {
+                    ProfileSetupScreen(
+                        onProfileSaved = { navController.popBackStack() },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }
@@ -810,6 +825,7 @@ sealed class NavigationItem(
         icon = Icons.Default.Schedule,
         description = "Schedule your tasks"
     )
+
 
 }
 

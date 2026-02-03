@@ -21,4 +21,8 @@ class TransactionRepository(private val transactionDao: FinancialTransactionDao)
             it.filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.EMI_PAID }.sumOf { it.amount }
         }
     }
+
+    suspend fun deleteTransaction(transaction: FinancialTransaction) {
+        transactionDao.delete(transaction)
+    }
 }

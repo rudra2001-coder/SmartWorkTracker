@@ -5,10 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.repository.ExpenseRepository
-import com.rudra.smartworktracker.data.repository.IncomeRepository
-import com.rudra.smartworktracker.data.repository.SettingsRepository
-import com.rudra.smartworktracker.data.repository.WorkLogRepository
+import com.rudra.smartworktracker.data.repository.*
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseByCategory
 import com.rudra.smartworktracker.model.ExpenseCategory
@@ -19,22 +16,17 @@ import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
 import com.rudra.smartworktracker.utils.DateTimeUtils
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 class DashboardViewModel(
     private val workLogRepository: WorkLogRepository,
     private val expenseRepository: ExpenseRepository,
     private val incomeRepository: IncomeRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val userProfileRepository: UserProfileRepository
 ) : ViewModel() {
 
     private val _uiSate = MutableStateFlow(DashboardUiState())
@@ -61,7 +53,8 @@ class DashboardViewModel(
                 workLogRepository.getMonthlyStats(),
                 incomeRepository.getIncomes(1, 50),
                 expenseRepository.getExpenses(1, 50),
-                workLogRepository.getWorkLogs(1, 50)
+                workLogRepository.getWorkLogs(1, 50),
+                userProfileRepository.userProfile
             )
 
             combine(flows) { array ->
@@ -69,26 +62,28 @@ class DashboardViewModel(
                 val totalExpense = array[1] as? Double ?: 0.0
                 val monthlyMealExpenses = array[2] as? Double ?: 0.0
                 val totalIncome = array[3] as? Double ?: 0.0
-                val mealRate = array[4] as? Double // unused
                 val recentActivities = array[5] as? List<WorkLog> ?: emptyList()
                 val expensesByCategory = array[6] as? List<ExpenseByCategory> ?: emptyList()
                 val monthlyStats = array[7] as MonthlyStats
                 val incomes = array[8] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
                 val expenses = array[9] as? List<Expense> ?: emptyList()
                 val workLogs = array[10] as? List<WorkLog> ?: emptyList()
+                val userProfile = array[11] as? com.rudra.smartworktracker.data.entity.UserProfile
 
                 val dailyIncome = incomes.filter {
                     val incomeDate = Calendar.getInstance()
                     incomeDate.timeInMillis = it.timestamp
-                    today.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
-                            today.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
+                    val now = Calendar.getInstance()
+                    now.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
+                            now.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
                 }.sumOf { it.amount }
 
                 val dailyExpense = expenses.filter {
                     val expenseDate = Calendar.getInstance()
                     expenseDate.timeInMillis = it.timestamp
-                    today.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
-                            today.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
+                    val now = Calendar.getInstance()
+                    now.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
+                            now.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
                 }.sumOf { it.amount }
 
                 val dailySavings = dailyIncome - dailyExpense
@@ -108,7 +103,7 @@ class DashboardViewModel(
                 val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
 
                 DashboardUiState(
-                    userName = null, // Removed userProfileRepository
+                    userName = userProfile?.name,
                     todayWorkType = todayWorkLog?.workType,
                     monthlyStats = monthlyStats,
                     recentActivities = recentActivities.map { it.toUiModel() },
@@ -207,7 +202,8 @@ class DashboardViewModel(
                         val expenseRepository = ExpenseRepository(appDatabase.expenseDao())
                         val incomeRepository = IncomeRepository(appDatabase.incomeDao())
                         val settingsRepository = SettingsRepository(context)
-                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, settingsRepository) as T
+                        val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
+                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, settingsRepository, userProfileRepository) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }

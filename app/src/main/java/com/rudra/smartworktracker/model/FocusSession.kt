@@ -13,6 +13,7 @@ data class FocusSession(
     val uuid: String? = null,
     val type: FocusType,
     val duration: Long,
+    val elapsedTime: Long,
     val interruptions: Int,
     val focusScore: Int,
     val timestamp: Long,
@@ -24,7 +25,10 @@ data class FocusSession(
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
 
-enum class FocusType {
-    DEEP_WORK,
-    POMODORO
+enum class FocusType(val displayName: String) {
+    DEEP_WORK("Deep Work"),
+    POMODORO("Pomodoro"),
+    SHORT_BREAK("Short Break"),
+    LONG_BREAK("Long Break"),
+    CUSTOM("Custom")
 }

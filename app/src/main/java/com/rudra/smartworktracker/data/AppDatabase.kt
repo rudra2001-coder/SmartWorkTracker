@@ -46,7 +46,7 @@ import com.rudra.smartworktracker.model.*
     views = [
         MonthlySummary::class
     ],
-    version = 1, // Fresh Start Version 1
+    version = 2, // Fresh Start Version 1
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
