@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.data.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
@@ -16,4 +17,7 @@ interface FinancialTransactionDao {
 
     @Query("SELECT * FROM financial_transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<FinancialTransaction>>
+
+    @Delete
+    suspend fun delete(financialTransaction: FinancialTransaction)
 }

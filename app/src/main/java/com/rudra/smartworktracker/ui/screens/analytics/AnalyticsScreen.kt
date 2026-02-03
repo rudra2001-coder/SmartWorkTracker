@@ -1,64 +1,32 @@
 package com.rudra.smartworktracker.ui.screens.analytics
 
 import android.app.Application
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.EaseOutCubic
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Income
-import com.rudra.smartworktracker.model.Expense
-import com.rudra.smartworktracker.model.FocusSession
-import com.rudra.smartworktracker.model.FocusType
-import com.rudra.smartworktracker.model.Habit
+import com.rudra.smartworktracker.model.*
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 @Composable
 fun AnalyticsScreen(onNavigateBack: () -> Unit) {
@@ -66,512 +34,317 @@ fun AnalyticsScreen(onNavigateBack: () -> Unit) {
     val viewModel: AnalyticsViewModel = viewModel(factory = AnalyticsViewModelFactory(application))
     val analyticsData by viewModel.analyticsData.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.surface
-                    )
+    val backgroundGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFF1A237E).copy(alpha = 0.05f),
+            MaterialTheme.colorScheme.surface
+        )
+    )
+
+    Scaffold(
+        topBar = {
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                Text(
+                    "Performance Insights",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-            )
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Text(
-                "Analytics Dashboard",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        item {
-            FinancialSummaryChart(
-                incomes = analyticsData.incomes,
-                expenses = analyticsData.expenses
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    ProductivityScoreCard(score = analyticsData.productivityScore)
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    HabitConsistencyCard(habits = analyticsData.habits)
-                }
+                Text(
+                    "Your overall activity and balance",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundGradient)
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // 1. Core Summary Grid
+            item {
+                SummaryGrid(analyticsData)
+            }
 
-        item {
-            FocusQualityChart(focusSessions = analyticsData.focusSessions)
+            // 2. Main Balance Score (Work-Life)
+            item {
+                BalanceDonutCard(
+                    score = analyticsData.workLifeBalanceScore,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
+
+            // 3. Financial Radar Section
+            item {
+                AnalyticsSectionHeader("Financial Health", Icons.Default.AccountBalanceWallet)
+                FinancialSummaryChart(
+                    incomes = analyticsData.incomes,
+                    expenses = analyticsData.expenses,
+                    savings = analyticsData.totalSavings,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
+
+            // 4. Productivity & Habits Row
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ProductivityMiniCard(
+                        score = analyticsData.productivityScore,
+                        modifier = Modifier.weight(1f)
+                    )
+                    HabitMiniCard(
+                        habits = analyticsData.habits,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // 5. Daily Health Insights
+            item {
+                AnalyticsSectionHeader("Health Metrics", Icons.Default.HealthAndSafety)
+                HealthMetricsGrid(analyticsData, modifier = Modifier.padding(horizontal = 20.dp))
+            }
+
+            // 6. Focus Quality
+            item {
+                FocusQualityChart(
+                    focusSessions = analyticsData.focusSessions,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun FinancialSummaryChart(
-    incomes: List<Income>,
-    expenses: List<Expense>
-) {
+fun SummaryGrid(data: AnalyticsData) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickStatBox(
+            label = "Work",
+            value = "${String.format(Locale.getDefault(), "%.1f", data.workHoursToday)}h",
+            color = Color(0xFF4A90E2),
+            icon = Icons.Default.Timer,
+            modifier = Modifier.weight(1f)
+        )
+        QuickStatBox(
+            label = "Calories",
+            value = "${data.totalCaloriesToday.toInt()}",
+            color = Color(0xFFE91E63),
+            icon = Icons.Default.LocalFireDepartment,
+            modifier = Modifier.weight(1f)
+        )
+        QuickStatBox(
+            label = "Badges",
+            value = "${data.achievementsCount}",
+            color = Color(0xFFFFC107),
+            icon = Icons.Default.EmojiEvents,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun QuickStatBox(label: String, value: String, color: Color, icon: ImageVector, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.1f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = color)
+            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = color.copy(alpha = 0.7f))
+        }
+    }
+}
+
+@Composable
+fun AnalyticsSectionHeader(title: String, icon: ImageVector) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun BalanceDonutCard(score: Int, modifier: Modifier = Modifier) {
+    val animatedScore = remember { Animatable(0f) }
+    LaunchedEffect(score) { animatedScore.animateTo(score / 100f, tween(1000, easing = LinearOutSlowInEasing)) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(100.dp)) {
+                Canvas(Modifier.size(100.dp)) {
+                    drawCircle(Color.White.copy(alpha = 0.3f), style = Stroke(12.dp.toPx()))
+                    drawArc(
+                        color = Color(0xFF4CAF50),
+                        startAngle = -90f,
+                        sweepAngle = animatedScore.value * 360f,
+                        useCenter = false,
+                        style = Stroke(12.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+                Text("${(animatedScore.value * 100).toInt()}%", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            }
+            Spacer(Modifier.width(24.dp))
+            Column {
+                Text("Work-Life Balance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    if (score > 80) "Excellent! Keep it up." else if (score > 50) "Good balance, small tweaks needed." else "Warning: Work overload detected.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FinancialSummaryChart(incomes: List<Income>, expenses: List<Expense>, savings: Double, modifier: Modifier = Modifier) {
     val totalIncome = incomes.sumOf { it.amount }
     val totalExpense = expenses.sumOf { it.amount }
-    val savings = totalIncome - totalExpense
-    var animatedIncome by remember { mutableFloatStateOf(0f) }
-    var animatedExpense by remember { mutableFloatStateOf(0f) }
-    var animatedSavings by remember { mutableFloatStateOf(0f) }
-
-    LaunchedEffect(totalIncome, totalExpense, savings) {
-        animatedIncome = 0f
-        animatedExpense = 0f
-        animatedSavings = 0f
-
-        delay(300)
-        animatedIncome = totalIncome.toFloat()
-        delay(200)
-        animatedExpense = totalExpense.toFloat()
-        delay(200)
-        animatedSavings = savings.toFloat()
-    }
-
+    
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                clip = true
-            ),
+        modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.AttachMoney,
-                    contentDescription = "Financial",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.padding(8.dp))
-                Text(
-                    "Financial Summary",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+        Column(Modifier.padding(20.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                FinanceItem("Income", totalIncome, Color(0xFF4CAF50), Icons.AutoMirrored.Filled.TrendingUp)
+                FinanceItem("Expenses", totalExpense, Color(0xFFF44336), Icons.Default.BarChart)
+                FinanceItem("Savings", savings, Color(0xFF2196F3), Icons.Default.Savings)
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                FinancialMetricCard(
-                    title = "Income",
-                    value = animatedIncome,
-                    color = MaterialTheme.colorScheme.primary,
-                    icon = Icons.AutoMirrored.Filled.TrendingUp
-                )
-
-                FinancialMetricCard(
-                    title = "Expense",
-                    value = animatedExpense,
-                    color = MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.BarChart
-                )
-
-                FinancialMetricCard(
-                    title = "Savings",
-                    value = animatedSavings,
-                    color = if (savings >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.CheckCircle
-                )
+            Spacer(Modifier.height(20.dp))
+            // Simple Bar
+            val total = (totalIncome + totalExpense).toFloat()
+            if (total > 0) {
+                Row(Modifier.fillMaxWidth().height(12.dp).clip(CircleShape).background(Color.LightGray.copy(alpha = 0.2f))) {
+                    Box(Modifier.fillMaxHeight().weight(totalIncome.toFloat() / total).background(Color(0xFF4CAF50)))
+                    Box(Modifier.fillMaxHeight().weight(totalExpense.toFloat() / total).background(Color(0xFFF44336)))
+                }
             }
         }
     }
 }
 
 @Composable
-fun FinancialMetricCard(
-    title: String,
-    value: Float,
-    color: Color,
-    icon: ImageVector
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = title,
-                tint = color,
-                modifier = Modifier.size(28.dp)
-            )
+fun FinanceItem(label: String, value: Double, color: Color, icon: ImageVector) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, Modifier.size(14.dp), tint = color)
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            title,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            "৳${"%.0f".format(value)}",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
+        Text("৳${value.toInt()}", fontWeight = FontWeight.Bold, color = color, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
 @Composable
-fun ProductivityScoreCard(score: Int) {
-    val animatedProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(score) {
-        animatedProgress.animateTo(
-            targetValue = score / 100f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            )
-        )
+fun HealthMetricsGrid(data: AnalyticsData, modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        HealthCard("Hydration", "${data.totalWaterToday.toInt()}ml", Icons.Default.LocalDrink, Color(0xFF03A9F4), Modifier.weight(1f))
+        HealthCard("Sleep", "${data.sleepHours}h", Icons.Default.Bedtime, Color(0xFF673AB7), Modifier.weight(1f))
     }
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
-    val primaryColor = MaterialTheme.colorScheme.primary
+}
+
+@Composable
+fun HealthCard(title: String, value: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(20.dp),
-                clip = true
-            ),
+        modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.05f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.1f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "Productivity Score",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Circular Progress Indicator
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.size(120.dp)) {
-                    drawCircle(
-                        color = surfaceVariantColor,
-                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                    )
-
-                    val sweepAngle = animatedProgress.value * 360
-                    drawArc(
-                        color = primaryColor,
-                        startAngle = -90f,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "${(animatedProgress.value * 100).toInt()}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        "points",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LinearProgressIndicator(
-                progress = { animatedProgress.value },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+        Column(Modifier.padding(16.dp)) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-fun FocusQualityChart(focusSessions: List<FocusSession>) {
-    val totalDeepWork = focusSessions.filter { it.type == FocusType.DEEP_WORK }.sumOf { it.duration } / 60
-    val totalPomodoro = focusSessions.filter { it.type == FocusType.POMODORO }.sumOf { it.duration } / 60
-    val totalFocus = (totalDeepWork + totalPomodoro).toInt()
-
-    var animatedDeepWork by remember { mutableFloatStateOf(0f) }
-    var animatedPomodoro by remember { mutableFloatStateOf(0f) }
-
-    LaunchedEffect(totalDeepWork, totalPomodoro) {
-        animatedDeepWork = 0f
-        animatedPomodoro = 0f
-
-        delay(400)
-        animatedDeepWork = totalDeepWork.toFloat()
-        delay(300)
-        animatedPomodoro = totalPomodoro.toFloat()
-    }
-
+fun FocusQualityChart(focusSessions: List<FocusSession>, modifier: Modifier = Modifier) {
+    val totalMinutes = focusSessions.sumOf { it.duration } / 60
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(20.dp),
-                clip = true
-            ),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            Text(
-                "Focus Quality",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                "Total Focus Time: ${totalFocus}min",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FocusTypeCard(
-                    type = "Deep Work",
-                    minutes = animatedDeepWork.toInt(),
-                    color = MaterialTheme.colorScheme.primary,
-                    totalMinutes = totalFocus
-                )
-
-                FocusTypeCard(
-                    type = "Pomodoro",
-                    minutes = animatedPomodoro.toInt(),
-                    color = MaterialTheme.colorScheme.secondary,
-                    totalMinutes = totalFocus
-                )
+        Column(Modifier.padding(20.dp)) {
+            Text("Focus Distribution", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                FocusIndicator("Deep Work", focusSessions.filter { it.type == FocusType.DEEP_WORK }.sumOf { it.duration } / 60, Color(0xFF3F51B5))
+                FocusIndicator("Pomodoro", focusSessions.filter { it.type == FocusType.POMODORO }.sumOf { it.duration } / 60, Color(0xFFFF5722))
             }
         }
     }
 }
 
 @Composable
-fun FocusTypeCard(type: String, minutes: Int, color: Color, totalMinutes: Int) {
-    val percentage = if (totalMinutes > 0) (minutes.toFloat() / totalMinutes) * 100 else 0f
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "${minutes}m",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            type,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            "${percentage.toInt()}%",
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
+fun FocusIndicator(label: String, min: Long, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(12.dp).clip(CircleShape).background(color))
+        Text("${min}m", fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelSmall)
     }
 }
 
 @Composable
-fun HabitConsistencyCard(habits: List<Habit>) {
-    val totalHabits = habits.size
-    val completedHabits = habits.count { it.streak > 0 }
-    val consistency = if (totalHabits > 0) (completedHabits.toFloat() / totalHabits.toFloat()) * 100 else 0f
-    val animatedProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(consistency) {
-        animatedProgress.animateTo(
-            targetValue = consistency / 100f,
-            animationSpec = tween(durationMillis = 1000, easing = EaseOutCubic)
-        )
+fun ProductivityMiniCard(score: Int, modifier: Modifier = Modifier) {
+    Card(modifier, shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Productivity", style = MaterialTheme.typography.labelMedium)
+            Text("$score", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            LinearProgressIndicator(progress = { score / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+        }
     }
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(20.dp),
-                clip = true
-            ),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "Habit Consistency",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Donut Chart
-            Box(
-                modifier = Modifier.size(100.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.size(100.dp)) {
-                    drawCircle(
-                        color = surfaceVariantColor,
-                        style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
-                    )
-
-                    val sweepAngle = animatedProgress.value * 360
-                    drawArc(
-                        color = tertiaryColor,
-                        startAngle = -90f,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "${(animatedProgress.value * 100).toInt()}%",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                "$completedHabits/$totalHabits habits",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-                progress = { animatedProgress.value },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = MaterialTheme.colorScheme.tertiary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+@Composable
+fun HabitMiniCard(habits: List<Habit>, modifier: Modifier = Modifier) {
+    val completion = if (habits.isNotEmpty()) (habits.count { it.streak > 0 }.toFloat() / habits.size) else 0f
+    Card(modifier, shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Habits", style = MaterialTheme.typography.labelMedium)
+            Text("${(completion * 100).toInt()}%", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+            LinearProgressIndicator(progress = { completion }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = MaterialTheme.colorScheme.tertiary)
         }
     }
 }

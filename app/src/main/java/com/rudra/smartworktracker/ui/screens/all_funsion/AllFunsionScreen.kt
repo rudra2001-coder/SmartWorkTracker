@@ -130,7 +130,8 @@ fun AllFunsionScreen(navController: NavController) {
                 "General", listOf(
                     NavigationItem.Backup,
                     NavigationItem.Settings,
-                    NavigationItem.Team
+                    NavigationItem.Team ,
+                    NavigationItem.UserProfile
                 )
             ),
 
