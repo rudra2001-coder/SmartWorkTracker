@@ -157,19 +157,7 @@ fun DashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Dashboard",
-                        style = typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colorScheme.surface,
-                    titleContentColor = colorScheme.onSurface
-                )
-            )
+
         },
         floatingActionButton = {
             QuickActionMenu(
@@ -415,14 +403,14 @@ fun OvertimeSummaryCard(financialSummary: FinancialSummary) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                FinancialMetricCard(
+                OvertimeMetricCard(
                     title = "Overtime Hours",
                     value = financialSummary.overtimeHours.toFloat(),
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.Default.Bolt
                 )
 
-                FinancialMetricCard(
+                OvertimeMetricCard(
                     title = "Overtime Earnings",
                     value = financialSummary.overtimeEarnings.toFloat(),
                     color = MaterialTheme.colorScheme.primary,
@@ -478,7 +466,53 @@ fun FinancialMetricCard(
         )
     }
 }
+//over time card
 
+@Composable
+fun OvertimeMetricCard(
+    title: String,
+    value: Float,
+    color: Color,
+    icon: ImageVector
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            title,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            "${"%.0f".format(value)}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
 /**
  * Optimized header with better performance and accessibility
  */
@@ -900,7 +934,7 @@ fun ExpenseBar(category: String, amount: Double, total: Double, color: Color) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "৳${"%.0f".format(amount)}",
+                text = "${"%.0f".format(amount)}",
                 style = typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
