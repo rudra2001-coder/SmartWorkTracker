@@ -43,6 +43,14 @@ interface WorkLogDao {
     @Query("SELECT SUM((strftime('%s', endTime) - strftime('%s', startTime)) / 3600.0) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
     suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double?
 
+    @Query("SELECT * FROM work_logs WHERE isOvertime = 1 ORDER BY date DESC")
+    fun getOvertimeLogs(): Flow<List<WorkLog>>
+
+    @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear ORDER BY date DESC")
+    fun getOvertimeLogsByMonth(monthYear: String): Flow<List<WorkLog>>
+
+    @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND strftime('%Y', date / 1000, 'unixepoch') = :year ORDER BY date DESC")
+    fun getOvertimeLogsByYear(year: String): Flow<List<WorkLog>>
 
     @Query("SELECT * FROM work_logs ORDER BY date DESC LIMIT 5")
     fun getRecentWorkLogs(): Flow<List<WorkLog>>

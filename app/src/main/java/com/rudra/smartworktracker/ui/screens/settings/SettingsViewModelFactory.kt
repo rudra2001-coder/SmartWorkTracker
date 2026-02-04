@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
 import com.rudra.smartworktracker.data.repository.IncomeRepository
+import com.rudra.smartworktracker.data.repository.SavingsRepository
 import com.rudra.smartworktracker.data.repository.SettingsRepository
 import com.rudra.smartworktracker.data.repository.UserProfileRepository
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
@@ -19,6 +20,7 @@ class SettingsViewModelFactory(private val application: Application) : ViewModel
             val incomeRepository = IncomeRepository(database.incomeDao())
             val expenseRepository = ExpenseRepository(database.expenseDao())
             val settingsRepository = SettingsRepository(application)
+            val savingsRepository = SavingsRepository(database.savingsDao())
             @Suppress("UNCHECKED_CAST")
             return SettingsViewModel(
                 application,
@@ -26,7 +28,8 @@ class SettingsViewModelFactory(private val application: Application) : ViewModel
                 workLogRepository,
                 incomeRepository,
                 expenseRepository,
-                settingsRepository
+                settingsRepository,
+                savingsRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
