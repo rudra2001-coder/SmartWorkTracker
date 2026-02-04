@@ -1,7 +1,11 @@
 package com.rudra.smartworktracker.ui.screens.settings
 
 import android.app.Application
-import androidx.compose.foundation.background
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -21,23 +24,53 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
-    val application = LocalContext.current.applicationContext as Application
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(application))
+    val scope = rememberCoroutineScope()
 
     var showResetDialog by remember { mutableStateOf(false) }
     var showMealRateDialog by remember { mutableStateOf(false) }
-    var showBackupDialog by remember { mutableStateOf(false) }
 
     val mealRate by viewModel.mealRate.collectAsState()
     var newMealRate by remember(mealRate) { mutableStateOf(mealRate.toString()) }
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
-    val vibrationEnabled by remember { mutableStateOf(true) }
-    val autoBackupEnabled by remember { mutableStateOf(false) }
+    val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
+    val autoBackupEnabled by viewModel.autoBackupEnabled.collectAsState()
+
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.createBackup(it) }
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.restoreBackup(it) }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.backupResult.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.restoreResult.collect { result ->
+            result.onSuccess {
+                Toast.makeText(context, "Data restored successfully", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Restore failed: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -48,6 +81,11 @@ fun SettingsScreen(navController: NavController) {
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -92,7 +130,7 @@ fun SettingsScreen(navController: NavController) {
                         title = "Enable Vibration",
                         subtitle = "Vibrate on notifications",
                         isChecked = vibrationEnabled,
-                        onCheckedChange = { /* Handle vibration */ }
+                        onCheckedChange = { viewModel.setVibration(it) }
                     )
                 }
             }
@@ -117,19 +155,23 @@ fun SettingsScreen(navController: NavController) {
                         title = "Auto Backup",
                         subtitle = "Automatically backup your data",
                         isChecked = autoBackupEnabled,
-                        onCheckedChange = { /* Handle auto backup */ }
+                        onCheckedChange = { viewModel.setAutoBackup(it) }
                     )
                     SettingsItem(
                         icon = Icons.Default.Backup,
                         title = "Backup Data",
-                        subtitle = "Create a backup of your data",
-                        onClick = { showBackupDialog = true }
+                        subtitle = "Create a backup file of your data",
+                        onClick = {
+                            backupLauncher.launch("smart_work_tracker_backup_${System.currentTimeMillis()}.json")
+                        }
                     )
                     SettingsItem(
                         icon = Icons.Default.Restore,
                         title = "Restore Data",
-                        subtitle = "Restore from previous backup",
-                        onClick = { /* Handle restore */ }
+                        subtitle = "Restore from previous backup file",
+                        onClick = {
+                            restoreLauncher.launch(arrayOf("application/json", "application/octet-stream"))
+                        }
                     )
                     SettingsItem(
                         icon = Icons.Default.Delete,
@@ -148,25 +190,49 @@ fun SettingsScreen(navController: NavController) {
                         icon = Icons.Default.Shield,
                         title = "Privacy Policy",
                         subtitle = "View our privacy policy",
-                        onClick = { /* Navigate to privacy policy */ }
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://rudra2001-coder.github.io/my/"))
+                            context.startActivity(intent)
+                        }
                     )
                     SettingsItem(
                         icon = Icons.Default.Description,
                         title = "Terms of Service",
                         subtitle = "View terms and conditions",
-                        onClick = { /* Navigate to terms */ }
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://rudra2001-coder.github.io/my/"))
+                            context.startActivity(intent)
+                        }
                     )
                     SettingsItem(
                         icon = Icons.Default.Email,
                         title = "Contact Support",
                         subtitle = "Get help and support",
-                        onClick = { /* Open contact form */ }
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:mhrudra064@gmail.com\n")
+                                putExtra(Intent.EXTRA_SUBJECT, "Smart Work Tracker Support")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     )
                     SettingsItem(
                         icon = Icons.Default.Star,
                         title = "Rate App",
                         subtitle = "Share your experience",
-                        onClick = { /* Open app store */ }
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
+                                context.startActivity(webIntent)
+                            }
+                        }
                     )
                 }
             }
@@ -198,11 +264,6 @@ fun SettingsScreen(navController: NavController) {
                             "Version 1.0.0",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                        )
-                        Text(
-                            "Build 2024.01.01",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -320,7 +381,7 @@ fun SettingsScreen(navController: NavController) {
                     onClick = {
                         viewModel.clearAllData()
                         showResetDialog = false
-                        // Show success message
+                        Toast.makeText(context, "All data has been reset", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
@@ -337,58 +398,6 @@ fun SettingsScreen(navController: NavController) {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cancel")
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
-
-    // Backup Dialog
-    if (showBackupDialog) {
-        AlertDialog(
-            onDismissRequest = { showBackupDialog = false },
-            title = {
-                Text(
-                    "Backup Data",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            },
-            text = {
-                Column {
-                    Icon(
-                        Icons.Default.CloudUpload,
-                        contentDescription = "Backup",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.CenterHorizontally),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "Create a backup of your data to cloud storage?",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        // Handle backup
-                        showBackupDialog = false
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Backup Now")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showBackupDialog = false },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Later")
                 }
             },
             shape = RoundedCornerShape(20.dp)
@@ -450,7 +459,7 @@ fun SettingsSwitchItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 icon,
                 contentDescription = title,

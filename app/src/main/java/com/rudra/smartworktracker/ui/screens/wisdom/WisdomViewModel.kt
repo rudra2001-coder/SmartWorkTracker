@@ -193,7 +193,7 @@ class WisdomViewModel : ViewModel() {
             if (target.id == targetId && !target.isCompleted) {
                 newlyCompleted = true
                 targetTitle = target.title
-                target.copy(isCompleted = true, completedAt = Date())
+                target.copy(isCompleted = true, completedAt = System.currentTimeMillis())
             } else target
         }
 

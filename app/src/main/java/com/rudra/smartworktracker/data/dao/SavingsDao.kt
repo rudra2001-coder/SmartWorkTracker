@@ -21,4 +21,10 @@ interface SavingsDao {
 
     @Query("SELECT * FROM savings")
     fun getAllSavings(): Flow<List<Savings>>
+
+    @Query("SELECT SUM(amount) FROM savings WHERE timestamp BETWEEN :startTime AND :endTime")
+    fun getSavingsBetween(startTime: Long, endTime: Long): Flow<Double?>
+
+    @Query("DELETE FROM savings")
+    suspend fun deleteAll()
 }

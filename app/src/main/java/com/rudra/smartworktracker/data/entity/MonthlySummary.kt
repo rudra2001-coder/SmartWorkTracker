@@ -5,17 +5,21 @@ import androidx.room.Ignore
 
 @DatabaseView("""
     SELECT
-        strftime('%Y-%m', date / 1000, 'unixepoch') AS month,
-        SUM(CASE WHEN workType = 'OFFICE' THEN 1 ELSE 0 END) AS totalWorkDays,
-        SUM(CASE WHEN category = 'MEAL' THEN 1 ELSE 0 END) AS totalMeals,
-        SUM(CASE WHEN category = 'MEAL' THEN amount ELSE 0 END) AS totalMealCost,
-        0.0 AS totalOvertimeHours,
-        0.0 AS totalOvertimePay,
-        SUM(amount) AS totalExpense
+        strftime('%Y-%m', wl.date / 1000, 'unixepoch') AS month,
+        SUM(CASE WHEN wl.workType = 'OFFICE' THEN 1 ELSE 0 END) AS totalWorkDays,
+        COUNT(DISTINCT CASE WHEN ex.category = 'MEAL' THEN ex.id END) AS totalMeals,
+        SUM(CASE WHEN ex.category = 'MEAL' THEN ex.amount ELSE 0 END) AS totalMealCost,
+        SUM(CASE WHEN wl.isOvertime = 1 THEN 
+            (strftime('%s', wl.endTime) - strftime('%s', wl.startTime)) / 3600.0 
+            ELSE 0 END) AS totalOvertimeHours,
+        SUM(CASE WHEN wl.isOvertime = 1 THEN 
+            ((strftime('%s', wl.endTime) - strftime('%s', wl.startTime)) / 3600.0) * wl.overtimeRate 
+            ELSE 0 END) AS totalOvertimePay,
+        SUM(IFNULL(ex.amount, 0)) AS totalExpense
     FROM
-        work_logs
+        work_logs wl
     LEFT JOIN
-        expenses ON strftime('%Y-%m-%d', work_logs.date / 1000, 'unixepoch') = strftime('%Y-%m-%d', expenses.timestamp / 1000, 'unixepoch')
+        expenses ex ON strftime('%Y-%m-%d', wl.date / 1000, 'unixepoch') = strftime('%Y-%m-%d', ex.timestamp / 1000, 'unixepoch')
     GROUP BY
         month
 """)
@@ -27,13 +31,11 @@ data class MonthlySummary(
     val totalOvertimeHours: Double,
     val totalOvertimePay: Double,
     
-    // Marked with @Ignore to resolve KSP/Room warnings about missing query results
     @Ignore
     val uuid: String? = null,
 
     val totalExpense: Double
 ) {
-    // Required empty constructor for Room view mapping
     constructor(
         month: String,
         totalWorkDays: Int,
