@@ -50,6 +50,16 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = true
     )
+    val vibrationEnabled = settingsRepository.vibration.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+    val autoBackupEnabled = settingsRepository.autoBackup.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     fun setMealRate(rate: Double) {
         viewModelScope.launch {
@@ -69,14 +79,32 @@ class SettingsViewModel(
         }
     }
 
+    fun setVibration(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setVibration(enabled)
+        }
+    }
+
+    fun setAutoBackup(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setAutoBackup(enabled)
+        }
+    }
+
     fun createBackup(uri: Uri) {
         viewModelScope.launch {
             val context = getApplication<Application>()
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                val success = backupManager.exportToJson(outputStream)
-                if (success) {
-                    _backupResult.emit(uri.path ?: "Backup successful")
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val success = backupManager.exportToJson(outputStream)
+                    if (success) {
+                        _backupResult.emit("Backup successful")
+                    } else {
+                        _backupResult.emit("Backup failed")
+                    }
                 }
+            } catch (e: Exception) {
+                _backupResult.emit("Error: ${e.message}")
             }
         }
     }
@@ -84,9 +112,13 @@ class SettingsViewModel(
     fun restoreBackup(uri: Uri) {
         viewModelScope.launch {
             val context = getApplication<Application>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                val result = backupManager.importFromJson(inputStream)
-                _restoreResult.emit(result)
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val result = backupManager.importFromJson(inputStream)
+                    _restoreResult.emit(result)
+                }
+            } catch (e: Exception) {
+                _restoreResult.emit(Result.failure(e))
             }
         }
     }
@@ -98,7 +130,6 @@ class SettingsViewModel(
             incomeRepository.clearAll()
             expenseRepository.clearAll()
             settingsRepository.clearAll()
-            // Added clearing savings data as well
             savingsRepository.clearAll()
         }
     }

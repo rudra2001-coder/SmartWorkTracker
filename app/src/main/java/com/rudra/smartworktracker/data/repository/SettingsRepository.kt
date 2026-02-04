@@ -18,6 +18,7 @@ class SettingsRepository(private val context: Context) {
     private val darkThemeKey = booleanPreferencesKey(DARK_THEME)
     private val notificationsKey = booleanPreferencesKey(NOTIFICATIONS)
     private val vibrationKey = booleanPreferencesKey(VIBRATION)
+    private val autoBackupKey = booleanPreferencesKey(AUTO_BACKUP)
 
     val mealRate: Flow<Double> = context.dataStore.data.map {
         it[mealRateKey] ?: 60.0
@@ -59,6 +60,16 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    val autoBackup: Flow<Boolean> = context.dataStore.data.map {
+        it[autoBackupKey] ?: false
+    }
+
+    suspend fun setAutoBackup(enabled: Boolean) {
+        context.dataStore.edit {
+            it[autoBackupKey] = enabled
+        }
+    }
+
     suspend fun clearAll() {
         context.dataStore.edit {
             it.clear()
@@ -69,5 +80,6 @@ class SettingsRepository(private val context: Context) {
         const val NOTIFICATIONS = "notifications"
         const val DARK_THEME = "dark_theme"
         const val VIBRATION = "vibration"
+        const val AUTO_BACKUP = "auto_backup"
     }
 }
