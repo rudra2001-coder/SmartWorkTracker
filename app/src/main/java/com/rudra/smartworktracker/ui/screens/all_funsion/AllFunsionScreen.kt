@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.rudra.smartworktracker.ui.navigation.NavigationItem
@@ -90,7 +93,6 @@ fun AllFunsionScreen(navController: NavController) {
             NavigationItem.Focus,
             NavigationItem.Calendar,
             NavigationItem.Analytics
-
         )
     }
     val featureSections = remember {
@@ -102,12 +104,11 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Health,
                     NavigationItem.Achievements,
                     NavigationItem.MindfulBreak,
-                    NavigationItem.Wisdom ,
+                    NavigationItem.Wisdom,
                     NavigationItem.Focus,
                     NavigationItem.WorkTimer,
                     NavigationItem.Overtime,
                     NavigationItem.Scheduler
-
                 )
             ),
             FeatureSection(
@@ -130,57 +131,50 @@ fun AllFunsionScreen(navController: NavController) {
                 "General", listOf(
                     NavigationItem.Backup,
                     NavigationItem.Settings,
-                    NavigationItem.Team ,
+                    NavigationItem.Team,
                     NavigationItem.UserProfile
                 )
             ),
-
-
         )
     }
     val allFeatures = remember { (quickAccessFeatures + featureSections.flatMap { it.items }).distinctBy { it.route } }
 
-
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("App Features", fontWeight = FontWeight.Bold) },
+                title = { 
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("App Features", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                        Text("All tools in one place", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
     ) { paddingValues ->
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp),
+            columns = GridCells.Adaptive(minSize = 160.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    )
-                ),
+                .background(MaterialTheme.colorScheme.surface),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            stickyHeader {
-                Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)) {
-                    SearchBar(
-                        value = searchText,
-                        onValueChange = { searchText = it },
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SearchBar(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
             }
 
             if (searchText.isBlank()) {
@@ -190,14 +184,12 @@ fun AllFunsionScreen(navController: NavController) {
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(end = 8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
                             items(recentFeatures) { feature ->
                                 var visible by remember { mutableStateOf(false) }
-                                LaunchedEffect(Unit) {
-                                    visible = true
-                                }
+                                LaunchedEffect(Unit) { visible = true }
                                 FeatureCard(
                                     feature = feature,
                                     onClick = {
@@ -206,9 +198,7 @@ fun AllFunsionScreen(navController: NavController) {
                                         navController.navigate(feature.route)
                                     },
                                     isVisible = visible,
-                                    modifier = Modifier
-                                        .width(160.dp)
-                                        .height(160.dp) // Increased height
+                                    modifier = Modifier.width(150.dp)
                                 )
                             }
                         }
@@ -216,14 +206,12 @@ fun AllFunsionScreen(navController: NavController) {
                 }
 
                 featureSections.forEach { section ->
-                    stickyHeader {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         SectionHeader(section.title)
                     }
                     items(section.items, key = { it.route }) { feature ->
                         var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            visible = true
-                        }
+                        LaunchedEffect(Unit) { visible = true }
                         FeatureCard(
                             feature = feature,
                             onClick = {
@@ -241,14 +229,12 @@ fun AllFunsionScreen(navController: NavController) {
                             it.description?.contains(searchText, ignoreCase = true) == true
                 }
                 if(searchResults.isNotEmpty()){
-                    stickyHeader {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         SectionHeader("Search Results")
                     }
                     items(searchResults, key = { it.route }) { feature ->
                         var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            visible = true
-                        }
+                        LaunchedEffect(Unit) { visible = true }
                         FeatureCard(
                             feature = feature,
                             onClick = {
@@ -260,7 +246,11 @@ fun AllFunsionScreen(navController: NavController) {
                         )
                     }
                 }
-
+            }
+            
+            // Add some bottom spacing
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -272,30 +262,51 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit, modifier: Modifier
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Search features...") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
-        shape = RoundedCornerShape(24.dp),
+        placeholder = { Text("Search features...", style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon", tint = MaterialTheme.colorScheme.primary) },
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
         colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     )
 }
 
 @Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier, isSticky: Boolean = true) {
-    val background = if(isSticky) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else Color.Transparent
-    Box(modifier = modifier.background(background)){
+fun SectionHeader(title: String, modifier: Modifier = Modifier, isSticky: Boolean = false) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp, 24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Spacer(Modifier.width(8.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .padding(top = 24.dp, bottom = 8.dp, start = 4.dp)
-                .alpha(0.9f)
+            color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+private fun getFeatureColor(feature: NavigationItem): Color {
+    return when (feature.route) {
+        NavigationItem.Income.route, NavigationItem.Savings.route, NavigationItem.AddEntry.route, NavigationItem.Health.route -> Color(0xFF43A047) // Green
+        NavigationItem.Expense.route, NavigationItem.Loans.route, NavigationItem.EMI.route, NavigationItem.CreditCard.route -> Color(0xFFE53935) // Red
+        NavigationItem.WorkTimer.route, NavigationItem.Focus.route, NavigationItem.Analytics.route, NavigationItem.Calendar.route, NavigationItem.Reports.route, NavigationItem.MonthlyReport.route, NavigationItem.FinancialStatement.route, NavigationItem.Transfer.route -> Color(0xFF1E88E5) // Blue
+        NavigationItem.Habit.route, NavigationItem.Journal.route, NavigationItem.MindfulBreak.route, NavigationItem.Wisdom.route, NavigationItem.Achievements.route -> Color(0xFF8E24AA) // Purple
+        NavigationItem.Settings.route, NavigationItem.Backup.route, NavigationItem.UserProfile.route, NavigationItem.Team.route, NavigationItem.Overtime.route, NavigationItem.Scheduler.route -> Color(0xFF546E7A) // Blue Grey
+        else -> Color(0xFF3949AB)
     }
 }
 
@@ -308,36 +319,35 @@ fun FeatureCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val featureColor = getFeatureColor(feature)
 
     val cardScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = tween(100, easing = FastOutSlowInEasing), label = ""
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 10.dp,
-        animationSpec = tween(150), label = ""
-    )
-    val containerColor by animateColorAsState(
-        targetValue = if (isPressed) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerHigh,
-        animationSpec = tween(200), label = ""
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = tween(100, easing = FastOutSlowInEasing), label = "cardScale"
     )
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(600), label = ""
+        animationSpec = tween(500), label = "alpha"
     )
-    val scale by animateFloatAsState(
+    val entryScale by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0.8f,
-        animationSpec = tween(600), label = ""
+        animationSpec = tween(500), label = "entryScale"
     )
 
     Card(
         shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPressed) featureColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
         modifier = modifier
-            .height(140.dp)
-            .scale(cardScale * scale)
+            .height(150.dp)
+            .scale(cardScale * entryScale)
             .alpha(alpha)
+            .border(
+                width = 1.dp,
+                color = if (isPressed) featureColor.copy(alpha = 0.5f) else Color.Transparent,
+                shape = RoundedCornerShape(24.dp)
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -353,13 +363,13 @@ fun FeatureCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(
-                        Brush.verticalGradient(
+                        Brush.linearGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.primary
+                                featureColor.copy(alpha = 0.7f),
+                                featureColor
                             )
                         )
                     ),
@@ -368,29 +378,32 @@ fun FeatureCard(
                 Icon(
                     imageVector = feature.icon,
                     contentDescription = feature.title,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(22.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = feature.title,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = feature.description ?: "",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
+            if (feature.description != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = feature.description!!,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 12.sp
+                )
+            }
         }
     }
 }
