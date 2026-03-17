@@ -43,12 +43,18 @@ import com.rudra.smartworktracker.model.*
         Schedule::class,
         Meal::class,
         RecurringRule::class,
-        RecurringTransaction::class
+        RecurringTransaction::class,
+        RealityEntry::class,
+        Decision::class,
+        DailyCheckIn::class,
+        ConsequenceDebt::class,
+        WeeklyReport::class,
+        UserHistory::class
     ],
     views = [
         MonthlySummary::class
     ],
-    version = 2, // Fresh Start Version 1
+    version = 5, // Fresh Start Version 1
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -82,6 +88,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun travelExpenseDao(): TravelExpenseDao
     abstract fun recurringRuleDao(): RecurringRuleDao
     abstract fun recurringTransactionDao(): RecurringTransactionDao
+    abstract fun realityTrackerDao(): RealityTrackerDao
+    abstract fun decisionDao(): DecisionDao
+    abstract fun checkInDao(): CheckInDao
+    abstract fun consequenceDebtDao(): ConsequenceDebtDao
+    abstract fun weeklyReportDao(): WeeklyReportDao
+    abstract fun userHistoryDao(): UserHistoryDao
 
     companion object {
         @Volatile
