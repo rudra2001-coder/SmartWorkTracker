@@ -4,6 +4,12 @@ import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rudra.smartworktracker.data.entity.SyncStatus
+import com.rudra.smartworktracker.data.entity.RecurringFrequency
+import com.rudra.smartworktracker.data.entity.RecurringPriority
+import com.rudra.smartworktracker.data.entity.PreferredTime
+import com.rudra.smartworktracker.data.entity.RecurringTransactionStatus
+import com.rudra.smartworktracker.data.entity.TransactionType
+import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.model.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -58,6 +64,37 @@ class AppTypeConverters {
     fun fromWorkType(value: String): WorkType = WorkType.valueOf(value)
     @TypeConverter
     fun workTypeToString(type: WorkType): String = type.name
+
+    // --- Recurring Transaction Enums ---
+    @TypeConverter
+    fun fromRecurringFrequency(value: String): RecurringFrequency = RecurringFrequency.valueOf(value)
+    @TypeConverter
+    fun recurringFrequencyToString(frequency: RecurringFrequency): String = frequency.name
+
+    @TypeConverter
+    fun fromRecurringPriority(value: String): RecurringPriority = RecurringPriority.valueOf(value)
+    @TypeConverter
+    fun recurringPriorityToString(priority: RecurringPriority): String = priority.name
+
+    @TypeConverter
+    fun fromPreferredTime(value: String): PreferredTime = PreferredTime.valueOf(value)
+    @TypeConverter
+    fun preferredTimeToString(time: PreferredTime): String = time.name
+
+    @TypeConverter
+    fun fromRecurringTransactionStatus(value: String): RecurringTransactionStatus = RecurringTransactionStatus.valueOf(value)
+    @TypeConverter
+    fun recurringTransactionStatusToString(status: RecurringTransactionStatus): String = status.name
+
+    @TypeConverter
+    fun fromTransactionType(value: String): TransactionType = TransactionType.valueOf(value)
+    @TypeConverter
+    fun transactionTypeToString(type: TransactionType): String = type.name
+
+    @TypeConverter
+    fun fromAccountType(value: String): AccountType = AccountType.valueOf(value)
+    @TypeConverter
+    fun accountTypeToString(type: AccountType): String = type.name
 
     // --- Collections & Complex Objects (JSON Serialization) ---
     @TypeConverter

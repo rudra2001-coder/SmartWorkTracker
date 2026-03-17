@@ -3,6 +3,7 @@ package com.rudra.smartworktracker
 import android.app.Application
 import androidx.work.*
 import com.rudra.smartworktracker.data.backup.AutoBackupWorker
+import com.rudra.smartworktracker.alarm.RecurringNotificationWorker
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -11,6 +12,7 @@ class SmartWorkTrackerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         scheduleDailyBackup()
+        scheduleRecurringNotifications()
     }
 
     private fun scheduleDailyBackup() {
@@ -42,5 +44,10 @@ class SmartWorkTrackerApplication : Application() {
             ExistingPeriodicWorkPolicy.KEEP,
             dailyBackupRequest
         )
+    }
+
+    private fun scheduleRecurringNotifications() {
+        // Schedule the recurring notification worker to check for due transactions
+        RecurringNotificationWorker.schedule(this)
     }
 }

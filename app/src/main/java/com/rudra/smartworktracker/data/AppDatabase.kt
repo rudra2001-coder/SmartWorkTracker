@@ -41,7 +41,9 @@ import com.rudra.smartworktracker.model.*
         Colleague::class,
         TravelAndExpense::class,
         Schedule::class,
-        Meal::class
+        Meal::class,
+        RecurringRule::class,
+        RecurringTransaction::class
     ],
     views = [
         MonthlySummary::class
@@ -78,6 +80,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mealDao(): MealDao
 
     abstract fun travelExpenseDao(): TravelExpenseDao
+    abstract fun recurringRuleDao(): RecurringRuleDao
+    abstract fun recurringTransactionDao(): RecurringTransactionDao
 
     companion object {
         @Volatile

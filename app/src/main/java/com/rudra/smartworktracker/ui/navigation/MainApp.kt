@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -101,6 +102,7 @@ import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
+import com.rudra.smartworktracker.ui.screens.recurring.RecurringScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -148,7 +150,8 @@ fun MainApp() {
         NavigationItem.Team,
         NavigationItem.Overtime,
         NavigationItem.Scheduler,
-        NavigationItem.UserProfile
+        NavigationItem.UserProfile,
+        NavigationItem.Recurring
 
     )
 
@@ -525,6 +528,17 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     SchedulerScreen()
                 }
+                composable(
+                    route = NavigationItem.Recurring.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    RecurringScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
                 composable(NavigationItem.UserProfile.route) {
                     ProfileScreen(
                         onNavigateBack = { navController.popBackStack() },
@@ -824,6 +838,13 @@ sealed class NavigationItem(
         title = "Scheduler",
         icon = Icons.Default.Schedule,
         description = "Schedule your tasks"
+    )
+
+    object Recurring : NavigationItem(
+        route = "recurring",
+        title = "Recurring",
+        icon = Icons.Default.Repeat,
+        description = "Automate your transactions"
     )
 
 

@@ -123,7 +123,8 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation,
-                    NavigationItem.AddEntry
+                    NavigationItem.AddEntry,
+                    NavigationItem.Recurring
                 )
             ),
             FeatureSection(
