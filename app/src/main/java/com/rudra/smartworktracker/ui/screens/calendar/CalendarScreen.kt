@@ -8,27 +8,19 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BeachAccess
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.BusinessCenter
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +31,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,7 +49,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -64,12 +60,40 @@ fun CalendarScreen(
     val context = LocalContext.current
     val viewModel: CalendarViewModel = viewModel(factory = CalendarViewModel.factory(AppDatabase.getDatabase(context)))
     val uiState by viewModel.uiState.collectAsState()
+    val shareWorkLog by viewModel.shareWorkLog.collectAsState()
+    val templateWorkLog by viewModel.templateWorkLog.collectAsState()
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
-    // Enhanced color scheme usage
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val scrollState = rememberScrollState()
+
+    // Handle share intent
+    shareWorkLog?.let { workLog ->
+        LaunchedEffect(workLog) {
+            val shareText = buildString {
+                append("Work Entry Details\n")
+                append("Date: ${workLog.formattedDate}\n")
+                append("Type: ${workLog.workType.name.replace("_", " ")}\n")
+                if (workLog.startTime != null && workLog.endTime != null) {
+                    append("Time: ${workLog.startTime} - ${workLog.endTime}\n")
+                    append("Duration: ${workLog.duration}")
+                }
+            }
+            val sendIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                type = "text/plain"
+            }
+            val shareIntent = Intent.createChooser(sendIntent, "Share Work Entry")
+            context.startActivity(shareIntent)
+        }
+    }
+
+    // Handle template save
+    templateWorkLog?.let { workLog ->
+        LaunchedEffect(workLog) {
+            viewModel.copyWorkLog(workLog)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -95,28 +119,109 @@ fun CalendarScreen(
                     }
                 },
                 actions = {
-                    AnimatedContent(
-                        targetState = uiState.isMultiSelectMode,
-                        transitionSpec = {
-                            fadeIn() with fadeOut()
-                        },
-                        label = "multi select icon"
-                    ) { isMultiSelect ->
-                        IconButton(
-                            onClick = { viewModel.toggleMultiSelectMode() },
-                            modifier = Modifier.animateContentSize()
-                        ) {
-                            Icon(
-                                if (isMultiSelect) Icons.Default.Done else Icons.Default.SelectAll,
-                                contentDescription = if (isMultiSelect) "Done Selection" else "Select Multiple",
-                                tint = if (isMultiSelect) primaryColor else onSurfaceColor
+                    Row {
+                        var showSearchBar by remember { mutableStateOf(false) }
+                        var searchText by remember { mutableStateOf("") }
+
+                        if (showSearchBar) {
+                            OutlinedTextField(
+                                value = searchText,
+                                onValueChange = {
+                                    searchText = it
+                                    viewModel.updateSearchQuery(it)
+                                },
+                                placeholder = { Text("Search...", fontSize = 14.sp) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, "Search")
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = {
+                                        showSearchBar = false
+                                        searchText = ""
+                                        viewModel.updateSearchQuery("")
+                                    }) {
+                                        Icon(Icons.Default.Close, "Close")
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
                             )
+                        } else {
+                            IconButton(onClick = { showSearchBar = true }) {
+                                Icon(Icons.Default.Search, "Search")
+                            }
+                        }
+
+                        var showFilterDialog by remember { mutableStateOf(false) }
+
+                        IconButton(onClick = { showFilterDialog = true }) {
+                            Box {
+                                Icon(
+                                    Icons.Default.FilterList,
+                                    "Filter",
+                                    tint = if (uiState.activeFilters.isNotEmpty())
+                                        MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (uiState.activeFilters.isNotEmpty()) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ) {
+                                        Text(uiState.activeFilters.size.toString())
+                                    }
+                                }
+                            }
+                        }
+
+                        if (showFilterDialog) {
+                            FilterDialog(
+                                currentFilters = uiState.activeFilters,
+                                onFilterToggle = { workType ->
+                                    if (workType in uiState.activeFilters) {
+                                        viewModel.removeFilter(workType)
+                                    } else {
+                                        viewModel.addFilter(workType)
+                                    }
+                                },
+                                onDismiss = { showFilterDialog = false },
+                                onClearAll = {
+                                    viewModel.clearFilters()
+                                    showFilterDialog = false
+                                }
+                            )
+                        }
+
+                        AnimatedContent(
+                            targetState = uiState.isMultiSelectMode,
+                            transitionSpec = {
+                                fadeIn() with fadeOut()
+                            },
+                            label = "multi select icon"
+                        ) { isMultiSelect ->
+                            IconButton(
+                                onClick = { viewModel.toggleMultiSelectMode() },
+                                modifier = Modifier.animateContentSize()
+                            ) {
+                                Icon(
+                                    if (isMultiSelect) Icons.Default.Done else Icons.Default.SelectAll,
+                                    contentDescription = if (isMultiSelect) "Done Selection" else "Select Multiple",
+                                    tint = if (isMultiSelect)
+                                        MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = surfaceColor,
-                    scrolledContainerColor = surfaceColor
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
@@ -126,163 +231,366 @@ fun CalendarScreen(
                 enter = slideInHorizontally { fullWidth -> fullWidth } + fadeIn(),
                 exit = slideOutHorizontally { fullWidth -> fullWidth } + fadeOut()
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    // Selection count chip
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = primaryColor),
-                        shape = CircleShape
-                    ) {
-                        Text(
-                            text = uiState.multiSelectedDates.size.toString(),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    // Mark as Office Day FAB
-                    ExtendedFloatingActionButton(
-                        onClick = { viewModel.markSelectedDates(WorkType.OFFICE) },
-                        icon = { Icon(Icons.Default.Business, "OFFICE") },
-                        text = { Text("OFFICE") },
-                        containerColor = Color(0xFF2196F3),
-                        contentColor = Color.White
-                    )
-
-                    ExtendedFloatingActionButton(
-                        onClick = { viewModel.markSelectedDates(WorkType.HOME_OFFICE) },
-                        icon = { Icon(Icons.Default.Home, "Home Office") },
-                        text = { Text("Home") },
-                        containerColor = Color(0xFFFF9800),
-                        contentColor = Color.White
-                    )
-
-                    ExtendedFloatingActionButton(
-                        onClick = { viewModel.markSelectedDates(WorkType.OFF_DAY) },
-                        icon = { Icon(Icons.Default.BeachAccess, "OFF") },
-                        text = { Text("OFF") },
-                        containerColor = Color(0xFF4CAF50),
-                        contentColor = Color.White
-                    )
-
-                    ExtendedFloatingActionButton(
-                        onClick = { viewModel.markSelectedDates(WorkType.OVERTIME) },
-                        icon = { Icon(Icons.Default.BusinessCenter, "OverTime") },
-                        text = { Text("Overtime") },
-                        containerColor = Color(0xFFF44336),
-                        contentColor = Color.White
-                    )
-                }
+                MultiSelectFABRow(
+                    selectedCount = uiState.multiSelectedDates.size,
+                    onMarkOffice = { viewModel.markSelectedDates(WorkType.OFFICE) },
+                    onMarkHome = { viewModel.markSelectedDates(WorkType.HOME_OFFICE) },
+                    onMarkOff = { viewModel.markSelectedDates(WorkType.OFF_DAY) },
+                    onMarkOvertime = { viewModel.markSelectedDates(WorkType.OVERTIME) }
+                )
             }
         }
-
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Enhanced Month Navigation Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(20.dp),
-                        clip = true
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column {
-                    MonthNavigation(currentMonth) { newMonth -> currentMonth = newMonth }
+            item {
+                QuickStatsCard(
+                    stats = uiState.monthlyStats,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
-                    // Quick month navigation
-                    if (!uiState.isMultiSelectMode) {
-                        QuickMonthNavigation(
-                            currentMonth = currentMonth,
-                            onMonthChange = { currentMonth = it },
-                            modifier = Modifier.padding(bottom = 8.dp)
+            item {
+                MonthNavigationCard(
+                    currentMonth = currentMonth,
+                    onMonthChange = { currentMonth = it },
+                    onQuickMonthSelect = { viewModel.onQuickMonthSelect(it) },
+                    isMultiSelectMode = uiState.isMultiSelectMode,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            if (uiState.activeFilters.isNotEmpty()) {
+                item {
+                    ActiveFiltersRow(
+                        filters = uiState.activeFilters,
+                        onRemoveFilter = viewModel::removeFilter,
+                        onClearAll = viewModel::clearFilters,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            item {
+                CalendarCard(
+                    currentMonth = currentMonth,
+                    workLogs = uiState.filteredWorkLogs,
+                    selectedDate = uiState.selectedDate,
+                    multiSelectedDates = uiState.multiSelectedDates,
+                    isMultiSelectMode = uiState.isMultiSelectMode,
+                    onDateSelected = viewModel::onDateSelected,
+                    onLongPress = viewModel::onDateLongPress,
+                    onSelectAll = { viewModel.selectAllDatesInMonth(currentMonth) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                WorkTypeLegend(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            if (uiState.selectedWorkLog != null && !uiState.isMultiSelectMode) {
+                item {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + slideInVertically(),
+                        exit = fadeOut() + slideOutVertically()
+                    ) {
+                        WorkLogDetails(
+                            workLog = uiState.selectedWorkLog!!,
+                            onEdit = onNavigateToEditEntry,
+                            onDelete = viewModel::deleteWorkLog,
+                            onCopy = viewModel::copyWorkLog,
+                            onShare = viewModel::shareWorkLog,
+                            onSaveAsTemplate = viewModel::saveAsTemplate,
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
                 }
             }
 
-            // Enhanced Calendar Content
-            Card(
+            item {
+                MonthSummaryCard(
+                    yearMonth = currentMonth,
+                    workLogs = uiState.filteredWorkLogs,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun MultiSelectFABRow(
+    selectedCount: Int,
+    onMarkOffice: () -> Unit,
+    onMarkHome: () -> Unit,
+    onMarkOff: () -> Unit,
+    onMarkOvertime: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(end = 16.dp)
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = CircleShape
+        ) {
+            Text(
+                text = selectedCount.toString(),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        MultiSelectActionButton(
+            onClick = onMarkOffice,
+            icon = Icons.Default.Business,
+            text = "Office",
+            backgroundColor = Color(0xFF2196F3)
+        )
+
+        MultiSelectActionButton(
+            onClick = onMarkHome,
+            icon = Icons.Default.Home,
+            text = "Home",
+            backgroundColor = Color(0xFFFF9800)
+        )
+
+        MultiSelectActionButton(
+            onClick = onMarkOff,
+            icon = Icons.Default.BeachAccess,
+            text = "Off",
+            backgroundColor = Color(0xFF4CAF50)
+        )
+
+        MultiSelectActionButton(
+            onClick = onMarkOvertime,
+            icon = Icons.Default.BusinessCenter,
+            text = "OT",
+            backgroundColor = Color(0xFFF44336)
+        )
+    }
+}
+
+@Composable
+fun MultiSelectActionButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    text: String,
+    backgroundColor: Color
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = backgroundColor,
+        modifier = Modifier.size(56.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, text, modifier = Modifier.size(20.dp))
+            Text(
+                text = text,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickStatsCard(
+    stats: MonthlyStats,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatItem(
+                value = stats.officeDays.toString(),
+                label = "Office",
+                color = Color(0xFF2196F3),
+                modifier = Modifier.weight(1f)
+            )
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+
+            StatItem(
+                value = stats.homeDays.toString(),
+                label = "Home",
+                color = Color(0xFFFF9800),
+                modifier = Modifier.weight(1f)
+            )
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+
+            StatItem(
+                value = stats.offDays.toString(),
+                label = "Off",
+                color = Color(0xFF4CAF50),
+                modifier = Modifier.weight(1f)
+            )
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+
+            StatItem(
+                value = stats.totalHours,
+                label = "Hours",
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun StatItem(
+    value: String,
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Text(
+            text = value,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun MonthNavigationCard(
+    currentMonth: YearMonth,
+    onMonthChange: (YearMonth) -> Unit,
+    onQuickMonthSelect: (YearMonth) -> Unit,
+    isMultiSelectMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .shadow(
-                        elevation = 12.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        clip = true
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(24.dp)
+                    .padding(horizontal = 8.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Enhanced header with selection mode indicator
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Select dates to mark work type",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.minusMonths(1)) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Icon(Icons.Default.ChevronLeft, "Previous Month")
+                }
 
-                        AnimatedVisibility(visible = uiState.isMultiSelectMode) {
-                            Text(
-                                "${uiState.multiSelectedDates.size} selected",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = primaryColor,
-                                fontWeight = FontWeight.Medium
-                            )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AnimatedContent(
+                        targetState = currentMonth,
+                        transitionSpec = {
+                            fadeIn() + slideInHorizontally() togetherWith
+                                    fadeOut() + slideOutHorizontally()
+                        },
+                        label = "month name"
+                    ) { month ->
+                        Text(
+                            text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    if (currentMonth != YearMonth.now()) {
+                        TextButton(
+                            onClick = { onMonthChange(YearMonth.now()) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("Today", fontSize = 12.sp)
                         }
                     }
+                }
 
-                    DaysOfWeekHeader()
-                    CalendarGrid(
-                        currentMonth = currentMonth,
-                        workLogs = uiState.workLogs,
-                        selectedDate = uiState.selectedDate,
-                        multiSelectedDates = uiState.multiSelectedDates,
-                        isMultiSelectMode = uiState.isMultiSelectMode,
-                        onDateSelected = { viewModel.onDateSelected(it) }
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.plusMonths(1)) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                ) {
+                    Icon(Icons.Default.ChevronRight, "Next Month")
                 }
             }
 
-            // Enhanced Work Log Details with smooth animation
-            AnimatedVisibility(
-                visible = uiState.selectedWorkLog != null && !uiState.isMultiSelectMode,
-                enter = slideInVertically(animationSpec = tween(400)) { it } + fadeIn(animationSpec = tween(400)),
-                exit = slideOutVertically(animationSpec = tween(400)) { it } + fadeOut(animationSpec = tween(400))
-            ) {
-                uiState.selectedWorkLog?.let { workLog ->
-                    WorkLogDetails(
-                        workLog = workLog,
-                        onEdit = onNavigateToEditEntry,
-                        onDelete = viewModel::deleteWorkLog,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+            if (!isMultiSelectMode) {
+                QuickMonthNavigation(
+                    currentMonth = currentMonth,
+                    onMonthChange = onQuickMonthSelect,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
             }
         }
     }
@@ -295,7 +603,8 @@ fun QuickMonthNavigation(
     modifier: Modifier = Modifier
 ) {
     val currentYear = YearMonth.now().year
-    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
     LazyRow(
         modifier = modifier
@@ -306,82 +615,167 @@ fun QuickMonthNavigation(
         items(months) { month ->
             val monthIndex = months.indexOf(month) + 1
             val isSelected = currentMonth.monthValue == monthIndex
+            val isCurrentMonth = monthIndex == YearMonth.now().monthValue &&
+                    currentYear == YearMonth.now().year
+
+            FilterChip(
+                selected = isSelected,
+                onClick = { onMonthChange(YearMonth.of(currentYear, monthIndex)) },
+                label = {
+                    Text(
+                        month,
+                        fontSize = if (isCurrentMonth) 13.sp else 12.sp,
+                        fontWeight = if (isCurrentMonth) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                border = if (isCurrentMonth && !isSelected)
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                else null
+            )
+        }
+    }
+}
+
+@Composable
+fun ActiveFiltersRow(
+    filters: List<WorkType>,
+    onRemoveFilter: (WorkType) -> Unit,
+    onClearAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                filters.forEach { filter ->
+                    AssistChip(
+                        onClick = { onRemoveFilter(filter) },
+                        label = { Text(filter.name.replace("_", " ")) },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                "Remove",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = getWorkTypeColor(filter).copy(alpha = 0.2f)
+                        )
+                    )
+                }
+            }
 
             TextButton(
-                onClick = {
-                    onMonthChange(YearMonth.of(currentYear, monthIndex))
-                }
+                onClick = onClearAll,
+                contentPadding = PaddingValues(horizontal = 8.dp)
             ) {
-                Text(month)
+                Text("Clear All", fontSize = 12.sp)
             }
         }
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun MonthNavigation(currentMonth: YearMonth, onMonthChange: (YearMonth) -> Unit) {
-    Row(
-        modifier = Modifier
+fun CalendarCard(
+    currentMonth: YearMonth,
+    workLogs: List<WorkLogUi>,
+    selectedDate: LocalDate,
+    multiSelectedDates: List<LocalDate>,
+    isMultiSelectMode: Boolean,
+    onDateSelected: (LocalDate) -> Unit,
+    onLongPress: (LocalDate) -> Unit,
+    onSelectAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .shadow(12.dp, RoundedCornerShape(24.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(24.dp)
     ) {
-        IconButton(
-            onClick = { onMonthChange(currentMonth.minusMonths(1)) },
-            modifier = Modifier.size(40.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) {
-            Icon(
-                Icons.Default.ChevronLeft,
-                contentDescription = "Previous Month",
-                modifier = Modifier.size(20.dp)
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = if (isMultiSelectMode)
+                        "Select multiple dates"
+                        else "Tap date to view details",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                AnimatedVisibility(visible = isMultiSelectMode) {
+                    SelectionInfo(
+                        selectedCount = multiSelectedDates.size,
+                        onSelectAll = onSelectAll
+                    )
+                }
+            }
+
+            DaysOfWeekHeader()
+
+            CalendarGrid(
+                currentMonth = currentMonth,
+                workLogs = workLogs,
+                selectedDate = selectedDate,
+                multiSelectedDates = multiSelectedDates,
+                isMultiSelectMode = isMultiSelectMode,
+                onDateSelected = onDateSelected,
+                onDateLongPress = onLongPress
             )
         }
+    }
+}
 
-        AnimatedContent(
-            targetState = currentMonth,
-            transitionSpec = {
-                if (targetState.isAfter(initialState)) {
-                    slideInHorizontally(animationSpec = tween(300)) { width -> width } +
-                            fadeIn(animationSpec = tween(300)) togetherWith
-                            slideOutHorizontally(animationSpec = tween(300)) { width -> -width } +
-                            fadeOut(animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(animationSpec = tween(300)) { width -> -width } +
-                            fadeIn(animationSpec = tween(300)) togetherWith
-                            slideOutHorizontally(animationSpec = tween(300)) { width -> width } +
-                            fadeOut(animationSpec = tween(300))
-                }.using(SizeTransform(clip = false))
-            },
-            label = "month name"
-        ) { month ->
-            Text(
-                text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
+@Composable
+fun SelectionInfo(
+    selectedCount: Int,
+    onSelectAll: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Badge(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Text(selectedCount.toString())
         }
 
-        IconButton(
-            onClick = { onMonthChange(currentMonth.plusMonths(1)) },
-            modifier = Modifier.size(40.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) {
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "Next Month",
-                modifier = Modifier.size(20.dp)
-            )
+        if (selectedCount < 35) {
+            TextButton(
+                onClick = onSelectAll,
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                Text("Select All", fontSize = 12.sp)
+            }
         }
     }
 }
@@ -391,7 +785,7 @@ fun DaysOfWeekHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 16.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceAround
     ) {
         val days = DayOfWeek.values()
@@ -415,7 +809,8 @@ fun CalendarGrid(
     selectedDate: LocalDate,
     multiSelectedDates: List<LocalDate>,
     isMultiSelectMode: Boolean,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    onDateLongPress: (LocalDate) -> Unit
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfMonth = currentMonth.atDay(1).dayOfWeek.value - 1
@@ -425,6 +820,7 @@ fun CalendarGrid(
         columns = GridCells.Fixed(7),
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(max = 360.dp)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -435,30 +831,37 @@ fun CalendarGrid(
                 val workLogForDay = workLogs.find {
                     it.date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate() == date
                 }
-                val isSelected = if (isMultiSelectMode) multiSelectedDates.contains(date) else date == selectedDate
+                val isSelected = if (isMultiSelectMode)
+                    multiSelectedDates.contains(date)
+                    else date == selectedDate
 
                 CalendarDay(
                     date = date,
                     workType = workLogForDay?.workType,
                     isSelected = isSelected,
                     isToday = date == today,
-                    onDateSelected = { onDateSelected(date) }
+                    isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY ||
+                            date.dayOfWeek == DayOfWeek.SUNDAY,
+                    onDateSelected = { onDateSelected(date) },
+                    onDateLongPress = { onDateLongPress(date) }
                 )
             } else {
-                // Empty space for days before the first day of month
                 Spacer(modifier = Modifier.aspectRatio(1f))
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CalendarDay(
     date: LocalDate,
     workType: WorkType?,
     isSelected: Boolean,
     isToday: Boolean,
-    onDateSelected: () -> Unit
+    isWeekend: Boolean,
+    onDateSelected: () -> Unit,
+    onDateLongPress: () -> Unit
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = when {
@@ -474,16 +877,25 @@ fun CalendarDay(
         targetValue = when {
             isSelected -> MaterialTheme.colorScheme.onPrimary
             isToday -> MaterialTheme.colorScheme.onPrimaryContainer
-            else -> MaterialTheme.colorScheme.onSurface
+            else -> if (isWeekend)
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.onSurface
         },
         animationSpec = tween(300),
         label = "text color"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = tween(300),
+        label = "scale"
     )
 
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .padding(2.dp)
+            .scale(scale)
             .clip(CircleShape)
             .background(backgroundColor)
             .then(
@@ -493,9 +905,18 @@ fun CalendarDay(
                         MaterialTheme.colorScheme.primary,
                         CircleShape
                     )
+                else if (isWeekend && !isSelected && !isToday)
+                    Modifier.border(
+                        1.dp,
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        CircleShape
+                    )
                 else Modifier
             )
-            .clickable { onDateSelected() },
+            .combinedClickable(
+                onClick = onDateSelected,
+                onLongClick = onDateLongPress
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -514,18 +935,157 @@ fun CalendarDay(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(
-                            color = when (it) {
-                                WorkType.OFFICE -> MaterialTheme.colorScheme.secondary
-                                WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary
-                                WorkType.OFF_DAY -> MaterialTheme.colorScheme.error
-                                WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary
-                                WorkType.OVERTIME -> MaterialTheme.colorScheme.primary
-                            }
-                        )
+                        .background(getWorkTypeColor(it))
                 )
             }
         }
+    }
+}
+
+@Composable
+fun WorkTypeLegend(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                "Work Type Legend",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(WorkType.entries.toList()) { workType ->
+                    LegendItem(
+                        color = getWorkTypeColor(workType),
+                        label = workType.name.replace("_", " ")
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LegendItem(
+    color: Color,
+    label: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(
+            label,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun MonthSummaryCard(
+    yearMonth: YearMonth,
+    workLogs: List<WorkLogUi>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "${yearMonth.format(DateTimeFormatter.ofPattern("MMMM"))} Summary",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val workTypeCounts = workLogs.groupBy { it.workType }
+                .mapValues { it.value.size }
+
+            workTypeCounts.forEach { (workType, count) ->
+                SummaryRow(
+                    workType = workType,
+                    count = count,
+                    color = getWorkTypeColor(workType)
+                )
+            }
+
+            if (workTypeCounts.isEmpty()) {
+                Text(
+                    "No entries for this month",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SummaryRow(
+    workType: WorkType,
+    count: Int,
+    color: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Text(
+                text = workType.name.replace("_", " "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Text(
+            text = "$count day${if (count != 1) "s" else ""}",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -534,24 +1094,21 @@ fun WorkLogDetails(
     workLog: WorkLogUi,
     onEdit: (Long) -> Unit,
     onDelete: (Long) -> Unit,
+    onCopy: (WorkLogUi) -> Unit,
+    onShare: (WorkLogUi) -> Unit,
+    onSaveAsTemplate: (WorkLogUi) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                clip = true
-            ),
+            .shadow(8.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header with actions
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -571,21 +1128,32 @@ fun WorkLogDetails(
                     )
                 }
                 Row {
-                    FilledTonalIconButton(
+                    IconButton(
+                        onClick = { onCopy(workLog) },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.ContentCopy, "Copy Entry")
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    IconButton(
                         onClick = { onEdit(workLog.id) },
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     ) {
                         Icon(Icons.Default.Edit, "Edit Entry")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilledTonalIconButton(
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    IconButton(
                         onClick = { onDelete(workLog.id) },
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         )
                     ) {
                         Icon(Icons.Default.Delete, "Delete Entry")
@@ -595,7 +1163,6 @@ fun WorkLogDetails(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Work type with colored chip
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -609,9 +1176,8 @@ fun WorkLogDetails(
                 WorkTypeChip(workLog.workType)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Time information
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -620,11 +1186,109 @@ fun WorkLogDetails(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    InfoRow("Start Time", workLog.startTime ?: "Not set")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    InfoRow("End Time", workLog.endTime ?: "Not set")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    InfoRow("Duration", workLog.duration, isHighlighted = true)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Start Time",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            workLog.startTime ?: "Not set",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "End Time",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            workLog.endTime ?: "Not set",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Timer,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Duration",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            workLog.duration,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { onShare(workLog) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share")
+                }
+
+                OutlinedButton(
+                    onClick = { onSaveAsTemplate(workLog) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Bookmark, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Template")
                 }
             }
         }
@@ -633,23 +1297,17 @@ fun WorkLogDetails(
 
 @Composable
 fun WorkTypeChip(workType: WorkType) {
-    val (backgroundColor, textColor) = when (workType) {
-        WorkType.OFFICE -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
-        WorkType.HOME_OFFICE -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
-        WorkType.OFF_DAY -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
-        WorkType.EXTRA_WORK -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-        WorkType.OVERTIME -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-    }
+    val color = getWorkTypeColor(workType)
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
+            .background(color)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = workType.name.replace("_", " "),
-            color = textColor,
+            color = Color.White,
             fontWeight = FontWeight.Medium,
             fontSize = 12.sp
         )
@@ -657,23 +1315,77 @@ fun WorkTypeChip(workType: WorkType) {
 }
 
 @Composable
-fun InfoRow(label: String, value: String, isHighlighted: Boolean = false) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            label,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            value,
-            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
-            color = if (isHighlighted) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End
-        )
+fun FilterDialog(
+    currentFilters: List<WorkType>,
+    onFilterToggle: (WorkType) -> Unit,
+    onDismiss: () -> Unit,
+    onClearAll: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Filter by Work Type",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                WorkType.entries.forEach { workType ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onFilterToggle(workType) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = workType in currentFilters,
+                            onCheckedChange = { onFilterToggle(workType) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(getWorkTypeColor(workType))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = workType.name.replace("_", " "),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onClearAll) {
+                Text("Clear All", color = MaterialTheme.colorScheme.error)
+            }
+        }
+    )
+}
+
+fun getWorkTypeColor(workType: WorkType): Color {
+    return when (workType) {
+        WorkType.OFFICE -> Color(0xFF2196F3)
+        WorkType.HOME_OFFICE -> Color(0xFFFF9800)
+        WorkType.OFF_DAY -> Color(0xFF4CAF50)
+        WorkType.EXTRA_WORK -> Color(0xFF9C27B0)
+        WorkType.OVERTIME -> Color(0xFFF44336)
     }
 }
+
+data class MonthlyStats(
+    val officeDays: Int = 0,
+    val homeDays: Int = 0,
+    val offDays: Int = 0,
+    val extraDays: Int = 0,
+    val totalHours: String = "0h"
+)

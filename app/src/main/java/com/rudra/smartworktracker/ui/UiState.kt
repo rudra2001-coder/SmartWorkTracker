@@ -70,15 +70,6 @@ data class HealthMetricEntry(
     val value: Double,
     val date: LocalDate = LocalDate.now()
 )
-data class CalendarUiState(
-    val selectedDate: LocalDate = LocalDate.now(),
-    val workLogs: List<WorkLogUi> = emptyList(),
-    val selectedWorkLog: WorkLogUi? = null,
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val isMultiSelectMode: Boolean = false,
-    val multiSelectedDates: List<LocalDate> = emptyList()
-)
 
 data class WorkLogUi(
     val id: Long,
