@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -101,6 +104,9 @@ import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
+import com.rudra.smartworktracker.ui.screens.recurring.RecurringScreen
+import com.rudra.smartworktracker.ui.screens.realitytracker.RealityTrackerScreen
+import com.rudra.smartworktracker.ui.screens.futureimpact.FutureImpactScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -148,7 +154,10 @@ fun MainApp() {
         NavigationItem.Team,
         NavigationItem.Overtime,
         NavigationItem.Scheduler,
-        NavigationItem.UserProfile
+        NavigationItem.UserProfile,
+        NavigationItem.Recurring,
+        NavigationItem.RealityTracker,
+        NavigationItem.FutureImpact
 
     )
 
@@ -525,6 +534,35 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     SchedulerScreen()
                 }
+                composable(
+                    route = NavigationItem.Recurring.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    RecurringScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(
+                    route = NavigationItem.RealityTracker.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    RealityTrackerScreen()
+                }
+                composable(
+                    route = NavigationItem.FutureImpact.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    FutureImpactScreen()
+                }
                 composable(NavigationItem.UserProfile.route) {
                     ProfileScreen(
                         onNavigateBack = { navController.popBackStack() },
@@ -824,6 +862,27 @@ sealed class NavigationItem(
         title = "Scheduler",
         icon = Icons.Default.Schedule,
         description = "Schedule your tasks"
+    )
+
+    object Recurring : NavigationItem(
+        route = "recurring",
+        title = "Recurring",
+        icon = Icons.Default.Repeat,
+        description = "Automate your transactions"
+    )
+
+    object RealityTracker : NavigationItem(
+        route = "reality_tracker",
+        title = "Reality Tracker",
+        icon = Icons.Default.TrackChanges,
+        description = "Track goals, promises, and plans vs reality"
+    )
+
+    object FutureImpact : NavigationItem(
+        route = "future_impact",
+        title = "Future Self",
+        icon = Icons.Default.Psychology,
+        description = "Are your actions matching who you want to become?"
     )
 
 

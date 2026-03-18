@@ -101,19 +101,7 @@ fun FinancialStatementScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Financial Statement", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                actions = {
-                    IconButton(onClick = onAddTransaction) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Transaction")
-                    }
-                }
-            )
-        },
+
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {

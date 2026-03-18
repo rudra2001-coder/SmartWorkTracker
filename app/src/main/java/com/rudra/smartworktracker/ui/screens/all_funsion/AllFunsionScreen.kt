@@ -108,7 +108,9 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Focus,
                     NavigationItem.WorkTimer,
                     NavigationItem.Overtime,
-                    NavigationItem.Scheduler
+                    NavigationItem.Scheduler,
+                    NavigationItem.FutureImpact,
+                    NavigationItem.RealityTracker
                 )
             ),
             FeatureSection(
@@ -124,7 +126,8 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation,
-                    NavigationItem.AddEntry
+                    NavigationItem.AddEntry,
+                    NavigationItem.Recurring
                 )
             ),
             FeatureSection(
