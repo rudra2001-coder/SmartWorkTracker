@@ -65,9 +65,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val transaction = FinancialTransaction(
                 type = TransactionType.EXPENSE,
                 amount = amount,
-                source = accountType, // Or determine dynamically
+                source = accountType,
                 destination = null,
-                note = notes ?: "",
+                note = notes ?: merchant ?: "",
+                category = category.displayName,
                 date = timestamp
             )
             financialTransactionDao.insertTransaction(transaction)

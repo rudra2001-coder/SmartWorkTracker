@@ -28,6 +28,17 @@ data class Expense(
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
 
-enum class ExpenseCategory {
-    MEAL, OTHER, TRANSPORT, ENTERTAINMENT, BILLS, SHOPPING
+enum class ExpenseCategory(val displayName: String) {
+    MEAL("Food & Dining"),
+    TRANSPORT("Transportation"),
+    SHOPPING("Shopping"),
+    ENTERTAINMENT("Entertainment"),
+    BILLS("Bills & Utilities"),
+    HEALTHCARE("Healthcare"),
+    EDUCATION("Education"),
+    PERSONAL_CARE("Personal Care"),
+    GIFTS("Gifts"),
+    TRAVEL("Travel"),
+    SUBSCRIPTIONS("Subscriptions"),
+    OTHER("Other")
 }

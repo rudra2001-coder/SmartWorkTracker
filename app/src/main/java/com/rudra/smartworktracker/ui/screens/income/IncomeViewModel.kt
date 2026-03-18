@@ -64,7 +64,8 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
                 amount = amount,
                 source = accountType,
                 destination = null,
-                note = "$description - $category",
+                note = description,
+                category = category,
                 date = timestamp
             )
             db.financialTransactionDao().insertTransaction(transaction)

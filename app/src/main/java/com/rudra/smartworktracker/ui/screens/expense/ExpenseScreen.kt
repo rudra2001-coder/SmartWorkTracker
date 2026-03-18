@@ -26,15 +26,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -328,6 +334,12 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                                                 ExpenseCategory.SHOPPING -> Icons.Default.Store
                                                 ExpenseCategory.ENTERTAINMENT -> Icons.Default.Movie
                                                 ExpenseCategory.BILLS -> Icons.Default.Receipt
+                                                ExpenseCategory.HEALTHCARE -> Icons.Default.LocalHospital
+                                                ExpenseCategory.EDUCATION -> Icons.Default.School
+                                                ExpenseCategory.PERSONAL_CARE -> Icons.Default.Face
+                                                ExpenseCategory.GIFTS -> Icons.Default.CardGiftcard
+                                                ExpenseCategory.TRAVEL -> Icons.Default.Flight
+                                                ExpenseCategory.SUBSCRIPTIONS -> Icons.Default.Subscriptions
                                                 ExpenseCategory.OTHER -> Icons.AutoMirrored.Filled.List
                                             }
 

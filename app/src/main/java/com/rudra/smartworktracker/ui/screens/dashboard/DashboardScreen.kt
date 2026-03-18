@@ -1462,6 +1462,12 @@ val ExpenseCategory.color: Color
         SHOPPING -> Color(0xFF2196F3)
         BILLS -> Color(0xFF00BCD4)
         ENTERTAINMENT -> Color(0xFF4CAF50)
+        HEALTHCARE -> Color(0xFFFF5722)
+        EDUCATION -> Color(0xFF3F51B5)
+        PERSONAL_CARE -> Color(0xFFE91E63)
+        GIFTS -> Color(0xFFFF9800)
+        TRAVEL -> Color(0xFF00BCD4)
+        SUBSCRIPTIONS -> Color(0xFF9C27B0)
         OTHER -> Color(0xFF607D8B)
 
     }

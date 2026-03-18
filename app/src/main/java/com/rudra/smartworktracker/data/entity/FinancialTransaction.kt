@@ -16,6 +16,7 @@ data class FinancialTransaction(
     val source: AccountType,
     val destination: AccountType?,
     val note: String,
+    val category: String? = null,
     val date: Long,
     val relatedLoanId: Int? = null,
 

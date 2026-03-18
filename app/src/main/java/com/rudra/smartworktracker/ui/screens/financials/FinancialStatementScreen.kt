@@ -50,7 +50,7 @@ fun FinancialStatementScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showDatePickerRange by remember { mutableStateOf(false) }
-    var transactionToDelete by remember { mutableStateOf<FinancialTransaction?>(null) }
+    var transactionToDelete by remember { mutableStateOf<UnifiedTransaction?>(null) }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -63,13 +63,25 @@ fun FinancialStatementScreen(
         AlertDialog(
             onDismissRequest = { transactionToDelete = null },
             title = { Text("Delete Transaction") },
-            text = { Text("Are you sure you want to delete this transaction?") },
+            text = { 
+                if (transactionToDelete?.source == "Financial") {
+                    Text("Are you sure you want to delete this transaction?")
+                } else {
+                    Text("This transaction was created from ${transactionToDelete?.source}. Please delete from the ${transactionToDelete?.source} screen.")
+                }
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteTransaction(transactionToDelete!!)
-                    transactionToDelete = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                if (transactionToDelete?.source == "Financial") {
+                    TextButton(onClick = {
+                        // For Financial transactions, we'd need to convert back
+                        transactionToDelete = null
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                } else {
+                    TextButton(onClick = { transactionToDelete = null }) {
+                        Text("OK")
+                    }
                 }
             },
             dismissButton = {
@@ -142,7 +154,7 @@ fun FinancialStatementScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item {
                         Text(
-                            text = if (uiState.filter == TransactionFilter.ALL) "Showing Default (50 Income + 50 Expense)" else "Showing Filtered Results",
+                            text = "Showing all transactions (Income, Expense & Financial)",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 8.dp)
@@ -151,8 +163,7 @@ fun FinancialStatementScreen(
                     items(items = uiState.transactions, key = { it.id }) { transaction ->
                         TransactionItem(
                             transaction = transaction,
-                            onEdit = onEditTransaction,
-                            onDelete = { transactionToDelete = it }
+                            onDelete = { transactionToDelete = transaction }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -289,9 +300,8 @@ fun SummaryStat(label: String, amount: Double, color: Color) {
 
 @Composable
 fun TransactionItem(
-    transaction: FinancialTransaction,
-    onEdit: (FinancialTransaction) -> Unit,
-    onDelete: (FinancialTransaction) -> Unit
+    transaction: UnifiedTransaction,
+    onDelete: (UnifiedTransaction) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -323,17 +333,32 @@ fun TransactionItem(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = transaction.note.ifEmpty { transaction.type.name.replace("_", " ") },
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = formatTransactionDate(transaction.date),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = transaction.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "(${transaction.source})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row {
+                        Text(
+                            text = transaction.category,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = " • ${formatTransactionDate(transaction.date)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Text(
                     text = formatCurrency(transaction.amount),
@@ -346,9 +371,9 @@ fun TransactionItem(
                     Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(20.dp))
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Edit") },
-                            onClick = { onEdit(transaction); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) }
+                            text = { Text("View Details") },
+                            onClick = { showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Info, null, modifier = Modifier.size(18.dp)) }
                         )
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
@@ -363,10 +388,9 @@ fun TransactionItem(
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(8.dp))
-                    DetailRow("Source", transaction.source.name)
-                    if (transaction.destination != null) DetailRow("Destination", transaction.destination.name)
+                    DetailRow("Source", transaction.source)
                     DetailRow("Transaction Type", transaction.type.name.replace("_", " "))
-                    if (transaction.note.isNotEmpty()) DetailRow("Note", transaction.note)
+                    DetailRow("Category", transaction.category)
                 }
             }
         }

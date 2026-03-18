@@ -5,19 +5,30 @@ import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.repository.TransactionRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-class FinancialStatementViewModel(private val transactionRepository: TransactionRepository) : ViewModel() {
+class FinancialStatementViewModel(
+    private val transactionRepository: TransactionRepository,
+    private val incomeRepository: IncomeRepository,
+    private val expenseRepository: ExpenseRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FinancialsUiState())
     val uiState: StateFlow<FinancialsUiState> = _uiState.asStateFlow()
 
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+
+    private val filterFlow = MutableStateFlow(TransactionFilter.ALL)
+    private val startDateFlow = MutableStateFlow<LocalDate?>(null)
+    private val endDateFlow = MutableStateFlow<LocalDate?>(null)
+    private val limitFlow = MutableStateFlow(100)
 
     init {
         loadTransactions()
@@ -26,27 +37,82 @@ class FinancialStatementViewModel(private val transactionRepository: Transaction
     private fun loadTransactions() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
+            
             combine(
                 transactionRepository.getAllTransactions(),
-                _uiState.map { it.filter }.distinctUntilChanged(),
-                _uiState.map { it.startDate }.distinctUntilChanged(),
-                _uiState.map { it.endDate }.distinctUntilChanged(),
-                _uiState.map { it.limit }.distinctUntilChanged()
-            ) { transactions, filter, startDate, endDate, limit ->
+                incomeRepository.getAllIncomes(),
+                expenseRepository.getAllExpenses(),
+                filterFlow,
+                startDateFlow,
+                endDateFlow,
+                limitFlow
+            ) { values ->
+                @Suppress("UNCHECKED_CAST")
+                val transactions = values[0] as List<FinancialTransaction>
+                @Suppress("UNCHECKED_CAST")
+                val incomes = values[1] as List<com.rudra.smartworktracker.data.entity.Income>
+                @Suppress("UNCHECKED_CAST")
+                val expenses = values[2] as List<com.rudra.smartworktracker.model.Expense>
+                val filter = values[3] as TransactionFilter
+                val startDate = values[4] as LocalDate?
+                val endDate = values[5] as LocalDate?
+                val limit = values[6] as Int
                 
-                // 1. Calculate totals from ALL transactions (unfiltered) for the summary card
-                val totalIncome = transactions.filter { 
+                // Convert incomes to unified transactions
+                val incomeTransactions = incomes.map { income ->
+                    UnifiedTransaction(
+                        id = "income_${income.id}",
+                        amount = income.amount,
+                        type = TransactionType.INCOME,
+                        description = income.description,
+                        category = income.category,
+                        date = income.timestamp,
+                        source = "Income"
+                    )
+                }
+                
+                // Convert expenses to unified transactions
+                val expenseTransactions = expenses.map { expense ->
+                    UnifiedTransaction(
+                        id = "expense_${expense.id}",
+                        amount = expense.amount,
+                        type = TransactionType.EXPENSE,
+                        description = expense.merchant ?: expense.notes ?: "Expense",
+                        category = expense.category.displayName,
+                        date = expense.timestamp,
+                        source = "Expense"
+                    )
+                }
+                
+                // Convert financial transactions
+                val financialTransactions = transactions.map { ft ->
+                    UnifiedTransaction(
+                        id = ft.id.toString(),
+                        amount = ft.amount,
+                        type = ft.type,
+                        description = ft.note.ifEmpty { ft.type.name },
+                        category = ft.category ?: "Other",
+                        date = ft.date,
+                        source = "Financial"
+                    )
+                }
+                
+                // Combine all transactions
+                val allTransactions = (incomeTransactions + expenseTransactions + financialTransactions)
+                    .sortedByDescending { it.date }
+                
+                // Calculate totals
+                val totalIncome = allTransactions.filter { 
                     it.type == TransactionType.INCOME || it.type == TransactionType.LOAN_RECEIVE 
                 }.sumOf { it.amount }
                 
-                val totalExpenses = transactions.filter { 
+                val totalExpenses = allTransactions.filter { 
                     it.type == TransactionType.EXPENSE || it.type == TransactionType.EMI_PAID 
                 }.sumOf { it.amount }
 
-                // 2. Apply Filters to the list
-                var filtered = transactions
+                // Apply Filters
+                var filtered = allTransactions
 
-                // Type Filter
                 filtered = when (filter) {
                     TransactionFilter.INCOME -> filtered.filter { 
                         it.type == TransactionType.INCOME || it.type == TransactionType.LOAN_RECEIVE 
@@ -64,15 +130,8 @@ class FinancialStatementViewModel(private val transactionRepository: Transaction
                     filtered = filtered.filter { it.date in startMillis until endMillis }
                 }
 
-                // 3. Apply Limit (50 Income + 50 Expense by default, or simple limit)
-                // If filter is ALL, we take up to 50 of each type if limit is default
-                val limitedTransactions = if (filter == TransactionFilter.ALL && limit == 100) {
-                    val incomes = filtered.filter { it.type == TransactionType.INCOME || it.type == TransactionType.LOAN_RECEIVE }.take(50)
-                    val expenses = filtered.filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.EMI_PAID }.take(50)
-                    (incomes + expenses).sortedByDescending { it.date }
-                } else {
-                    filtered.take(limit)
-                }
+                // Apply Limit
+                val limitedTransactions = filtered.take(limit)
 
                 FinancialsUiState(
                     transactions = limitedTransactions,
@@ -97,19 +156,17 @@ class FinancialStatementViewModel(private val transactionRepository: Transaction
     }
 
     fun setFilter(filter: TransactionFilter) {
-        _uiState.value = _uiState.value.copy(filter = filter)
+        filterFlow.value = filter
     }
 
     fun setDateRange(start: LocalDate?, end: LocalDate?) {
-        _uiState.value = _uiState.value.copy(
-            startDate = start,
-            endDate = end,
-            filter = TransactionFilter.DATE_RANGE
-        )
+        startDateFlow.value = start
+        endDateFlow.value = end
+        filterFlow.value = TransactionFilter.DATE_RANGE
     }
 
     fun setLimit(newLimit: Int) {
-        _uiState.value = _uiState.value.copy(limit = newLimit)
+        limitFlow.value = newLimit
     }
 
     fun deleteTransaction(transaction: FinancialTransaction) {
@@ -127,3 +184,16 @@ class FinancialStatementViewModel(private val transactionRepository: Transaction
         _snackbarMessage.value = null
     }
 }
+
+/**
+ * Unified transaction model combining Income, Expense, and FinancialTransaction
+ */
+data class UnifiedTransaction(
+    val id: String,
+    val amount: Double,
+    val type: TransactionType,
+    val description: String,
+    val category: String,
+    val date: Long,
+    val source: String
+)
