@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.ui.screens.recurring
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,8 +29,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Schedule
@@ -40,6 +47,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -85,6 +93,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.PreferredTime
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringPriority
@@ -119,17 +128,35 @@ fun RecurringScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showAddRuleSheet by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<RecurringRule?>(null) }
+    var showManualExecutionDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
-    val tabs = listOf("Rules", "Transactions", "Calendar")
+    val tabs = listOf("Rules", "Transactions", "Calendar", "History")
     
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddRuleSheet = true },
-                containerColor = MaterialTheme.colorScheme.primary
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Rule")
+                FloatingActionButton(
+                    onClick = { showManualExecutionDialog = true },
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Manual Execution",
+                        tint = Color.White
+                    )
+                }
+                
+                FloatingActionButton(
+                    onClick = { showAddRuleSheet = true },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Rule")
+                }
             }
         }
     ) { paddingValues ->
@@ -174,7 +201,30 @@ fun RecurringScreen(
                     rules = uiState.rules,
                     transactions = uiState.upcomingTransactions
                 )
+                3 -> HistoryTab(
+                    viewModel = viewModel
+                )
             }
+        }
+        
+        // Manual Execution Dialog
+        if (showManualExecutionDialog) {
+            ManualExecutionDialog(
+                onDismiss = { showManualExecutionDialog = false },
+                onExecute = { rulesToExecute ->
+                    viewModel.manualExecuteRules(rulesToExecute)
+                    showManualExecutionDialog = false
+                },
+                rules = uiState.rules.filter { it.isActive }
+            )
+        }
+        
+        // Show execution results
+        if (uiState.lastExecutionResult != null) {
+            ExecutionResultDialog(
+                result = uiState.lastExecutionResult!!,
+                onDismiss = { viewModel.clearExecutionResult() }
+            )
         }
         
         // Add Rule Bottom Sheet
@@ -800,6 +850,9 @@ fun AddRuleContent(
     var frequency by remember { 
         mutableStateOf(existingRule?.frequency ?: RecurringFrequency.MONTHLY) 
     }
+    var selectedDaysOfWeek by remember { 
+        mutableStateOf(existingRule?.selectedDaysOfWeek ?: emptyList()) 
+    }
     var priority by remember { 
         mutableStateOf(existingRule?.priority ?: RecurringPriority.MEDIUM) 
     }
@@ -933,7 +986,7 @@ fun AddRuleContent(
             onExpandedChange = { frequencyExpanded = it }
         ) {
             OutlinedTextField(
-                value = frequency.name,
+                value = getFrequencyDisplayName(frequency),
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = frequencyExpanded) },
@@ -947,12 +1000,140 @@ fun AddRuleContent(
             ) {
                 frequencies.forEach { freq ->
                     DropdownMenuItem(
-                        text = { Text(freq.name) },
+                        text = { Text(getFrequencyDisplayName(freq)) },
                         onClick = {
                             frequency = freq
+                            // Clear selected days if not weekly specific
+                            if (freq != RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
+                                selectedDaysOfWeek = emptyList()
+                            }
                             frequencyExpanded = false
                         }
                     )
+                }
+            }
+        }
+        
+        // Day Selection for Weekly Specific Days
+        if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Select Days of Week",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = "Choose which days this transaction will execute",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            val daysOfWeek = DayOfWeek.values()
+            
+            // Day Selection using Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                daysOfWeek.forEach { day ->
+                    val isSelected = selectedDaysOfWeek.contains(day)
+                    Card(
+                        onClick = {
+                            selectedDaysOfWeek = if (isSelected) {
+                                selectedDaysOfWeek - day
+                            } else {
+                                selectedDaysOfWeek + day
+                            }
+                        },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = day.shortName,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp, vertical = 12.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontSize = 11.sp,
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Select All / Clear All buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextButton(
+                    onClick = { selectedDaysOfWeek = daysOfWeek.toList() },
+                    enabled = selectedDaysOfWeek.size != daysOfWeek.size,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Select All")
+                }
+                TextButton(
+                    onClick = { selectedDaysOfWeek = emptyList() },
+                    enabled = selectedDaysOfWeek.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Clear All")
+                }
+            }
+            
+            // Preview of next executions
+            if (selectedDaysOfWeek.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Next Executions:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        val nextDates = calculateNextExecutionDates(
+                            selectedDays = selectedDaysOfWeek,
+                            startFrom = System.currentTimeMillis(),
+                            count = 3
+                        )
+                        
+                        nextDates.forEachIndexed { index, date ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Execution ${index + 1}:",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = SimpleDateFormat("EEE, MMM dd", Locale.getDefault())
+                                        .format(Date(date)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1180,6 +1361,18 @@ fun AddRuleContent(
                     val amountDouble = amount.toDoubleOrNull() ?: 0.0
                     val minBalance = minimumBalance.toDoubleOrNull()
                     
+                    // Validate selected days for weekly specific frequency
+                    if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS && selectedDaysOfWeek.isEmpty()) {
+                        Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    
+                    val initialNextDate = if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS && selectedDaysOfWeek.isNotEmpty()) {
+                        calculateInitialNextDate(selectedDaysOfWeek, startDate)
+                    } else {
+                        startDate
+                    }
+                    
                     val rule = RecurringRule(
                         id = existingRule?.id ?: 0,
                         uuid = existingRule?.uuid,
@@ -1191,11 +1384,12 @@ fun AddRuleContent(
                         sourceAccount = sourceAccount,
                         destinationAccount = destinationAccount,
                         frequency = frequency,
+                        selectedDaysOfWeek = if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) selectedDaysOfWeek else null,
                         priority = priority,
                         preferredTime = preferredTime,
                         startDate = startDate,
                         endDate = endDate,
-                        nextExecutionDate = existingRule?.nextExecutionDate ?: startDate,
+                        nextExecutionDate = existingRule?.nextExecutionDate ?: initialNextDate,
                         minimumBalanceRequired = minBalance,
                         autoExecute = autoExecute,
                         isActive = existingRule?.isActive ?: true
@@ -1290,5 +1484,341 @@ fun getFrequencyText(frequency: RecurringFrequency): String {
         RecurringFrequency.QUARTERLY -> "Every 3 Months"
         RecurringFrequency.YEARLY -> "Yearly"
         RecurringFrequency.CUSTOM -> "Custom"
+        RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> "Weekly (Specific Days)"
+    }
+}
+
+@Composable
+fun ManualExecutionDialog(
+    onDismiss: () -> Unit,
+    onExecute: (List<RecurringRule>) -> Unit,
+    rules: List<RecurringRule>
+) {
+    var selectedRules by remember { mutableStateOf(setOf<RecurringRule>()) }
+    var selectAll by remember { mutableStateOf(false) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Manual Execution")
+                TextButton(onClick = { 
+                    selectAll = !selectAll
+                    selectedRules = if (selectAll) rules.toSet() else emptySet()
+                }) {
+                    Text(if (selectAll) "Deselect All" else "Select All")
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+            ) {
+                if (rules.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No active rules to execute",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(rules) { rule ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedRules = if (selectedRules.contains(rule)) {
+                                            selectedRules - rule
+                                        } else {
+                                            selectedRules + rule
+                                        }
+                                    }
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(
+                                        checked = selectedRules.contains(rule),
+                                        onCheckedChange = {
+                                            selectedRules = if (it) {
+                                                selectedRules + rule
+                                            } else {
+                                                selectedRules - rule
+                                            }
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = rule.name,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = "$${String.format("%.2f", rule.amount)} - ${rule.frequency.name}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onExecute(selectedRules.toList()) },
+                enabled = selectedRules.isNotEmpty()
+            ) {
+                Text("Execute Selected (${selectedRules.size})")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ExecutionResultDialog(
+    result: RecurringViewModel.ExecutionResult,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (result.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                    contentDescription = null,
+                    tint = if (result.success) Color(0xFF4CAF50) else Color(0xFFFF5252)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (result.success) "Execution Successful" else "Execution Failed")
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Summary:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Successful: ${result.successCount}")
+                Text("Failed: ${result.failureCount}")
+                Text("Total Amount: $${String.format("%.2f", result.totalAmount)}")
+                Text("Income: $${String.format("%.2f", result.totalIncome)}")
+                Text("Expenses: $${String.format("%.2f", result.totalExpenses)}")
+                
+                if (result.failedRules.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Failed Rules:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    result.failedRules.forEach { (ruleName, reason) ->
+                        Text(
+                            text = "• $ruleName: $reason",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
+}
+
+@Composable
+fun HistoryTab(
+    viewModel: RecurringViewModel
+) {
+    val executionHistory by viewModel.executionHistory.collectAsState()
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (executionHistory.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "No execution history yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "Tap play button to test",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+            }
+        } else {
+            items(executionHistory) { execution ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (execution.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                                    contentDescription = null,
+                                    tint = if (execution.success) Color(0xFF4CAF50) else Color(0xFFFF5252)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = dateFormat.format(Date(execution.timestamp)),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Text(
+                                text = "${execution.successCount} / ${execution.totalCount}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        LinearProgressIndicator(
+                            progress = execution.successCount.toFloat() / execution.totalCount.coerceAtLeast(1),
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (execution.successCount == execution.totalCount) 
+                                Color(0xFF4CAF50) else Color(0xFFFF5252)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Total: $${String.format("%.2f", execution.totalAmount)}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun calculateNextExecutionDates(
+    selectedDays: List<DayOfWeek>,
+    startFrom: Long,
+    count: Int
+): List<Long> {
+    val dates = mutableListOf<Long>()
+    val calendar = java.util.Calendar.getInstance()
+    calendar.timeInMillis = startFrom
+    
+    val selectedCalendarDays = selectedDays.map { DayOfWeek.toCalendarDay(it) }.sorted()
+    
+    repeat(count) {
+        val currentDayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+        
+        var nextDay: Int? = null
+        for (day in selectedCalendarDays) {
+            if (day > currentDayOfWeek) {
+                nextDay = day
+                break
+            }
+        }
+        
+        if (nextDay != null) {
+            val daysToAdd = nextDay - currentDayOfWeek
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, daysToAdd)
+        } else {
+            val daysToAdd = (7 - currentDayOfWeek) + selectedCalendarDays.first()
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, daysToAdd)
+        }
+        
+        dates.add(calendar.timeInMillis)
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+    }
+    
+    return dates
+}
+
+fun calculateInitialNextDate(
+    selectedDays: List<DayOfWeek>,
+    startDate: Long
+): Long {
+    if (selectedDays.isEmpty()) return startDate
+    
+    val calendar = java.util.Calendar.getInstance()
+    calendar.timeInMillis = startDate
+    val currentDayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+    
+    val selectedCalendarDays = selectedDays.map { DayOfWeek.toCalendarDay(it) }.sorted()
+    
+    for (day in selectedCalendarDays) {
+        if (day >= currentDayOfWeek) {
+            val daysToAdd = day - currentDayOfWeek
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, daysToAdd)
+            return calendar.timeInMillis
+        }
+    }
+    
+    val daysToAdd = (7 - currentDayOfWeek) + selectedCalendarDays.first()
+    calendar.add(java.util.Calendar.DAY_OF_YEAR, daysToAdd)
+    return calendar.timeInMillis
+}
+
+fun getFrequencyDisplayName(frequency: RecurringFrequency): String {
+    return when (frequency) {
+        RecurringFrequency.DAILY -> "Daily"
+        RecurringFrequency.WEEKLY -> "Weekly"
+        RecurringFrequency.BIWEEKLY -> "Every 2 Weeks"
+        RecurringFrequency.MONTHLY -> "Monthly"
+        RecurringFrequency.QUARTERLY -> "Every 3 Months"
+        RecurringFrequency.YEARLY -> "Yearly"
+        RecurringFrequency.CUSTOM -> "Custom"
+        RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> "Weekly (Specific Days)"
     }
 }

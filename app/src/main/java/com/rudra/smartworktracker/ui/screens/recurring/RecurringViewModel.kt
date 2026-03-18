@@ -9,22 +9,30 @@ import com.rudra.smartworktracker.data.entity.RecurringRule
 import com.rudra.smartworktracker.data.entity.RecurringTransaction
 import com.rudra.smartworktracker.data.entity.RecurringTransactionStatus
 import com.rudra.smartworktracker.data.entity.TransactionType
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.RecurringRepository
 import com.rudra.smartworktracker.engine.RecurringEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class RecurringViewModel(
     private val recurringRepository: RecurringRepository,
-    private val recurringEngine: RecurringEngine
+    private val recurringEngine: RecurringEngine,
+    private val incomeRepository: IncomeRepository? = null,
+    private val expenseRepository: ExpenseRepository? = null
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(RecurringUiState())
     val uiState: StateFlow<RecurringUiState> = _uiState.asStateFlow()
+    
+    private val _executionHistory = MutableStateFlow<List<ExecutionHistory>>(emptyList())
+    val executionHistory: StateFlow<List<ExecutionHistory>> = _executionHistory.asStateFlow()
     
     init {
         loadData()
@@ -131,14 +139,56 @@ class RecurringViewModel(
     
     fun executeRuleNow(rule: RecurringRule) {
         viewModelScope.launch {
-            val result = recurringEngine.executeRule(rule)
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val currentBalance = calculateCurrentBalance()
+            val result = recurringEngine.executeRule(rule, currentBalance)
+            _uiState.value = _uiState.value.copy(isLoading = false)
             if (!result.success) {
-                // Handle failure - could show a toast or update UI state
                 _uiState.value = _uiState.value.copy(
                     lastExecutionError = result.reason
                 )
             }
         }
+    }
+    
+    fun checkAndExecuteDueRules() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val currentBalance = calculateCurrentBalance()
+            val results = recurringEngine.processDueRules(currentBalance)
+            _uiState.value = _uiState.value.copy(isLoading = false)
+            
+            val failedCount = results.count { !it.success }
+            if (failedCount > 0) {
+                _uiState.value = _uiState.value.copy(
+                    lastExecutionError = "$failedCount transaction(s) failed"
+                )
+            }
+        }
+    }
+    
+    private suspend fun calculateCurrentBalance(): Double {
+        return try {
+            val now = System.currentTimeMillis()
+            val startOfMonth = getStartOfMonth()
+            
+            val totalIncome = incomeRepository?.getTotalIncomeBetween(startOfMonth, now)?.first() ?: 0.0
+            val totalExpenses = expenseRepository?.getTotalExpensesBetween(startOfMonth, now)?.first() ?: 0.0
+            
+            totalIncome - totalExpenses
+        } catch (e: Exception) {
+            0.0
+        }
+    }
+    
+    private fun getStartOfMonth(): Long {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
     
     fun skipTransaction(transaction: RecurringTransaction, reason: String? = "Skipped by user") {
@@ -151,6 +201,88 @@ class RecurringViewModel(
         loadData()
     }
     
+    fun manualExecuteRules(rules: List<RecurringRule>) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
+            var totalIncome = 0.0
+            var totalExpenses = 0.0
+            val failedRules = mutableMapOf<String, String>()
+            var successCount = 0
+            
+            rules.forEach { rule ->
+                val currentBalance = calculateCurrentBalance()
+                val result = recurringEngine.executeRule(rule, currentBalance)
+                
+                if (result.success) {
+                    successCount++
+                    when (rule.transactionType) {
+                        TransactionType.INCOME -> totalIncome += rule.amount
+                        TransactionType.EXPENSE -> totalExpenses += rule.amount
+                        else -> {}
+                    }
+                } else {
+                    failedRules[rule.name] = result.reason ?: "Unknown error"
+                }
+            }
+            val totalAmount = totalIncome + totalExpenses
+            
+            val executionResult = ExecutionResult(
+                success = successCount == rules.size,
+                successCount = successCount,
+                failureCount = rules.size - successCount,
+                totalAmount = totalAmount,
+                totalIncome = totalIncome,
+                totalExpenses = totalExpenses,
+                failedRules = failedRules,
+                timestamp = System.currentTimeMillis()
+            )
+            
+            val history = ExecutionHistory(
+                id = System.currentTimeMillis(),
+                timestamp = System.currentTimeMillis(),
+                success = executionResult.success,
+                successCount = executionResult.successCount,
+                totalCount = rules.size,
+                totalAmount = executionResult.totalAmount,
+                failedRules = failedRules
+            )
+            
+            _executionHistory.update { listOf(history) + it }
+            
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                lastExecutionResult = executionResult
+            )
+        }
+    }
+    
+    fun clearExecutionResult() {
+        _uiState.value = _uiState.value.copy(lastExecutionResult = null)
+    }
+    
+    data class ExecutionResult(
+        val success: Boolean,
+        val successCount: Int,
+        val failureCount: Int,
+        val totalAmount: Double,
+        val totalIncome: Double,
+        val totalExpenses: Double,
+        val failedRules: Map<String, String>,
+        val timestamp: Long,
+        val errorMessage: String? = null
+    )
+    
+    data class ExecutionHistory(
+        val id: Long,
+        val timestamp: Long,
+        val success: Boolean,
+        val successCount: Int,
+        val totalCount: Int,
+        val totalAmount: Double,
+        val failedRules: Map<String, String>
+    )
+    
     data class RecurringUiState(
         val rules: List<RecurringRule> = emptyList(),
         val activeRules: List<RecurringRule> = emptyList(),
@@ -160,6 +292,7 @@ class RecurringViewModel(
         val totalIncomeThisMonth: Double = 0.0,
         val totalExpensesThisMonth: Double = 0.0,
         val lastExecutionError: String? = null,
+        val lastExecutionResult: ExecutionResult? = null,
         val isLoading: Boolean = false
     )
 }
@@ -172,9 +305,11 @@ class RecurringViewModelFactory(private val context: Context) : ViewModelProvide
                 database.recurringRuleDao(),
                 database.recurringTransactionDao()
             )
-            val engine = RecurringEngine(repository)
+            val incomeRepository = IncomeRepository(database.incomeDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao())
+            val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
             @Suppress("UNCHECKED_CAST")
-            return RecurringViewModel(repository, engine) as T
+            return RecurringViewModel(repository, engine, incomeRepository, expenseRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

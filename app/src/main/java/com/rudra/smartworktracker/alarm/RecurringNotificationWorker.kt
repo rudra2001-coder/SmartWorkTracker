@@ -16,8 +16,11 @@ import com.rudra.smartworktracker.MainActivity
 import com.rudra.smartworktracker.R
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.RecurringRule
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.RecurringRepository
 import com.rudra.smartworktracker.engine.RecurringEngine
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
@@ -59,10 +62,15 @@ class RecurringNotificationWorker(
                 database.recurringRuleDao(),
                 database.recurringTransactionDao()
             )
-            val engine = RecurringEngine(repository)
+            val incomeRepository = IncomeRepository(database.incomeDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao())
+            val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
             
-            // Process due rules
-            val results = engine.processDueRules()
+            // Get current balance for balance protection
+            val currentBalance = calculateCurrentBalance(incomeRepository, expenseRepository)
+            
+            // Process due rules with balance check
+            val results = engine.processDueRules(currentBalance)
             
             // Check for upcoming transactions in the next 24 hours
             val upcomingTransactions = engine.getUpcomingTransactions(1)
@@ -78,10 +86,69 @@ class RecurringNotificationWorker(
                 sendFailureNotification(failedCount)
             }
             
+            // Send success notification if transactions were executed
+            val successCount = results.count { it.success }
+            if (successCount > 0) {
+                sendSuccessNotification(successCount)
+            }
+            
             Result.success()
         } catch (e: Exception) {
             Result.retry()
         }
+    }
+    
+    private suspend fun calculateCurrentBalance(
+        incomeRepository: IncomeRepository,
+        expenseRepository: ExpenseRepository
+    ): Double {
+        return try {
+            val now = System.currentTimeMillis()
+            val startOfMonth = getStartOfMonth()
+            
+            val totalIncome = incomeRepository.getTotalIncomeBetween(startOfMonth, now).first() ?: 0.0
+            val totalExpenses = expenseRepository.getTotalExpensesBetween(startOfMonth, now).first() ?: 0.0
+            
+            totalIncome - totalExpenses
+        } catch (e: Exception) {
+            0.0
+        }
+    }
+    
+    private fun getStartOfMonth(): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+    
+    private fun sendSuccessNotification(count: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "recurring")
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("Transactions Executed")
+            .setContentText("$count recurring transaction(s) added successfully")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID + 3, notification)
     }
 
     private fun createNotificationChannel() {

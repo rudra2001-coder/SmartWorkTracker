@@ -32,11 +32,14 @@ data class RecurringRule(
     val sourceAccount: AccountType,
     val destinationAccount: AccountType? = null,
     
-    // Frequency: DAILY, WEEKLY, BIWEEKLY, MONTHLY, YEARLY, CUSTOM
+    // Frequency: DAILY, WEEKLY, BIWEEKLY, MONTHLY, YEARLY, CUSTOM, WEEKLY_SPECIFIC_DAYS
     val frequency: RecurringFrequency,
     
     // Interval for custom frequencies (e.g., every 2 weeks, every 3 months)
     val interval: Int = 1,
+    
+    // Selected days of week for WEEKLY_SPECIFIC_DAYS frequency
+    val selectedDaysOfWeek: List<DayOfWeek>? = null,
     
     // Custom cron expression for power users (optional)
     val cronExpression: String? = null,
@@ -93,7 +96,48 @@ enum class RecurringFrequency {
     MONTHLY,         // Every month
     QUARTERLY,       // Every 3 months
     YEARLY,          // Every year
-    CUSTOM           // Custom interval
+    CUSTOM,          // Custom interval
+    WEEKLY_SPECIFIC_DAYS  // Specific days of week
+}
+
+/**
+ * Days of week for recurring transactions
+ */
+enum class DayOfWeek(val displayName: String, val shortName: String) {
+    MONDAY("Monday", "Mon"),
+    TUESDAY("Tuesday", "Tue"),
+    WEDNESDAY("Wednesday", "Wed"),
+    THURSDAY("Thursday", "Thu"),
+    FRIDAY("Friday", "Fri"),
+    SATURDAY("Saturday", "Sat"),
+    SUNDAY("Sunday", "Sun");
+    
+    companion object {
+        fun fromCalendarDay(calendarDay: Int): DayOfWeek {
+            return when (calendarDay) {
+                java.util.Calendar.MONDAY -> MONDAY
+                java.util.Calendar.TUESDAY -> TUESDAY
+                java.util.Calendar.WEDNESDAY -> WEDNESDAY
+                java.util.Calendar.THURSDAY -> THURSDAY
+                java.util.Calendar.FRIDAY -> FRIDAY
+                java.util.Calendar.SATURDAY -> SATURDAY
+                java.util.Calendar.SUNDAY -> SUNDAY
+                else -> MONDAY
+            }
+        }
+        
+        fun toCalendarDay(dayOfWeek: DayOfWeek): Int {
+            return when (dayOfWeek) {
+                MONDAY -> java.util.Calendar.MONDAY
+                TUESDAY -> java.util.Calendar.TUESDAY
+                WEDNESDAY -> java.util.Calendar.WEDNESDAY
+                THURSDAY -> java.util.Calendar.THURSDAY
+                FRIDAY -> java.util.Calendar.FRIDAY
+                SATURDAY -> java.util.Calendar.SATURDAY
+                SUNDAY -> java.util.Calendar.SUNDAY
+            }
+        }
+    }
 }
 
 /**

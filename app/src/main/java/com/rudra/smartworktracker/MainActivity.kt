@@ -10,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.rudra.smartworktracker.alarm.RecurringNotificationWorker
 import com.rudra.smartworktracker.data.SampleData
 import com.rudra.smartworktracker.data.SharedPreferenceManager
 import com.rudra.smartworktracker.ui.navigation.MainApp
@@ -24,6 +25,8 @@ class MainActivity : ComponentActivity() {
         if (sharedPreferenceManager.getWorkLogs().isEmpty()) {
             sharedPreferenceManager.saveWorkLogs(SampleData.getSampleWorkLogs())
         }
+
+        RecurringNotificationWorker.schedule(this)
 
         setContent {
             SmartWorkTrackerMain()

@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.engine
 
 import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringPriority
@@ -23,8 +24,8 @@ import java.util.UUID
  */
 class RecurringEngine(
     private val recurringRepository: RecurringRepository,
-    private val incomeRepository: IncomeRepository? = null,
-    private val expenseRepository: com.rudra.smartworktracker.data.repository.ExpenseRepository? = null,
+    private val incomeRepository: IncomeRepository,
+    private val expenseRepository: com.rudra.smartworktracker.data.repository.ExpenseRepository,
     private val transactionRepository: com.rudra.smartworktracker.data.repository.TransactionRepository? = null
 ) {
     companion object {
@@ -63,12 +64,89 @@ class RecurringEngine(
             RecurringFrequency.QUARTERLY -> calendar.add(Calendar.MONTH, 3 * interval)
             RecurringFrequency.YEARLY -> calendar.add(Calendar.YEAR, interval)
             RecurringFrequency.CUSTOM -> {
-                // For custom, we interpret interval as days
                 calendar.add(Calendar.DAY_OF_MONTH, interval)
+            }
+            RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
+                calculateNextSpecificDay(calendar)
             }
         }
         
         return calendar.timeInMillis
+    }
+    
+    /**
+     * Calculate next execution date for specific days of week
+     */
+    fun calculateNextExecutionDateWithDays(
+        currentDate: Long,
+        selectedDays: List<DayOfWeek>,
+        preferredTime: com.rudra.smartworktracker.data.entity.PreferredTime = com.rudra.smartworktracker.data.entity.PreferredTime.MORNING
+    ): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = currentDate
+        return calculateNextSpecificDay(calendar, selectedDays, preferredTime)
+    }
+    
+    private fun calculateNextSpecificDay(
+        calendar: Calendar,
+        selectedDays: List<DayOfWeek>? = null,
+        preferredTime: com.rudra.smartworktracker.data.entity.PreferredTime = com.rudra.smartworktracker.data.entity.PreferredTime.MORNING
+    ): Long {
+        val hour = when (preferredTime) {
+            com.rudra.smartworktracker.data.entity.PreferredTime.MORNING -> 9
+            com.rudra.smartworktracker.data.entity.PreferredTime.AFTERNOON -> 14
+            com.rudra.smartworktracker.data.entity.PreferredTime.EVENING -> 19
+            com.rudra.smartworktracker.data.entity.PreferredTime.NIGHT -> 22
+        }
+        
+        if (selectedDays.isNullOrEmpty()) {
+            calendar.add(Calendar.WEEK_OF_YEAR, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, hour)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            return calendar.timeInMillis
+        }
+        
+        val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        val selectedCalendarDays = selectedDays.map { DayOfWeek.toCalendarDay(it) }.sorted()
+        
+        var nextDay: Int? = null
+        for (day in selectedCalendarDays) {
+            if (day > currentDayOfWeek) {
+                nextDay = day
+                break
+            }
+        }
+        
+        if (nextDay != null) {
+            val daysToAdd = nextDay - currentDayOfWeek
+            calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
+        } else {
+            val daysToAdd = (7 - currentDayOfWeek) + selectedCalendarDays.first()
+            calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
+        }
+        
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        
+        return calendar.timeInMillis
+    }
+    
+    /**
+     * Check if today is an execution day for weekly specific days
+     */
+    fun isExecutionDay(rule: RecurringRule, date: Long = System.currentTimeMillis()): Boolean {
+        if (rule.frequency != RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
+            return true
+        }
+        
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = date
+        val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        val today = DayOfWeek.fromCalendarDay(currentDayOfWeek)
+        
+        return rule.selectedDaysOfWeek?.contains(today) ?: false
     }
     
     /**
@@ -200,11 +278,10 @@ class RecurringEngine(
     }
     
     /**
-     * Execute income transaction
+     * Execute income transaction - inserts actual Income to database
      */
     private suspend fun executeIncome(rule: RecurringRule, transactionId: Long): ExecutionResult {
         return try {
-            // Create income entry
             val income = Income(
                 amount = rule.amount,
                 description = rule.name,
@@ -214,12 +291,12 @@ class RecurringEngine(
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             
-            // Note: In a real app, we'd need to insert via repository
-            // For now, we just mark as executed
+            incomeRepository.insertIncome(income)
+            
             ExecutionResult(
                 success = true,
-                reason = "Income executed successfully",
-                relatedIncomeId = 0 // Would be the actual ID after insert
+                reason = "Income added successfully",
+                relatedIncomeId = income.id
             )
         } catch (e: Exception) {
             ExecutionResult(success = false, reason = e.message)
@@ -227,7 +304,7 @@ class RecurringEngine(
     }
     
     /**
-     * Execute expense transaction
+     * Execute expense transaction - inserts actual Expense to database
      */
     private suspend fun executeExpense(rule: RecurringRule, transactionId: Long): ExecutionResult {
         return try {
@@ -241,10 +318,12 @@ class RecurringEngine(
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             
+            expenseRepository.insertExpense(expense)
+            
             ExecutionResult(
                 success = true,
-                reason = "Expense executed successfully",
-                relatedExpenseId = 0 // Would be the actual ID after insert
+                reason = "Expense added successfully",
+                relatedExpenseId = expense.id.hashCode().toLong()
             )
         } catch (e: Exception) {
             ExecutionResult(success = false, reason = e.message)
@@ -282,12 +361,24 @@ class RecurringEngine(
      */
     suspend fun processDueRules(currentBalance: Double = DEFAULT_MINIMUM_BALANCE): List<ExecutionResult> {
         val results = mutableListOf<ExecutionResult>()
-        val dueRules = recurringRepository.getRulesDueForExecution(System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val allActiveRules = recurringRepository.getRulesDueForExecution(now)
         
-        for (rule in dueRules) {
+        for (rule in allActiveRules) {
             if (rule.isActive) {
-                val result = executeRule(rule, currentBalance)
-                results.add(result)
+                // Check if today is an execution day for weekly specific days
+                if (rule.frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
+                    if (isExecutionDay(rule, now)) {
+                        val result = executeRule(rule, currentBalance)
+                        results.add(result)
+                    }
+                } else {
+                    // For other frequencies, check if nextExecutionDate has passed
+                    if (rule.nextExecutionDate <= now) {
+                        val result = executeRule(rule, currentBalance)
+                        results.add(result)
+                    }
+                }
             }
         }
         
