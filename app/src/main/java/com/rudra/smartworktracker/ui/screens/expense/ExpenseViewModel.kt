@@ -5,8 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.AccountType
-import com.rudra.smartworktracker.data.entity.FinancialTransaction
-import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +17,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     private val db = AppDatabase.getDatabase(application)
     private val expenseDao = db.expenseDao()
-    private val financialTransactionDao = db.financialTransactionDao()
 
     private val _recentExpenses = MutableStateFlow<List<Expense>>(emptyList())
     val recentExpenses: StateFlow<List<Expense>> = _recentExpenses.asStateFlow()
@@ -60,18 +57,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 timestamp = timestamp
             )
             expenseDao.insertExpense(expense)
-
-            // Create and save the corresponding financial transaction
-            val transaction = FinancialTransaction(
-                type = TransactionType.EXPENSE,
-                amount = amount,
-                source = accountType,
-                destination = null,
-                note = notes ?: merchant ?: "",
-                category = category.displayName,
-                date = timestamp
-            )
-            financialTransactionDao.insertTransaction(transaction)
         }
     }
 }

@@ -25,4 +25,12 @@ class TransactionRepository(private val transactionDao: FinancialTransactionDao)
     suspend fun deleteTransaction(transaction: FinancialTransaction) {
         transactionDao.delete(transaction)
     }
+
+    suspend fun deleteTransactionById(transactionId: Int) {
+        transactionDao.deleteTransactionById(transactionId)
+    }
+
+    suspend fun getTransactionById(transactionId: Int): FinancialTransaction? {
+        return transactionDao.getTransactionById(transactionId)
+    }
 }

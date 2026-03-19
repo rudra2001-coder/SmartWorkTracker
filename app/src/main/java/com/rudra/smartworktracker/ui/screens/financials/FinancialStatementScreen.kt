@@ -64,24 +64,14 @@ fun FinancialStatementScreen(
             onDismissRequest = { transactionToDelete = null },
             title = { Text("Delete Transaction") },
             text = { 
-                if (transactionToDelete?.source == "Financial") {
-                    Text("Are you sure you want to delete this transaction?")
-                } else {
-                    Text("This transaction was created from ${transactionToDelete?.source}. Please delete from the ${transactionToDelete?.source} screen.")
-                }
+                Text("Are you sure you want to delete this transaction? This will remove both the debit and credit entries.")
             },
             confirmButton = {
-                if (transactionToDelete?.source == "Financial") {
-                    TextButton(onClick = {
-                        // For Financial transactions, we'd need to convert back
-                        transactionToDelete = null
-                    }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
-                    }
-                } else {
-                    TextButton(onClick = { transactionToDelete = null }) {
-                        Text("OK")
-                    }
+                TextButton(onClick = {
+                    transactionToDelete?.let { viewModel.deleteTransaction(it) }
+                    transactionToDelete = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -154,18 +144,18 @@ fun FinancialStatementScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item {
                         Text(
-                            text = "Showing all transactions (Income, Expense & Financial)",
+                            text = "Double-Entry Ledger (Debit & Credit)",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
                     items(items = uiState.transactions, key = { it.id }) { transaction ->
-                        TransactionItem(
+                        DoubleEntryTransactionItem(
                             transaction = transaction,
                             onDelete = { transactionToDelete = transaction }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
@@ -299,98 +289,122 @@ fun SummaryStat(label: String, amount: Double, color: Color) {
 }
 
 @Composable
-fun TransactionItem(
+fun DoubleEntryTransactionItem(
     transaction: UnifiedTransaction,
     onDelete: (UnifiedTransaction) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
+    
+    val isDebit = transaction.entryType == EntryType.DEBIT
+    val isIncomeType = transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE
+    val accentColor = if (isIncomeType) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val entryLabel = if (isDebit) "DR" else "CR"
+    val entryLabelColor = if (isDebit) Color(0xFF1976D2) else Color(0xFF388E3C)
 
     Card(
         onClick = { expanded = !expanded },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDebit) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+            else 
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(
-                        if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                    ),
-                    contentAlignment = Alignment.Center
+                // Entry Type Badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = entryLabelColor.copy(alpha = 0.2f),
+                    modifier = Modifier.width(28.dp).height(24.dp)
                 ) {
-                    Icon(
-                        imageVector = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                        contentDescription = null,
-                        tint = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = transaction.description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "(${transaction.source})",
+                            text = entryLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.Bold,
+                            color = entryLabelColor
                         )
                     }
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Account Info
+                Column(modifier = Modifier.weight(1f)) {
+                    Row {
+                        if (transaction.debitAccount != null) {
+                            Text(
+                                text = transaction.debitAccount,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (transaction.debitAccount != null && transaction.creditAccount != null) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.CompareArrows,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp).padding(horizontal = 4.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (transaction.creditAccount != null) {
+                            Text(
+                                text = transaction.creditAccount,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Text(
+                        text = transaction.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
                     Row {
                         Text(
                             text = transaction.category,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = accentColor
                         )
                         Text(
                             text = " • ${formatTransactionDate(transaction.date)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Text(
+                            text = " (${transaction.source})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
+                
+                // Amount
                 Text(
                     text = formatCurrency(transaction.amount),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor
                 )
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(20.dp))
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("View Details") },
-                            onClick = { showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Info, null, modifier = Modifier.size(18.dp)) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = { onDelete(transaction); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                
+                // Delete button (only show for non-credit entries to avoid double delete)
+                if (!transaction.id.endsWith("_credit")) {
+                    IconButton(onClick = { onDelete(transaction) }, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.Delete, 
+                            contentDescription = "Delete", 
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
-                }
-                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.rotate(rotation))
-            }
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    DetailRow("Source", transaction.source)
-                    DetailRow("Transaction Type", transaction.type.name.replace("_", " "))
-                    DetailRow("Category", transaction.category)
+                } else {
+                    Spacer(modifier = Modifier.width(32.dp))
                 }
             }
         }
