@@ -187,7 +187,8 @@ fun FilterSection(
             }
         }
 
-        if (selectedFilter == TransactionFilter.DATE_RANGE && startDate != null && endDate != null) {
+        // Show date range indicator when dates are set (independent of filter type)
+        if (startDate != null && endDate != null) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(8.dp),
@@ -378,7 +379,7 @@ fun DoubleEntryTransactionItem(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = " (${transaction.source})",
+                            text = " (${transaction.sourceType.name.lowercase().replaceFirstChar { it.uppercase() }})",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -423,10 +424,22 @@ fun DetailRow(label: String, value: String) {
 fun IncomeExpenseBar(income: Double, expense: Double, modifier: Modifier = Modifier) {
     val total = (income + expense).coerceAtLeast(1.0)
     val incomeRatio = (income / total).toFloat()
+    val expenseRatio = 1f - incomeRatio
 
     Row(modifier = modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(incomeRatio).background(MaterialTheme.colorScheme.primary))
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth().background(MaterialTheme.colorScheme.error))
+        // Use weight-based layout to prevent overlap
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(incomeRatio.coerceAtLeast(0.01f))
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(expenseRatio.coerceAtLeast(0.01f))
+                .background(MaterialTheme.colorScheme.error)
+        )
     }
 }
 
@@ -436,6 +449,23 @@ fun formatTransactionDate(timestamp: Long): String {
 
 @Composable
 fun formatCurrency(amount: Double): String {
-    val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
-    return currencyFormat.format(amount).replace("$", "৳")
+    // Use proper Bangladeshi Taka currency format
+    val currencyFormat = remember { 
+        NumberFormat.getCurrencyInstance(Locale("bn", "BD")).apply {
+            maximumFractionDigits = 2
+            minimumFractionDigits = 2
+        } 
+    }
+    return currencyFormat.format(amount)
+}
+
+/**
+ * Non-composable currency formatter for use in non-Compose contexts
+ */
+fun formatCurrencyStatic(amount: Double): String {
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("bn", "BD")).apply {
+        maximumFractionDigits = 2
+        minimumFractionDigits = 2
+    }
+    return currencyFormat.format(amount)
 }

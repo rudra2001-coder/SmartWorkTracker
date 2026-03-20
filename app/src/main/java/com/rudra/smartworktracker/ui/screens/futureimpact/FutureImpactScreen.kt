@@ -4,12 +4,14 @@ import android.app.Application
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -501,7 +503,7 @@ fun CheckInDialog(checkInType: CheckInType, onDismiss: () -> Unit, onSave: (Int,
         onDismissRequest = onDismiss,
         title = { Text(if (checkInType == CheckInType.MORNING) "☀️ Morning Check-in" else "🌙 Night Check-in") },
         text = {
-            Column {
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
                 Text(question, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 16.dp))
                 
                 Text("How do you feel?", fontSize = 14.sp)
@@ -515,9 +517,19 @@ fun CheckInDialog(checkInType: CheckInType, onDismiss: () -> Unit, onSave: (Int,
                             5 -> "😄"
                             else -> "😐"
                         }
-                        Text(emoji, fontSize = 24.sp, modifier = Modifier
-                            .scale(if (mood == m) 1.3f else 1f)
-                            .clickable { mood = m })
+                        val scale by animateFloatAsState(
+                            targetValue = if (mood == m) 1.3f else 1f,
+                            animationSpec = spring(stiffness = Spring.StiffnessLow),
+                            label = "scale"
+                        )
+                        Surface(
+                            onClick = { mood = m },
+                            modifier = Modifier.scale(scale),
+                            shape = CircleShape,
+                            color = if (mood == m) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        ) {
+                            Text(emoji, fontSize = 24.sp, modifier = Modifier.padding(8.dp))
+                        }
 
                     }
                 }
@@ -700,4 +712,4 @@ fun IdentitySelectionDialog(current: FutureIdentity, onSelect: (FutureIdentity) 
     }, confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } })
 }
 
-private fun Modifier.clickable(onClick: () -> Unit): Modifier = this.then(Modifier.clickable(onClick = onClick))
+
