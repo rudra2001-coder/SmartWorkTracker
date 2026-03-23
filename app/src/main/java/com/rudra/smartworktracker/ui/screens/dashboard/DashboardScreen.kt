@@ -330,21 +330,21 @@ fun FinancialSummaryChart(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 FinancialMetricCard(
-                    title = "Daily Income",
+                    title = "Today’s Income",
                     value = animatedDailyIncome,
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.AutoMirrored.Filled.TrendingUp
                 )
 
                 FinancialMetricCard(
-                    title = "Daily Expense",
+                    title = "Today’s Expense",
                     value = animatedDailyExpense,
                     color = MaterialTheme.colorScheme.error,
                     icon = Icons.Default.BarChart
                 )
 
                 FinancialMetricCard(
-                    title = "Daily Savings",
+                    title = "Today’s Savings",
                     value = animatedDailySavings,
                     color = if (financialSummary.dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
