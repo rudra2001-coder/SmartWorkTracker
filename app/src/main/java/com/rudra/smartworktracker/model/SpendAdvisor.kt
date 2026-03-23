@@ -1,17 +1,16 @@
 package com.rudra.smartworktracker.model
 
-import com.rudra.smartworktracker.data.entity.Income
-import com.rudra.smartworktracker.model.Expense
+import androidx.compose.ui.graphics.Color
 
 data class SpendAdvisor(
     val totalIncome: Double = 0.0,
     val totalExpenses: Double = 0.0,
     val currentBalance: Double = 0.0,
     val dailyAverageExpense: Double = 0.0,
-    val monthlyGoal: Double = 0.0,
+    val monthlyGoal: Double = 30000.0,
     val spendingTrend: SpendingTrend = SpendingTrend.STABLE,
-    val recentExpenses: List<Expense> = emptyList(),
-    val recentIncomes: List<Income> = emptyList()
+    val trendData: List<Double> = emptyList(),
+    val categoryBreakdown: Map<ExpenseCategory, Double> = emptyMap()
 )
 
 enum class SpendingTrend(val displayName: String) {
@@ -44,17 +43,21 @@ enum class AdviceSeverity {
     DANGER
 }
 
-data class PlannedExpense(
-    val amount: Double,
-    val description: String = "",
-    val date: Long = System.currentTimeMillis()
-)
-
 data class ExpenseAnalysis(
     val advice: ExpenseAdvice,
     val remainingAfterExpense: Double,
     val safeLimit: Double,
     val warningLimit: Double,
     val suggestion: String? = null,
-    val confidenceScore: Int = 0
+    val confidenceScore: Int = 0,
+    val category: ExpenseCategory = ExpenseCategory.OTHER,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class SavingsTip(
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val color: Color
 )

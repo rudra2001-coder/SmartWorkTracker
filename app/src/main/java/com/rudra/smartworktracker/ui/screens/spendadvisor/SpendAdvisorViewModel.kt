@@ -6,7 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.repository.SpendAdvisorRepository
 import com.rudra.smartworktracker.model.ExpenseAnalysis
 import com.rudra.smartworktracker.model.ExpenseAdvice
+import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.model.SavingsTip
 import com.rudra.smartworktracker.model.SpendAdvisor
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,8 +31,15 @@ class SpendAdvisorViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _recentAnalyses = MutableStateFlow<List<ExpenseAnalysis>>(emptyList())
+    val recentAnalyses: StateFlow<List<ExpenseAnalysis>> = _recentAnalyses.asStateFlow()
+
+    private val _savingsTips = MutableStateFlow<List<SavingsTip>>(emptyList())
+    val savingsTips: StateFlow<List<SavingsTip>> = _savingsTips.asStateFlow()
+
     init {
         loadSpendAdvisor()
+        loadSavingsTips()
     }
 
     private fun loadSpendAdvisor() {
@@ -39,7 +51,50 @@ class SpendAdvisorViewModel(
         }
     }
 
-    fun analyzeExpense(plannedAmount: Double) {
+    private fun loadSavingsTips() {
+        viewModelScope.launch {
+            val tips = listOf(
+                SavingsTip(
+                    id = "1",
+                    title = "50/30/20 Rule",
+                    description = "Allocate 50% for needs, 30% for wants, and 20% for savings",
+                    icon = Icons.Default.Info,
+                    color = Color(0xFF43A047)
+                ),
+                SavingsTip(
+                    id = "2",
+                    title = "Track Small Expenses",
+                    description = "Small daily expenses add up. Track them to identify savings opportunities",
+                    icon = Icons.Default.Info,
+                    color = Color(0xFF2196F3)
+                ),
+                SavingsTip(
+                    id = "3",
+                    title = "Use Cashback Apps",
+                    description = "Use apps that offer cashback on regular purchases",
+                    icon = Icons.Default.Info,
+                    color = Color(0xFFFF9800)
+                ),
+                SavingsTip(
+                    id = "4",
+                    title = "Cook at Home",
+                    description = "Reduce dining out expenses by cooking meals at home",
+                    icon = Icons.Default.Info,
+                    color = Color(0xFF9C27B0)
+                ),
+                SavingsTip(
+                    id = "5",
+                    title = "Cancel Unused Subscriptions",
+                    description = "Review and cancel subscriptions you don't use regularly",
+                    icon = Icons.Default.Info,
+                    color = Color(0xFFE53935)
+                )
+            )
+            _savingsTips.value = tips
+        }
+    }
+
+    fun analyzeExpense(plannedAmount: Double, category: ExpenseCategory = ExpenseCategory.OTHER) {
         val advisor = _spendAdvisor.value
         val currentBalance = advisor.currentBalance
         val monthlyGoal = advisor.monthlyGoal
@@ -68,14 +123,46 @@ class SpendAdvisorViewModel(
             ExpenseAdvice.NOT_ACCEPTABLE -> "Suggested: ৳${(currentBalance * 0.2).toLong()} instead of ৳${plannedAmount.toLong()}"
         }
 
-        _analysis.value = ExpenseAnalysis(
+        val analysis = ExpenseAnalysis(
             advice = advice,
             remainingAfterExpense = remainingAfterExpense,
             safeLimit = safeLimit,
             warningLimit = warningLimit,
             suggestion = suggestion,
-            confidenceScore = confidenceScore
+            confidenceScore = confidenceScore,
+            category = category,
+            timestamp = System.currentTimeMillis()
         )
+
+        _analysis.value = analysis
+
+        val currentHistory = _recentAnalyses.value.toMutableList()
+        currentHistory.add(0, analysis)
+        if (currentHistory.size > 20) {
+            currentHistory.removeAt(currentHistory.size - 1)
+        }
+        _recentAnalyses.value = currentHistory
+    }
+
+    fun applySavingsTip(tip: SavingsTip) {
+        _analysis.value = _analysis.value?.copy(
+            suggestion = "Tip applied: ${tip.title} - ${tip.description}"
+        )
+    }
+
+    fun applySuggestion(suggestion: String) {
+        _analysis.value = _analysis.value?.copy(
+            suggestion = suggestion
+        )
+    }
+
+    fun updateMonthlyGoal(newGoal: Double) {
+        repository.updateMonthlyGoal(newGoal)
+    }
+
+    fun refreshData() {
+        _isLoading.value = true
+        loadSpendAdvisor()
     }
 
     private fun calculateConfidenceScore(

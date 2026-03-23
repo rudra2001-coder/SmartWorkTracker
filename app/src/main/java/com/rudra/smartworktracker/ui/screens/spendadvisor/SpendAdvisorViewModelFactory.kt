@@ -15,7 +15,8 @@ class SpendAdvisorViewModelFactory(private val application: Application) : ViewM
                 application = application,
                 repository = SpendAdvisorRepository(
                     database.incomeDao(),
-                    database.expenseDao()
+                    database.expenseDao(),
+                    application
                 )
             ) as T
         }
