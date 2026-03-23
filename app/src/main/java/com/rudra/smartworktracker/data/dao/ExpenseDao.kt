@@ -36,6 +36,9 @@ interface ExpenseDao {
     @Query("SELECT SUM(amount) FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?>
 
+    @Query("SELECT SUM(amount) FROM expenses")
+    fun getTotalExpenses(): Flow<Double?>
+
     @Update
     suspend fun updateExpense(expense: Expense)
 

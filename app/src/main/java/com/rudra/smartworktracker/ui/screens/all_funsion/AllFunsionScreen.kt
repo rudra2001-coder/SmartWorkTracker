@@ -127,7 +127,8 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation,
                     NavigationItem.AddEntry,
-                    NavigationItem.Recurring
+                    NavigationItem.Recurring,
+                    NavigationItem.SpendAdvisor
                 )
             ),
             FeatureSection(
