@@ -32,6 +32,14 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         return incomeDao.getTotalIncomeBetween(startTime, endTime)
     }
 
+    fun getTotalIncomeBefore(endTime: Long): Flow<Double?> {
+        return incomeDao.getTotalIncomeBefore(endTime)
+    }
+
+    fun getTotalIncomeUpTo(endTime: Long): Flow<Double?> {
+        return incomeDao.getTotalIncomeUpTo(endTime)
+    }
+
     fun getIncomesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<IncomeByCategory>> {
         return incomeDao.getIncomesByCategoryBetween(startTime, endTime)
     }

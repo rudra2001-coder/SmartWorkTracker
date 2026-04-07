@@ -228,27 +228,31 @@ fun DashboardScreen(
 fun FinancialSummaryChart(
     financialSummary: FinancialSummary
 ) {
+    var animatedNetBalance by remember { mutableFloatStateOf(0f) }
     var animatedIncome by remember { mutableFloatStateOf(0f) }
     var animatedExpense by remember { mutableFloatStateOf(0f) }
-    var animatedSavings by remember { mutableFloatStateOf(0f) }
+    var animatedMonthlySavings by remember { mutableFloatStateOf(0f) }
     var animatedDailyIncome by remember { mutableFloatStateOf(0f) }
     var animatedDailyExpense by remember { mutableFloatStateOf(0f) }
     var animatedDailySavings by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(financialSummary) {
+        animatedNetBalance = 0f
         animatedIncome = 0f
         animatedExpense = 0f
-        animatedSavings = 0f
+        animatedMonthlySavings = 0f
         animatedDailyIncome = 0f
         animatedDailyExpense = 0f
         animatedDailySavings = 0f
 
         delay(300)
+        animatedNetBalance = financialSummary.netSavings.toFloat()
+        delay(200)
         animatedIncome = financialSummary.totalIncome.toFloat()
         delay(200)
         animatedExpense = financialSummary.totalExpense.toFloat()
         delay(200)
-        animatedSavings = financialSummary.netSavings.toFloat()
+        animatedMonthlySavings = financialSummary.monthlyNetSavings.toFloat()
         delay(200)
         animatedDailyIncome = financialSummary.dailyIncome.toFloat()
         delay(200)
@@ -297,54 +301,96 @@ fun FinancialSummaryChart(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            // Net Balance at the top
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (financialSummary.netSavings >= 0) 
+                        Color(0xFF4CAF50).copy(alpha = 0.15f) 
+                    else 
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Net Balance",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "৳${animatedNetBalance.toLong()}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (financialSummary.netSavings >= 0) 
+                            Color(0xFF4CAF50) 
+                        else 
+                            MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Monthly Income, Expense, Savings - Second row (resets on 1st of month)
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 FinancialMetricCard(
-                    title = "Income",
+                    title = "Monthly Income",
                     value = animatedIncome,
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.AutoMirrored.Filled.TrendingUp
                 )
 
                 FinancialMetricCard(
-                    title = "Expense",
+                    title = "Monthly Expense",
                     value = animatedExpense,
                     color = MaterialTheme.colorScheme.error,
                     icon = Icons.Default.BarChart
                 )
 
                 FinancialMetricCard(
-                    title = "Savings",
-                    value = animatedSavings,
-                    color = if (financialSummary.netSavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error, // Light Green 100
+                    title = "Monthly Savings",
+                    value = animatedMonthlySavings,
+                    color = if (financialSummary.monthlyNetSavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Today's Income, Expense, Savings - Third row
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 FinancialMetricCard(
-                    title = "Today’s Income",
+                    title = "Today's Income",
                     value = animatedDailyIncome,
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.AutoMirrored.Filled.TrendingUp
                 )
 
                 FinancialMetricCard(
-                    title = "Today’s Expense",
+                    title = "Today's Expense",
                     value = animatedDailyExpense,
                     color = MaterialTheme.colorScheme.error,
                     icon = Icons.Default.BarChart
                 )
 
                 FinancialMetricCard(
-                    title = "Today’s Savings",
+                    title = "Today's Savings",
                     value = animatedDailySavings,
                     color = if (financialSummary.dailySavings >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                     icon = Icons.Default.CheckCircle

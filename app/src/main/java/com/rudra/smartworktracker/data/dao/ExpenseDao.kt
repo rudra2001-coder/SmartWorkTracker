@@ -39,6 +39,12 @@ interface ExpenseDao {
     @Query("SELECT SUM(amount) FROM expenses")
     fun getTotalExpenses(): Flow<Double?>
 
+    @Query("SELECT SUM(amount) FROM expenses WHERE timestamp < :endTime")
+    fun getTotalExpensesBefore(endTime: Long): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM expenses WHERE timestamp <= :endTime")
+    fun getTotalExpensesUpTo(endTime: Long): Flow<Double?>
+
     @Update
     suspend fun updateExpense(expense: Expense)
 

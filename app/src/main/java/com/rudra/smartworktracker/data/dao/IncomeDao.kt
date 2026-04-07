@@ -36,6 +36,12 @@ interface IncomeDao {
     @Query("SELECT SUM(amount) FROM incomes")
     fun getTotalIncome(): Flow<Double?>
 
+    @Query("SELECT SUM(amount) FROM incomes WHERE timestamp < :endTime")
+    fun getTotalIncomeBefore(endTime: Long): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM incomes WHERE timestamp <= :endTime")
+    fun getTotalIncomeUpTo(endTime: Long): Flow<Double?>
+
     @Query("SELECT category, SUM(amount) as total FROM incomes WHERE timestamp BETWEEN :startTime AND :endTime GROUP BY category")
     fun getIncomesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<IncomeByCategory>>
 

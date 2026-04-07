@@ -42,6 +42,7 @@ data class FinancialSummary(
     val totalExpense: Double = 0.0,
     val totalSavings: Double = 0.0,
     val netSavings: Double = 0.0,
+    val monthlyNetSavings: Double = 0.0,
     val dailyIncome: Double = 0.0,
     val dailyExpense: Double = 0.0,
     val dailySavings: Double = 0.0,
@@ -51,10 +52,12 @@ data class FinancialSummary(
     val totalOfficeDays: Int = 0,
     val totalOffDays: Int = 0,
     val overtimeHours: Double = 0.0,
-    val overtimeEarnings: Double = 0.0
+    val overtimeEarnings: Double = 0.0,
+    val allTimeIncome: Double = 0.0,
+    val allTimeExpense: Double = 0.0
 ) {
     val savingsPercentage: Double
-        get() = if (totalIncome > 0) (netSavings / totalIncome) * 100 else 0.0
+        get() = if (totalIncome > 0) (monthlyNetSavings / totalIncome) * 100 else 0.0
 }
 data class HealthData(
     val currentWeight: Double? = null,
