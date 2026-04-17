@@ -48,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
@@ -137,8 +138,6 @@ fun MainApp() {
         NavigationItem.Focus,
         NavigationItem.MindfulBreak,
         NavigationItem.Habit,
-        NavigationItem.Expense,
-        NavigationItem.Income,
         NavigationItem.Health,
         NavigationItem.Achievements,
         NavigationItem.Calendar,
@@ -146,18 +145,20 @@ fun MainApp() {
         NavigationItem.MonthlyReport,
         NavigationItem.Calculation,
         NavigationItem.FinancialStatement,
+        NavigationItem.Expense,
+        NavigationItem.Income,
         NavigationItem.Savings,
         NavigationItem.Loans,
         NavigationItem.EMI,
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
+        NavigationItem.Recurring,
         NavigationItem.Backup,
         NavigationItem.Settings,
         NavigationItem.Team,
         NavigationItem.Overtime,
         NavigationItem.Scheduler,
         NavigationItem.UserProfile,
-        NavigationItem.Recurring,
         NavigationItem.RealityTracker,
         NavigationItem.FutureImpact,
         NavigationItem.SpendAdvisor

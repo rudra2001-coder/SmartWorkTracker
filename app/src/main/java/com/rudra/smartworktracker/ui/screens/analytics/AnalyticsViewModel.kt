@@ -19,11 +19,22 @@ data class AnalyticsData(
     val incomes: List<Income> = emptyList(),
     val expenses: List<Expense> = emptyList(),
     val healthMetrics: List<HealthMetric> = emptyList(),
+    val loans: List<Loan> = emptyList(),
+    val emis: List<Emi> = emptyList(),
     val totalWaterToday: Double = 0.0,
     val sleepHours: Double = 0.0,
     val financialBalance: Double = 0.0,
     val totalSavings: Double = 0.0,
     val activeLoansCount: Int = 0,
+    val totalLoansAmount: Double = 0.0,
+    val totalLoansGiven: Double = 0.0,
+    val totalLoansReceived: Double = 0.0,
+    val overdueLoansCount: Int = 0,
+    val activeEmisCount: Int = 0,
+    val pendingEmiAmount: Double = 0.0,
+    val overdueEmiCount: Int = 0,
+    val emiPaidThisMonth: Int = 0,
+    val emiDefaultRate: Float = 0f,
     val totalCaloriesToday: Double = 0.0,
     val workHoursToday: Double = 0.0,
     val workLifeBalanceScore: Int = 0,
@@ -37,13 +48,20 @@ data class AnalyticsData(
     val focusTrend: Float = 0f,
     val habitCompletionRate: Float = 0f,
     val recentAchievements: List<Achievement> = emptyList(),
-    val weeklyPerformance: List<WeeklyPerformance> = emptyList()
+    val weeklyPerformance: List<WeeklyPerformance> = emptyList(),
+    val monthlyFinancialData: List<MonthlyFinancialData> = emptyList()
 )
 
 data class WeeklyPerformance(
     val day: String,
     val productivityScore: Int,
     val date: LocalDate
+)
+
+data class MonthlyFinancialData(
+    val month: String,
+    val income: Double,
+    val expense: Double
 )
 
 class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
@@ -64,6 +82,7 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
         db.healthMetricDao().getAllHealthMetrics(),
         db.savingsDao().getAllSavings(),
         db.loanDao().getAllLoans(),
+        db.emiDao().getAllEmis(),
         db.achievementDao().getAllAchievements(),
         _selectedPeriod
     ) { args: Array<Any?> ->
@@ -74,8 +93,9 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
         val healthMetrics = args[4] as List<HealthMetric>
         val savings = args[5] as List<Savings>
         val loans = args[6] as List<Loan>
-        val achievements = args[7] as List<Achievement>
-        val period = args[8] as AnalyticsPeriod
+        val emis = args[7] as List<Emi>
+        val achievements = args[8] as List<Achievement>
+        val period = args[9] as AnalyticsPeriod
 
         val today = LocalDate.now()
         val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -104,6 +124,27 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
         val balance = totalIncome - totalExpense
         val totalSavingsAmount = savings.sumOf { it.amount }
         val activeLoans = loans.count { it.remainingAmount > 0 }
+
+        // --- Loan Stats ---
+        val totalLoansAmount = loans.sumOf { it.initialAmount }
+        val totalLoansGiven = loans.filter { it.loanType == LoanType.LENT }.sumOf { it.initialAmount }
+        val totalLoansReceived = loans.filter { it.loanType == LoanType.BORROWED }.sumOf { it.initialAmount }
+        val overdueLoans = loans.count { it.isOverdue }
+
+        // --- EMI Stats ---
+        val activeEmis = emis.filter { !it.isPaid }
+        val pendingEmis = activeEmis.filter { it.status != EmiStatus.SKIPPED }
+        val pendingEmiAmount = pendingEmis.sumOf { it.amount }
+        val overdueEmis = activeEmis.filter { it.nextDueDate < System.currentTimeMillis() && it.status != EmiStatus.PAID }
+
+        // EMI stats for this month
+        val startOfMonth = today.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val emisThisMonth = emis.filter { it.nextDueDate in startOfMonth..endOfMonth }
+        val emiPaidThisMonth = emisThisMonth.count { it.isPaid }
+        val emiDefaultRate = if (emisThisMonth.isNotEmpty()) {
+            (emisThisMonth.count { it.status == EmiStatus.SKIPPED || (it.nextDueDate < System.currentTimeMillis() && !it.isPaid) }.toFloat() / emisThisMonth.size)
+        } else 0f
 
         // --- Productivity Score Calculation ---
         val todaysFocusSessions = focusSessions.filter {
@@ -180,6 +221,22 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
             )
         }.reversed()
 
+        // --- Monthly Financial Data (last 6 months) ---
+        val monthlyFinancialData = (0..5).map { monthsAgo ->
+            val monthDate = today.minusMonths(monthsAgo.toLong())
+            val monthStart = monthDate.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val monthEnd = monthDate.withDayOfMonth(monthDate.lengthOfMonth()).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+            val monthIncome = incomes.filter { it.timestamp in monthStart..monthEnd }.sumOf { it.amount }
+            val monthExpense = expenses.filter { it.timestamp in monthStart..monthEnd }.sumOf { it.amount }
+
+            MonthlyFinancialData(
+                month = monthDate.format(DateTimeFormatter.ofPattern("MMM")),
+                income = monthIncome,
+                expense = monthExpense
+            )
+        }.reversed()
+
         AnalyticsData(
             productivityScore = productivityScore,
             focusSessions = focusSessions,
@@ -187,11 +244,22 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
             incomes = periodIncomes,
             expenses = periodExpenses,
             healthMetrics = healthMetrics,
+            loans = loans,
+            emis = emis,
             totalWaterToday = waterToday,
             sleepHours = sleep,
             financialBalance = balance,
             totalSavings = totalSavingsAmount,
             activeLoansCount = activeLoans,
+            totalLoansAmount = totalLoansAmount,
+            totalLoansGiven = totalLoansGiven,
+            totalLoansReceived = totalLoansReceived,
+            overdueLoansCount = overdueLoans,
+            activeEmisCount = activeEmis.size,
+            pendingEmiAmount = pendingEmiAmount,
+            overdueEmiCount = overdueEmis.size,
+            emiPaidThisMonth = emiPaidThisMonth,
+            emiDefaultRate = emiDefaultRate,
             totalCaloriesToday = calories,
             workHoursToday = workHours,
             workLifeBalanceScore = workLifeBalance,
@@ -199,13 +267,14 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
             focusScore = focusScore,
             stepsToday = steps,
             productivityTrend = productivityTrend,
-            workHoursTrend = 0f, // Calculate as needed
-            caloriesTrend = 0f, // Calculate as needed
-            achievementsTrend = 0f, // Calculate as needed
-            focusTrend = 0f, // Calculate as needed
+            workHoursTrend = 0f,
+            caloriesTrend = 0f,
+            achievementsTrend = 0f,
+            focusTrend = 0f,
             habitCompletionRate = habitCompletionRate,
             recentAchievements = recentAchievements,
-            weeklyPerformance = weeklyPerformance
+            weeklyPerformance = weeklyPerformance,
+            monthlyFinancialData = monthlyFinancialData
         )
     }.stateIn(
         scope = viewModelScope,

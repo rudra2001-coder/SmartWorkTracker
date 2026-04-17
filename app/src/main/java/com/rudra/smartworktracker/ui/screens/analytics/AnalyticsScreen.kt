@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.*
 import kotlinx.coroutines.delay
+import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -84,6 +85,14 @@ fun AnalyticsScreen(onNavigateBack: () -> Unit) {
                     incomes = analyticsData.incomes,
                     expenses = analyticsData.expenses,
                     savings = analyticsData.totalSavings,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // 3b. Monthly Financial Bar Chart (6 months)
+            item {
+                MonthlyIncomeExpenseChart(
+                    monthlyData = analyticsData.monthlyFinancialData,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
@@ -1273,3 +1282,367 @@ enum class AnalyticsPeriod(val displayName: String) {
     QUARTER("Quarter"),
     YEAR("Year")
 }
+@Composable
+fun MonthlyIncomeExpenseChart(
+    monthlyData: List<MonthlyFinancialData>,
+    modifier: Modifier = Modifier,
+    onMonthClick: ((MonthlyFinancialData) -> Unit)? = null
+) {
+    if (monthlyData.isEmpty()) {
+        EmptyStateMessage(modifier = modifier)
+        return
+    }
+
+    val maxValue = remember(monthlyData) {
+        monthlyData.maxOfOrNull { maxOf(it.income, it.expense) }
+            ?.coerceAtLeast(1.0)
+            ?: 1.0
+    }
+
+    val currencyFormat = remember {
+        NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
+            maximumFractionDigits = 0
+        }
+    }
+
+    val barHeightAnimation = remember(maxValue) {
+        Animatable(0f)
+    }
+
+    LaunchedEffect(maxValue) {
+        barHeightAnimation.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 800,
+                easing = FastOutSlowInEasing
+            )
+        )
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            ChartHeader(
+                totalIncome = monthlyData.sumOf { it.income },
+                totalExpense = monthlyData.sumOf { it.expense },
+                currencyFormat = currencyFormat
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            ChartBars(
+                monthlyData = monthlyData,
+                maxValue = maxValue,
+                animationProgress = barHeightAnimation.value,
+                onMonthClick = onMonthClick
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ChartValues(
+                monthlyData = monthlyData,
+                currencyFormat = currencyFormat
+            )
+
+            if (monthlyData.size > 1) {
+                Divider(
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                )
+
+                ChartSummary(
+                    monthlyData = monthlyData,
+                    currencyFormat = currencyFormat
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartHeader(
+    totalIncome: Double,
+    totalExpense: Double,
+    currencyFormat: NumberFormat
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Monthly Overview",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            LegendItem(
+                color = IncomeGreen,
+                label = "Income"
+            )
+
+            LegendItem(
+                color = ExpenseRed,
+                label = "Expense"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Total Income",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = currencyFormat.format(totalIncome),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = IncomeGreen
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "Total Expenses",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = currencyFormat.format(totalExpense),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = ExpenseRed
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(
+    color: Color,
+    label: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ChartBars(
+    monthlyData: List<MonthlyFinancialData>,
+    maxValue: Double,
+    animationProgress: Float,
+    onMonthClick: ((MonthlyFinancialData) -> Unit)?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        monthlyData.forEach { monthData ->
+            val incomeHeight = ((monthData.income / maxValue) * 120).dp.coerceAtLeast(4.dp)
+            val expenseHeight = ((monthData.expense / maxValue) * 120).dp.coerceAtLeast(4.dp)
+
+            val clickModifier = if (onMonthClick != null) {
+                Modifier.clickable { onMonthClick(monthData) }
+            } else Modifier
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .weight(1f)
+                    .then(clickModifier)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    // Income Bar
+                    Box(
+                        modifier = Modifier
+                            .width(14.dp)
+                            .graphicsLayer {
+                                scaleY = animationProgress
+                                translationY = size.height * (1 - animationProgress)
+                            }
+                            .height(incomeHeight * animationProgress)
+                            .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(IncomeGreen, IncomeGreen.copy(alpha = 0.7f))
+                                )
+                            )
+                    )
+
+                    // Expense Bar
+                    Box(
+                        modifier = Modifier
+                            .width(14.dp)
+                            .graphicsLayer {
+                                scaleY = animationProgress
+                                translationY = size.height * (1 - animationProgress)
+                            }
+                            .height(expenseHeight * animationProgress)
+                            .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(ExpenseRed, ExpenseRed.copy(alpha = 0.7f))
+                                )
+                            )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = monthData.month,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartValues(
+    monthlyData: List<MonthlyFinancialData>,
+    currencyFormat: NumberFormat
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        monthlyData.forEach { monthData ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = currencyFormat.format(monthData.income),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = IncomeGreen,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = currencyFormat.format(monthData.expense),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ExpenseRed,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartSummary(
+    monthlyData: List<MonthlyFinancialData>,
+    currencyFormat: NumberFormat
+) {
+    val averageIncome = monthlyData.map { it.income }.average()
+    val averageExpense = monthlyData.map { it.expense }.average()
+    val netChange = monthlyData.sumOf { it.income - it.expense }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "Monthly Average",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${currencyFormat.format(averageIncome)} / ${currencyFormat.format(averageExpense)}",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Net Change",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = currencyFormat.format(netChange),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = if (netChange >= 0) IncomeGreen else ExpenseRed
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateMessage(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No data available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// Color constants
+private val IncomeGreen = Color(0xFF4CAF50)
+private val ExpenseRed = Color(0xFFF44336)
