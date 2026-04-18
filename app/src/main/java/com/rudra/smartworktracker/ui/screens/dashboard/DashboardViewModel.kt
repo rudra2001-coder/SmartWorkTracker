@@ -40,13 +40,43 @@ class DashboardViewModel(
 
     private fun loadDashboardData() {
         viewModelScope.launch {
-            val today = Calendar.getInstance()
-            val startTime = today.apply { set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
-            val endTime = today.apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); add(Calendar.DATE, -1) }.timeInMillis
+            val calendar = Calendar.getInstance()
+            
+            // Monthly range
+            val startTime = (calendar.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val endTime = (calendar.clone() as Calendar).apply {
+                add(Calendar.MONTH, 1)
+                set(Calendar.DAY_OF_MONTH, 1)
+                add(Calendar.DATE, -1)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
 
-            val todayStart = today.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-            val todayEnd = today.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
-            val now = today.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999) }.timeInMillis
+            // Today range
+            val todayStart = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val todayEnd = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            
+            val now = System.currentTimeMillis()
 
             val flows = listOf(
                 workLogRepository.getTodayWorkLog(),
