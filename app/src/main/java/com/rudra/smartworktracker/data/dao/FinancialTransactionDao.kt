@@ -12,11 +12,17 @@ interface FinancialTransactionDao {
     @Insert
     suspend fun insertTransaction(transaction: FinancialTransaction)
 
+    @Query("DELETE FROM financial_transactions WHERE id = :transactionId")
+    suspend fun deleteTransactionById(transactionId: Int)
+
     @Query("DELETE FROM financial_transactions WHERE relatedLoanId = :loanId")
     suspend fun deleteTransactionsByLoanId(loanId: Int)
 
     @Query("SELECT * FROM financial_transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<FinancialTransaction>>
+
+    @Query("SELECT * FROM financial_transactions WHERE id = :transactionId")
+    suspend fun getTransactionById(transactionId: Int): FinancialTransaction?
 
     @Delete
     suspend fun delete(financialTransaction: FinancialTransaction)

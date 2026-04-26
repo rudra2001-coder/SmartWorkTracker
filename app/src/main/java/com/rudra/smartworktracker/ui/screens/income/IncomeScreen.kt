@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.IncomeCategories
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -88,7 +89,7 @@ fun IncomeScreen(
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val incomeCategories = listOf("Salary", "Side Income", "Other Business Income", "Others")
+    val incomeCategories = IncomeCategories.categories
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(incomeCategories[0]) }
     val accountTypes = AccountType.values()

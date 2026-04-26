@@ -7,16 +7,17 @@ import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
-import com.rudra.smartworktracker.ui.CalendarUiState
 import com.rudra.smartworktracker.ui.WorkLogUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
@@ -28,20 +29,49 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     private val _selectedWorkLog = MutableStateFlow<WorkLogUi?>(null)
     private val _multiSelectMode = MutableStateFlow(false)
     private val _multiSelectedDates = MutableStateFlow<List<LocalDate>>(emptyList())
+    private val _activeFilters = MutableStateFlow<List<WorkType>>(emptyList())
+    private val _searchQuery = MutableStateFlow("")
+    private val _monthlyStats = MutableStateFlow(MonthlyStats())
 
     val uiState: StateFlow<CalendarUiState> = combine(
         _selectedDate,
         _workLogs,
         _selectedWorkLog,
         _multiSelectMode,
-        _multiSelectedDates
-    ) { selectedDate, workLogs, selectedWorkLog, multiSelectMode, multiSelectedDates ->
+        _multiSelectedDates,
+        _activeFilters,
+        _searchQuery,
+        _monthlyStats
+    ) { values ->
+        val selectedDate = values[0] as LocalDate
+        val workLogs = values[1] as List<WorkLogUi>
+        val selectedWorkLog = values[2] as WorkLogUi?
+        val multiSelectMode = values[3] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val multiSelectedDates = values[4] as List<LocalDate>
+        @Suppress("UNCHECKED_CAST")
+        val activeFilters = values[5] as List<WorkType>
+        val searchQuery = values[6] as String
+        val monthlyStats = values[7] as MonthlyStats
+
+        val filteredWorkLogs = workLogs.filter { workLog ->
+            val matchesFilter = activeFilters.isEmpty() ||
+                    workLog.workType in activeFilters
+            val matchesSearch = searchQuery.isEmpty() ||
+                    workLog.formattedDate.contains(searchQuery, ignoreCase = true)
+            matchesFilter && matchesSearch
+        }
+
         CalendarUiState(
             selectedDate = selectedDate,
             workLogs = workLogs,
+            filteredWorkLogs = filteredWorkLogs,
             selectedWorkLog = selectedWorkLog,
             isMultiSelectMode = multiSelectMode,
-            multiSelectedDates = multiSelectedDates
+            multiSelectedDates = multiSelectedDates,
+            activeFilters = activeFilters,
+            searchQuery = searchQuery,
+            monthlyStats = monthlyStats
         )
     }.stateIn(
         scope = viewModelScope,
@@ -68,9 +98,26 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         }
     }
 
+    fun onDateLongPress(date: LocalDate) {
+        if (!_multiSelectMode.value) {
+            toggleMultiSelectMode()
+        }
+        onDateSelected(date)
+    }
+
+    fun onQuickMonthSelect(yearMonth: YearMonth) {
+        updateMonthlyStats(yearMonth)
+    }
+
     fun toggleMultiSelectMode() {
         _multiSelectMode.value = !_multiSelectMode.value
-        _multiSelectedDates.value = emptyList() // Clear selection on toggle
+        _multiSelectedDates.value = emptyList()
+    }
+
+    fun selectAllDatesInMonth(yearMonth: YearMonth) {
+        val daysInMonth = yearMonth.lengthOfMonth()
+        val allDates = (1..daysInMonth).map { yearMonth.atDay(it) }
+        _multiSelectedDates.value = allDates
     }
 
     fun markSelectedDates(workType: WorkType) {
@@ -78,9 +125,65 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
             _multiSelectedDates.value.forEach { date ->
                 updateWorkLog(date, workType, isMultiSelect = true)
             }
-            toggleMultiSelectMode() // Exit multi-select mode after marking
+            toggleMultiSelectMode()
         }
     }
+
+    fun toggleFilter() {
+        if (_activeFilters.value.isEmpty()) {
+            _activeFilters.value = WorkType.entries.toList()
+        } else {
+            _activeFilters.value = emptyList()
+        }
+    }
+
+    fun addFilter(workType: WorkType) {
+        if (workType !in _activeFilters.value) {
+            _activeFilters.value = _activeFilters.value + workType
+        }
+    }
+
+    fun removeFilter(workType: WorkType) {
+        _activeFilters.value = _activeFilters.value - workType
+    }
+
+    fun clearFilters() {
+        _activeFilters.value = emptyList()
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun copyWorkLog(workLog: WorkLogUi) {
+        viewModelScope.launch {
+            val newWorkLog = WorkLog(
+                date = Date.from(workLog.date.toInstant()),
+                workType = workLog.workType,
+                startTime = workLog.startTime,
+                endTime = workLog.endTime
+            )
+            repository.insertWorkLog(newWorkLog)
+        }
+    }
+
+    fun shareWorkLog(workLog: WorkLogUi) {
+        // This will be handled by the UI layer with Intent
+        // We'll set a state to trigger the share dialog in the UI
+        _shareWorkLog.value = workLog
+    }
+
+    fun saveAsTemplate(workLog: WorkLogUi) {
+        // This will be handled by the UI layer
+        // We'll set a state to trigger the template dialog in the UI
+        _templateWorkLog.value = workLog
+    }
+
+    private val _shareWorkLog = MutableStateFlow<WorkLogUi?>(null)
+    val shareWorkLog: StateFlow<WorkLogUi?> = _shareWorkLog.asStateFlow()
+
+    private val _templateWorkLog = MutableStateFlow<WorkLogUi?>(null)
+    val templateWorkLog: StateFlow<WorkLogUi?> = _templateWorkLog.asStateFlow()
 
     private fun observeSelectedDate() {
         viewModelScope.launch {
@@ -125,6 +228,52 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         }
     }
 
+    private fun updateMonthlyStats(yearMonth: YearMonth) {
+        viewModelScope.launch {
+            val monthWorkLogs = _workLogs.value.filter { workLog ->
+                val date = workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+                YearMonth.from(date) == yearMonth
+            }
+
+            val stats = MonthlyStats(
+                officeDays = monthWorkLogs.count { it.workType == WorkType.OFFICE },
+                homeDays = monthWorkLogs.count { it.workType == WorkType.HOME_OFFICE },
+                offDays = monthWorkLogs.count { it.workType == WorkType.OFF_DAY },
+                extraDays = monthWorkLogs.count { it.workType == WorkType.EXTRA_WORK },
+                totalHours = calculateTotalHours(monthWorkLogs)
+            )
+
+            _monthlyStats.value = stats
+        }
+    }
+
+    private fun calculateTotalHours(workLogs: List<WorkLogUi>): String {
+        var totalMinutes = 0
+        workLogs.forEach { workLog ->
+            if (workLog.startTime != null && workLog.endTime != null) {
+                try {
+                    val startParts = workLog.startTime.split(":")
+                    val endParts = workLog.endTime.split(":")
+                    val startHour = startParts[0].toInt()
+                    val startMinute = startParts[1].toInt()
+                    val endHour = endParts[0].toInt()
+                    val endMinute = endParts[1].toInt()
+
+                    totalMinutes += (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+                } catch (e: Exception) {
+                    totalMinutes += 8 * 60
+                }
+            } else {
+                totalMinutes += 8 * 60
+            }
+        }
+
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+
+        return if (minutes > 0) "${hours}h ${minutes}m" else "${hours}h"
+    }
+
     private fun loadWorkLogs() {
         viewModelScope.launch {
             repository.getAllWorkLogs().collect { workLogs ->
@@ -139,10 +288,10 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                         endTime = workLog.endTime
                     )
                 }
-                // Refresh single-day selection as well
                 _selectedWorkLog.value = _workLogs.value.find {
                     it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == _selectedDate.value
                 }
+                updateMonthlyStats(YearMonth.from(_selectedDate.value))
             }
         }
     }
@@ -167,7 +316,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
 
             if (minutes > 0) "${hours}h ${minutes}m" else "${hours}h"
         } catch (e: Exception) {
-            "8h" // Fallback
+            "8h"
         }
     }
 
@@ -186,3 +335,15 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         }
     }
 }
+
+data class CalendarUiState(
+    val selectedDate: LocalDate = LocalDate.now(),
+    val workLogs: List<WorkLogUi> = emptyList(),
+    val filteredWorkLogs: List<WorkLogUi> = emptyList(),
+    val selectedWorkLog: WorkLogUi? = null,
+    val isMultiSelectMode: Boolean = false,
+    val multiSelectedDates: List<LocalDate> = emptyList(),
+    val activeFilters: List<WorkType> = emptyList(),
+    val searchQuery: String = "",
+    val monthlyStats: MonthlyStats = MonthlyStats()
+)

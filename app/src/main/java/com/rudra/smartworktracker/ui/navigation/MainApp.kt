@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
@@ -104,6 +106,7 @@ import com.rudra.smartworktracker.ui.screens.team.TeamScreen
 import com.rudra.smartworktracker.ui.screens.timer.WorkTimerScreen
 import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
+import com.rudra.smartworktracker.ui.screens.spendadvisor.SpendAdvisorScreen
 import com.rudra.smartworktracker.ui.screens.recurring.RecurringScreen
 import com.rudra.smartworktracker.ui.screens.realitytracker.RealityTrackerScreen
 import com.rudra.smartworktracker.ui.screens.futureimpact.FutureImpactScreen
@@ -135,8 +138,6 @@ fun MainApp() {
         NavigationItem.Focus,
         NavigationItem.MindfulBreak,
         NavigationItem.Habit,
-        NavigationItem.Expense,
-        NavigationItem.Income,
         NavigationItem.Health,
         NavigationItem.Achievements,
         NavigationItem.Calendar,
@@ -144,20 +145,23 @@ fun MainApp() {
         NavigationItem.MonthlyReport,
         NavigationItem.Calculation,
         NavigationItem.FinancialStatement,
+        NavigationItem.Expense,
+        NavigationItem.Income,
         NavigationItem.Savings,
         NavigationItem.Loans,
         NavigationItem.EMI,
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
+        NavigationItem.Recurring,
         NavigationItem.Backup,
         NavigationItem.Settings,
         NavigationItem.Team,
         NavigationItem.Overtime,
         NavigationItem.Scheduler,
         NavigationItem.UserProfile,
-        NavigationItem.Recurring,
         NavigationItem.RealityTracker,
-        NavigationItem.FutureImpact
+        NavigationItem.FutureImpact,
+        NavigationItem.SpendAdvisor
 
     )
 
@@ -563,6 +567,15 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     FutureImpactScreen()
                 }
+                composable(
+                    route = NavigationItem.SpendAdvisor.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    SpendAdvisorScreen()
+                }
                 composable(NavigationItem.UserProfile.route) {
                     ProfileScreen(
                         onNavigateBack = { navController.popBackStack() },
@@ -883,6 +896,13 @@ sealed class NavigationItem(
         title = "Future Self",
         icon = Icons.Default.Psychology,
         description = "Are your actions matching who you want to become?"
+    )
+
+    object SpendAdvisor : NavigationItem(
+        route = "spend_advisor",
+        title = "Spend Advisor",
+        icon = Icons.Default.Recommend,
+        description = "Plan and analyze your future expenses"
     )
 
 

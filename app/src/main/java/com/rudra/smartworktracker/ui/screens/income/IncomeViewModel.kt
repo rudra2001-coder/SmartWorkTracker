@@ -6,9 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.AccountType
-import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Income
-import com.rudra.smartworktracker.data.entity.TransactionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,16 +56,6 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
                 source = source
             )
             db.incomeDao().insertIncome(newIncome)
-
-            val transaction = FinancialTransaction(
-                type = TransactionType.INCOME,
-                amount = amount,
-                source = accountType,
-                destination = null,
-                note = "$description - $category",
-                date = timestamp
-            )
-            db.financialTransactionDao().insertTransaction(transaction)
         }
     }
 }

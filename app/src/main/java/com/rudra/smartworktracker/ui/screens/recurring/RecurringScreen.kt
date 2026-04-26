@@ -98,6 +98,8 @@ import com.rudra.smartworktracker.data.entity.PreferredTime
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringPriority
 import com.rudra.smartworktracker.data.entity.RecurringRule
+import com.rudra.smartworktracker.data.entity.IncomeCategories
+import com.rudra.smartworktracker.data.entity.ExpenseCategories
 import com.rudra.smartworktracker.data.entity.RecurringTransaction
 import com.rudra.smartworktracker.data.entity.RecurringTransactionStatus
 import com.rudra.smartworktracker.data.entity.TransactionType
@@ -963,15 +965,49 @@ fun AddRuleContent(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Category
-        OutlinedTextField(
-            value = category,
-            onValueChange = { category = it },
-            label = { Text("Category") },
-            placeholder = { Text("e.g., Bills, Salary") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+        // Category - Dropdown based on transaction type
+        val categoriesForType = when (transactionType) {
+            TransactionType.INCOME -> IncomeCategories.categories
+            TransactionType.EXPENSE -> ExpenseCategories.categories
+            else -> listOf("Other")
+        }
+        
+        var categoryExpanded by remember { mutableStateOf(false) }
+        val categoryValue = if (category.isEmpty()) "Select Category" else category
+        
+        Text(
+            text = "Category",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
+        ExposedDropdownMenuBox(
+            expanded = categoryExpanded,
+            onExpandedChange = { categoryExpanded = it }
+        ) {
+            OutlinedTextField(
+                value = categoryValue,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = categoryExpanded,
+                onDismissRequest = { categoryExpanded = false }
+            ) {
+                categoriesForType.forEach { cat ->
+                    DropdownMenuItem(
+                        text = { Text(cat) },
+                        onClick = {
+                            category = cat
+                            categoryExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         

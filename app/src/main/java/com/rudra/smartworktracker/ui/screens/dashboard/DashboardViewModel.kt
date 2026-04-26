@@ -40,9 +40,43 @@ class DashboardViewModel(
 
     private fun loadDashboardData() {
         viewModelScope.launch {
-            val today = Calendar.getInstance()
-            val startTime = today.apply { set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
-            val endTime = today.apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); add(Calendar.DATE, -1) }.timeInMillis
+            val calendar = Calendar.getInstance()
+            
+            // Monthly range
+            val startTime = (calendar.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val endTime = (calendar.clone() as Calendar).apply {
+                add(Calendar.MONTH, 1)
+                set(Calendar.DAY_OF_MONTH, 1)
+                add(Calendar.DATE, -1)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+
+            // Today range
+            val todayStart = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val todayEnd = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            
+            val now = System.currentTimeMillis()
 
             val flows = listOf(
                 workLogRepository.getTodayWorkLog(),
@@ -58,7 +92,11 @@ class DashboardViewModel(
                 incomeRepository.getIncomes(1, 50),
                 expenseRepository.getExpenses(1, 50),
                 workLogRepository.getWorkLogs(1, 50),
-                userProfileRepository.userProfile
+                userProfileRepository.userProfile,
+                incomeRepository.getTotalIncomeUpTo(now),
+                expenseRepository.getTotalExpensesUpTo(now),
+                incomeRepository.getTotalIncomeBetween(todayStart, todayEnd),
+                expenseRepository.getTotalExpensesBetween(todayStart, todayEnd)
             )
 
             combine(flows) { array ->
@@ -76,22 +114,13 @@ class DashboardViewModel(
                 val workLogs = array[12] as? List<WorkLog> ?: emptyList()
                 val userProfile = array[13] as? com.rudra.smartworktracker.data.entity.UserProfile
 
-                val dailyIncome = incomes.filter {
-                    val incomeDate = Calendar.getInstance()
-                    incomeDate.timeInMillis = it.timestamp
-                    val now = Calendar.getInstance()
-                    now.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
-                            now.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
-                }.sumOf { it.amount }
+                val allTimeIncome = array[14] as? Double ?: 0.0
+                val allTimeExpense = array[15] as? Double ?: 0.0
+                val todayIncome = array[16] as? Double ?: 0.0
+                val todayExpense = array[17] as? Double ?: 0.0
 
-                val dailyExpense = expenses.filter {
-                    val expenseDate = Calendar.getInstance()
-                    expenseDate.timeInMillis = it.timestamp
-                    val now = Calendar.getInstance()
-                    now.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
-                            now.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
-                }.sumOf { it.amount }
-
+                val dailyIncome = todayIncome
+                val dailyExpense = todayExpense
                 val dailySavings = dailyIncome - dailyExpense
 
                 val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
@@ -106,6 +135,7 @@ class DashboardViewModel(
                 }
 
                 val netSavings = totalIncome - totalExpense
+                val allTimeNetSavings = allTimeIncome - allTimeExpense
                 val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
                 val incomesByCategoryMap = incomesByCategory.associate { it.category to it.total }
 
@@ -118,13 +148,16 @@ class DashboardViewModel(
                         totalIncome = totalIncome,
                         totalExpense = totalExpense,
                         totalSavings = totalSavings,
-                        netSavings = netSavings,
+                        netSavings = allTimeNetSavings,
+                        monthlyNetSavings = netSavings,
                         dailyIncome = dailyIncome,
                         dailyExpense = dailyExpense,
                         dailySavings = dailySavings,
                         totalMealCost = monthlyMealExpenses,
                         overtimeHours = overtimeHours,
-                        overtimeEarnings = overtimeEarnings
+                        overtimeEarnings = overtimeEarnings,
+                        allTimeIncome = allTimeIncome,
+                        allTimeExpense = allTimeExpense
                     ),
                     expensesByCategory = expensesByCategoryMap,
                     incomesByCategory = incomesByCategoryMap,

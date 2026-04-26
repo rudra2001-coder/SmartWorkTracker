@@ -23,11 +23,21 @@ data class Expense(
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
 
-enum class ExpenseCategory {
-    MEAL,
-    OTHER,
-    TRANSPORT,
-    ENTERTAINMENT,
-    BILLS,
-    SHOPPING
+enum class ExpenseCategory(val displayName: String) {
+    MEAL("Food & Dining"),
+    OTHER("Other"),
+    TRANSPORT("Transport"),
+    ENTERTAINMENT("Entertainment"),
+    BILLS("Bills & Utilities"),
+    SHOPPING("Shopping");
+
+    val color: androidx.compose.ui.graphics.Color
+        get() = when (this) {
+            MEAL -> androidx.compose.ui.graphics.Color(0xFFFF9800)
+            TRANSPORT -> androidx.compose.ui.graphics.Color(0xFF2196F3)
+            SHOPPING -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
+            ENTERTAINMENT -> androidx.compose.ui.graphics.Color(0xFFE91E63)
+            BILLS -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
+            OTHER -> androidx.compose.ui.graphics.Color(0xFF9E9E9E)
+        }
 }

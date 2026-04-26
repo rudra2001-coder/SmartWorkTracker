@@ -50,7 +50,7 @@ fun FinancialStatementScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showDatePickerRange by remember { mutableStateOf(false) }
-    var transactionToDelete by remember { mutableStateOf<FinancialTransaction?>(null) }
+    var transactionToDelete by remember { mutableStateOf<UnifiedTransaction?>(null) }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -63,10 +63,12 @@ fun FinancialStatementScreen(
         AlertDialog(
             onDismissRequest = { transactionToDelete = null },
             title = { Text("Delete Transaction") },
-            text = { Text("Are you sure you want to delete this transaction?") },
+            text = { 
+                Text("Are you sure you want to delete this transaction? This will remove both the debit and credit entries.")
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteTransaction(transactionToDelete!!)
+                    transactionToDelete?.let { viewModel.deleteTransaction(it) }
                     transactionToDelete = null
                 }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -142,19 +144,18 @@ fun FinancialStatementScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item {
                         Text(
-                            text = if (uiState.filter == TransactionFilter.ALL) "Showing Default (50 Income + 50 Expense)" else "Showing Filtered Results",
+                            text = "Double-Entry Ledger (Debit & Credit)",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
                     items(items = uiState.transactions, key = { it.id }) { transaction ->
-                        TransactionItem(
+                        DoubleEntryTransactionItem(
                             transaction = transaction,
-                            onEdit = onEditTransaction,
-                            onDelete = { transactionToDelete = it }
+                            onDelete = { transactionToDelete = transaction }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
@@ -186,7 +187,8 @@ fun FilterSection(
             }
         }
 
-        if (selectedFilter == TransactionFilter.DATE_RANGE && startDate != null && endDate != null) {
+        // Show date range indicator when dates are set (independent of filter type)
+        if (startDate != null && endDate != null) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(8.dp),
@@ -288,85 +290,122 @@ fun SummaryStat(label: String, amount: Double, color: Color) {
 }
 
 @Composable
-fun TransactionItem(
-    transaction: FinancialTransaction,
-    onEdit: (FinancialTransaction) -> Unit,
-    onDelete: (FinancialTransaction) -> Unit
+fun DoubleEntryTransactionItem(
+    transaction: UnifiedTransaction,
+    onDelete: (UnifiedTransaction) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
+    
+    val isDebit = transaction.entryType == EntryType.DEBIT
+    val isIncomeType = transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE
+    val accentColor = if (isIncomeType) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val entryLabel = if (isDebit) "DR" else "CR"
+    val entryLabelColor = if (isDebit) Color(0xFF1976D2) else Color(0xFF388E3C)
 
     Card(
         onClick = { expanded = !expanded },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDebit) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+            else 
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(
-                        if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                    ),
-                    contentAlignment = Alignment.Center
+                // Entry Type Badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = entryLabelColor.copy(alpha = 0.2f),
+                    modifier = Modifier.width(28.dp).height(24.dp)
                 ) {
-                    Icon(
-                        imageVector = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                        contentDescription = null,
-                        tint = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = transaction.note.ifEmpty { transaction.type.name.replace("_", " ") },
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = formatTransactionDate(transaction.date),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = formatCurrency(transaction.amount),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (transaction.type == TransactionType.INCOME || transaction.type == TransactionType.LOAN_RECEIVE)
-                        MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                )
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(20.dp))
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Edit") },
-                            onClick = { onEdit(transaction); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = { onDelete(transaction); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = entryLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = entryLabelColor
                         )
                     }
                 }
-                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.rotate(rotation))
-            }
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    DetailRow("Source", transaction.source.name)
-                    if (transaction.destination != null) DetailRow("Destination", transaction.destination.name)
-                    DetailRow("Transaction Type", transaction.type.name.replace("_", " "))
-                    if (transaction.note.isNotEmpty()) DetailRow("Note", transaction.note)
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Account Info
+                Column(modifier = Modifier.weight(1f)) {
+                    Row {
+                        if (transaction.debitAccount != null) {
+                            Text(
+                                text = transaction.debitAccount,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (transaction.debitAccount != null && transaction.creditAccount != null) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.CompareArrows,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp).padding(horizontal = 4.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (transaction.creditAccount != null) {
+                            Text(
+                                text = transaction.creditAccount,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Text(
+                        text = transaction.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Row {
+                        Text(
+                            text = transaction.category,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accentColor
+                        )
+                        Text(
+                            text = " • ${formatTransactionDate(transaction.date)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = " (${transaction.sourceType.name.lowercase().replaceFirstChar { it.uppercase() }})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Amount
+                Text(
+                    text = formatCurrency(transaction.amount),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor
+                )
+                
+                // Delete button (only show for non-credit entries to avoid double delete)
+                if (!transaction.id.endsWith("_credit")) {
+                    IconButton(onClick = { onDelete(transaction) }, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.Delete, 
+                            contentDescription = "Delete", 
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(32.dp))
                 }
             }
         }
@@ -385,10 +424,22 @@ fun DetailRow(label: String, value: String) {
 fun IncomeExpenseBar(income: Double, expense: Double, modifier: Modifier = Modifier) {
     val total = (income + expense).coerceAtLeast(1.0)
     val incomeRatio = (income / total).toFloat()
+    val expenseRatio = 1f - incomeRatio
 
     Row(modifier = modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(incomeRatio).background(MaterialTheme.colorScheme.primary))
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth().background(MaterialTheme.colorScheme.error))
+        // Use weight-based layout to prevent overlap
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(incomeRatio.coerceAtLeast(0.01f))
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(expenseRatio.coerceAtLeast(0.01f))
+                .background(MaterialTheme.colorScheme.error)
+        )
     }
 }
 
@@ -398,6 +449,23 @@ fun formatTransactionDate(timestamp: Long): String {
 
 @Composable
 fun formatCurrency(amount: Double): String {
-    val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
-    return currencyFormat.format(amount).replace("$", "৳")
+    // Use proper Bangladeshi Taka currency format
+    val currencyFormat = remember { 
+        NumberFormat.getCurrencyInstance(Locale("bn", "BD")).apply {
+            maximumFractionDigits = 2
+            minimumFractionDigits = 2
+        } 
+    }
+    return currencyFormat.format(amount)
+}
+
+/**
+ * Non-composable currency formatter for use in non-Compose contexts
+ */
+fun formatCurrencyStatic(amount: Double): String {
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("bn", "BD")).apply {
+        maximumFractionDigits = 2
+        minimumFractionDigits = 2
+    }
+    return currencyFormat.format(amount)
 }

@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.compose.ui.graphics.Color
 import com.rudra.smartworktracker.data.entity.BaseEntity
 import com.rudra.smartworktracker.data.entity.SyncStatus
 import java.util.UUID
@@ -28,6 +29,33 @@ data class Expense(
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
 
-enum class ExpenseCategory {
-    MEAL, OTHER, TRANSPORT, ENTERTAINMENT, BILLS, SHOPPING
+enum class ExpenseCategory(val displayName: String) {
+    MEAL("Food & Dining"),
+    TRANSPORT("Transportation"),
+    SHOPPING("Shopping"),
+    ENTERTAINMENT("Entertainment"),
+    BILLS("Bills & Utilities"),
+    HEALTHCARE("Healthcare"),
+    EDUCATION("Education"),
+    PERSONAL_CARE("Personal Care"),
+    GIFTS("Gifts"),
+    TRAVEL("Travel"),
+    SUBSCRIPTIONS("Subscriptions"),
+    OTHER("Other");
+
+    val color: Color
+        get() = when (this) {
+            MEAL -> Color(0xFFFF9800)
+            TRANSPORT -> Color(0xFF2196F3)
+            SHOPPING -> Color(0xFF9C27B0)
+            ENTERTAINMENT -> Color(0xFFE91E63)
+            BILLS -> Color(0xFF4CAF50)
+            HEALTHCARE -> Color(0xFF00BCD4)
+            EDUCATION -> Color(0xFF3F51B5)
+            PERSONAL_CARE -> Color(0xFF009688)
+            GIFTS -> Color(0xFFE91E63)
+            TRAVEL -> Color(0xFF00BCD4)
+            SUBSCRIPTIONS -> Color(0xFF9C27B0)
+            OTHER -> Color(0xFF9E9E9E)
+        }
 }

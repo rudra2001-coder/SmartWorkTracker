@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,24 +18,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -70,7 +78,11 @@ fun SavingsScreen() {
     val uiState by viewModel.uiState.collectAsState()
 
     var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
     var showHistory by remember { mutableStateOf(false) }
+    var selectedFilter by remember { mutableStateOf(TimeRange.ALL) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var isWithdrawal by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -96,7 +108,7 @@ fun SavingsScreen() {
                     ) {
                         Icon(Icons.Default.History, contentDescription = "History")
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(if (showHistory) "Hide History" else "Show History")
+                        Text(if (showHistory) "Hide" else "Show")
                     }
                 }
             )
@@ -117,87 +129,144 @@ fun SavingsScreen() {
                 // Current Savings with animation
                 AnimatedSavingsCard(savings = uiState.savings)
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stats Cards
+                SavingsStatsCards(stats = uiState.stats)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Filter Chips
+                FilterChips(
+                    selectedRange = selectedFilter,
+                    onRangeSelected = {
+                        selectedFilter = it
+                        viewModel.filterByTimeRange(it)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Savings Chart
-                SavingsHistoryChart(history = uiState.savingsHistory)
+                SavingsHistoryChart(history = uiState.filteredHistory.ifEmpty { uiState.savingsHistory })
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Input Section
-                Column(
+                // Add/Withdraw Button
+                Button(
+                    onClick = { showAddDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    OutlinedTextField(
-                        value = amount,
-                        onValueChange = {
-                            if (it.isEmpty() || it.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
-                                amount = it
-                            }
-                        },
-                        label = { Text("Amount (BDT)") },
-                        placeholder = { Text("Enter amount...") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.addToSavings(amount.toDoubleOrNull() ?: 0.0)
-                                amount = ""
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            enabled = amount.isNotEmpty() && amount.toDoubleOrNull() ?: 0.0 > 0
-                        ) {
-                            Icon(Icons.Default.ArrowUpward, contentDescription = "Add to Savings")
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Add")
-                        }
-                        Button(
-                            onClick = {
-                                viewModel.withdrawFromSavings(amount.toDoubleOrNull() ?: 0.0)
-                                amount = ""
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            ),
-                            enabled = amount.isNotEmpty() && amount.toDoubleOrNull() ?: 0.0 > 0
-                        ) {
-                            Icon(Icons.Default.ArrowDownward, contentDescription = "Withdraw from Savings")
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Withdraw")
-                        }
-                    }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Add Transaction")
                 }
 
-                // Quick Action Buttons
                 Spacer(modifier = Modifier.height(16.dp))
-                QuickAmountButtons { amount = it.toString() }
 
                 // History List
-                if (showHistory && uiState.savingsHistory.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    SavingsHistoryList(history = uiState.savingsHistory)
+                if (showHistory && uiState.filteredHistory.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Transactions",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        androidx.compose.material3.IconButton(onClick = { viewModel.toggleSortOrder() }) {
+                            Icon(
+                                if (uiState.sortOrder == SortOrder.DESCENDING)
+                                    Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                                contentDescription = "Sort"
+                            )
+                        }
+                    }
+                    SavingsHistoryList(
+                        history = uiState.filteredHistory,
+                        onDelete = { savings -> viewModel.deleteTransaction(savings) }
+                    )
+                }
+            }
+        }
+
+        // Add Transaction Dialog
+        if (showAddDialog) {
+            AddTransactionDialog(
+                onDismiss = { showAddDialog = false },
+                onAdd = { amt: Double, nte: String, isWtd: Boolean ->
+                    if (isWtd) {
+                        viewModel.withdrawFromSavings(amt, nte)
+                    } else {
+                        viewModel.addToSavings(amt, nte)
+                    }
+                    showAddDialog = false
+                }
+            )
+        }
+
+        // Error/Success Messages
+        uiState.errorMessage?.let { error ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                androidx.compose.material3.Snackbar(
+                    action = {
+                        androidx.compose.material3.TextButton(onClick = { viewModel.clearError() }) {
+                            Text("Dismiss")
+                        }
+                    }
+                ) {
+                    Text(error)
+                }
+            }
+        }
+
+        uiState.successMessage?.let { success ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                androidx.compose.material3.Snackbar(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(success)
                 }
             }
         }
     }
 }
 
+@Composable
+fun FilterChips(
+    selectedRange: TimeRange,
+    onRangeSelected: (TimeRange) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TimeRange.entries.forEach { range ->
+            androidx.compose.material3.FilterChip(
+                selected = selectedRange == range,
+                onClick = { onRangeSelected(range) },
+                label = { Text(range.name.replace("_", " ")) }
+            )
+        }
+    }
+}
 @Composable
 fun AnimatedSavingsCard(savings: Double) {
     val animatedSavings by animateFloatAsState(
@@ -395,7 +464,10 @@ fun QuickAmountButtons(onAmountSelected: (Double) -> Unit) {
 }
 
 @Composable
-fun SavingsHistoryList(history: List<Savings>) {
+fun SavingsHistoryList(
+    history: List<Savings>,
+    onDelete: (Savings) -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -416,7 +488,7 @@ fun SavingsHistoryList(history: List<Savings>) {
                 modifier = Modifier.weight(1f)
             ) {
                 items(history.reversed()) { savings ->
-                    SavingsHistoryItem(savings = savings)
+                    SavingsHistoryItem(savings = savings, onDelete = onDelete)
                 }
             }
         }
@@ -424,7 +496,7 @@ fun SavingsHistoryList(history: List<Savings>) {
 }
 
 @Composable
-fun SavingsHistoryItem(savings: Savings) {
+fun SavingsHistoryItem(savings: Savings, onDelete: (Savings) -> Unit = {}) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
 
     Card(
@@ -441,25 +513,166 @@ fun SavingsHistoryItem(savings: Savings) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (savings.amount >= 0) "Deposit" else "Withdrawal",
+                    text = savings.note.ifEmpty { if (savings.amount >= 0) "Deposit" else "Withdrawal" },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = dateFormat.format(Date(savings.timestamp)),
+                    text = "${dateFormat.format(Date(savings.timestamp))} • ${savings.category}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
             Text(
-                text = String.format("%.2f BDT", savings.amount),
+                text = String.format("৳ %.2f", kotlin.math.abs(savings.amount)),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = if (savings.amount >= 0) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.error
             )
+            if (onDelete != {}) {
+                IconButton(onClick = { onDelete(savings) }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+fun SavingsStatsCards(stats: SavingsStats) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Deposits",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "৳ ${String.format("%.0f", stats.totalDeposits)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Withdrawals",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "৳ ${String.format("%.0f", stats.totalWithdrawals)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Transactions",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "${stats.transactionCount}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AddTransactionDialog(
+    onDismiss: () -> Unit,
+    onAdd: (Double, String, Boolean) -> Unit
+) {
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var isWithdrawal by remember { mutableStateOf(false) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isWithdrawal) "Withdraw Money" else "Add Money") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = {
+                        if (it.isEmpty() || it.matches(Regex("^\\d*(\\.\\d{0,2})?$"))) {
+                            amount = it
+                        }
+                    },
+                    label = { Text("Amount (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    androidx.compose.material3.FilterChip(
+                        selected = !isWithdrawal,
+                        onClick = { isWithdrawal = false },
+                        label = { Text("Deposit") }
+                    )
+                    androidx.compose.material3.FilterChip(
+                        selected = isWithdrawal,
+                        onClick = { isWithdrawal = true },
+                        label = { Text("Withdrawal") }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    amount.toDoubleOrNull()?.let { validAmount ->
+                        onAdd(validAmount, note, isWithdrawal)
+                    }
+                },
+                enabled = amount.toDoubleOrNull() ?: 0.0 > 0
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
