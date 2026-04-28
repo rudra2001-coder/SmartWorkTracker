@@ -87,12 +87,14 @@ fun AllFunsionScreen(navController: NavController) {
 
     val quickAccessFeatures = remember {
         listOf(
-            NavigationItem.Team,
+            NavigationItem.Accounts,
+            NavigationItem.Transfer,
             NavigationItem.AddEntry,
             NavigationItem.WorkTimer,
             NavigationItem.Focus,
             NavigationItem.Calendar,
-            NavigationItem.Analytics
+            NavigationItem.Analytics,
+            NavigationItem.Team
         )
     }
     val featureSections = remember {
@@ -115,14 +117,15 @@ fun AllFunsionScreen(navController: NavController) {
             ),
             FeatureSection(
                 "Financials", listOf(
-                    NavigationItem.FinancialStatement,
+                    NavigationItem.Accounts,
+                    NavigationItem.Transfer,
                     NavigationItem.Income,
                     NavigationItem.Expense,
                     NavigationItem.Savings,
                     NavigationItem.Loans,
                     NavigationItem.EMI,
                     NavigationItem.CreditCard,
-                    NavigationItem.Transfer,
+                    NavigationItem.FinancialStatement,
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation,

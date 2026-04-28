@@ -49,7 +49,8 @@ import com.rudra.smartworktracker.model.*
         DailyCheckIn::class,
         ConsequenceDebt::class,
         WeeklyReport::class,
-        UserHistory::class
+        UserHistory::class,
+        Account::class
     ],
     views = [
         MonthlySummary::class
@@ -94,6 +95,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun consequenceDebtDao(): ConsequenceDebtDao
     abstract fun weeklyReportDao(): WeeklyReportDao
     abstract fun userHistoryDao(): UserHistoryDao
+    abstract fun accountDao(): AccountDao
 
     companion object {
         @Volatile

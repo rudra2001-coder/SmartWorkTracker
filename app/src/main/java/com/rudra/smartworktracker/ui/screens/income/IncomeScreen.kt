@@ -69,6 +69,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.IncomeCategories
+import com.rudra.smartworktracker.data.entity.Account
+import com.rudra.smartworktracker.data.entity.displayName
+import com.rudra.smartworktracker.data.entity.icon
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -80,13 +83,18 @@ fun IncomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val viewModel: IncomeViewModel = viewModel(factory = IncomeViewModelFactory(context))
+    val application = context.applicationContext as android.app.Application
+    val viewModel: IncomeViewModel = viewModel(factory = IncomeViewModelFactory(application))
     var incomeInput by remember { mutableStateOf(TextFieldValue("")) }
     var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val savedIncome by viewModel.income.collectAsState()
     val recentIncomes by viewModel.recentIncomes.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     var selectedDate by remember { mutableStateOf<Date?>(null) }
+    var selectedAccount by remember(accounts) { 
+        mutableStateOf(accounts.find { it.name == "Cash" } ?: accounts.firstOrNull()) 
+    }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val incomeCategories = IncomeCategories.categories
@@ -94,7 +102,7 @@ fun IncomeScreen(
     var selectedCategory by remember { mutableStateOf(incomeCategories[0]) }
     val accountTypes = AccountType.values()
     var accountTypeExpanded by remember { mutableStateOf(false) }
-    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
+    var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -339,57 +347,72 @@ fun IncomeScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    ExposedDropdownMenuBox(
-                        expanded = accountTypeExpanded,
-                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            readOnly = true,
-                            value = selectedAccountType.name,
-                            onValueChange = {},
-                            label = {
-                                Text("Select account type")
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.AccountBalance,
-                                    contentDescription = "Account Type",
-                                    tint = Color(0xFF6C63FF)
-                                )
-                            },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
-                            },
-                            colors = textFieldColors,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = accountTypeExpanded,
-                            onDismissRequest = { accountTypeExpanded = false },
-                            modifier = Modifier.background(Color.White)
+                    Text(
+                        text = "Select Account",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    if (accounts.isNotEmpty()) {
+                        var accountExpanded by remember { mutableStateOf(false) }
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = accountExpanded,
+                            onExpandedChange = { accountExpanded = !accountExpanded },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            accountTypes.forEach { selectionOption ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            selectionOption.name,
-                                            color = Color(0xFF4A5568)
-                                        )
-                                    },
-                                    onClick = {
-                                        selectedAccountType = selectionOption
-                                        accountTypeExpanded = false
-                                    },
-                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                                )
+                            OutlinedTextField(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                readOnly = true,
+                                value = selectedAccount?.let { it.nickname ?: it.name } ?: "Select Account",
+                                onValueChange = {},
+                                label = {
+                                    Text("Select Account")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountBalance,
+                                        contentDescription = "Account",
+                                        tint = Color(0xFF6C63FF)
+                                    )
+                                },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
+                                },
+                                colors = textFieldColors,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = accountExpanded,
+                                onDismissRequest = { accountExpanded = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                accounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(account.nickname ?: account.name, color = Color(0xFF4A5568))
+                                                Text("Balance: ৳ ${account.balance.toInt()}", 
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.Gray)
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedAccount = account
+                                            accountExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    )
+                                }
                             }
                         }
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Date Field
                     Text(
@@ -434,10 +457,12 @@ fun IncomeScreen(
                             category = selectedCategory,
                             source = "Primary Job",
                             accountType = selectedAccountType,
-                            timestamp = selectedDate?.time ?: System.currentTimeMillis()
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis(),
+                            selectedAccountId = selectedAccount?.id
                         )
                         incomeInput = TextFieldValue("")
                         descriptionInput = TextFieldValue("")
+                        selectedAccount = null
                         errorMessage = null
                     } else {
                         errorMessage = "Please enter a valid positive number"

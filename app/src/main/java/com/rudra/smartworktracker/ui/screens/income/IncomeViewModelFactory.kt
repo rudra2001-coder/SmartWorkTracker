@@ -1,5 +1,6 @@
 package com.rudra.smartworktracker.ui.screens.income
 
+import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -9,8 +10,8 @@ class IncomeViewModelFactory(private val context: Context) : ViewModelProvider.F
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(IncomeViewModel::class.java)) {
-            val database = AppDatabase.getDatabase(context)
-            return IncomeViewModel(database) as T
+            val application = context.applicationContext as Application
+            return IncomeViewModel(application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddRoad
 import androidx.compose.material.icons.filled.Analytics
@@ -110,6 +111,8 @@ import com.rudra.smartworktracker.ui.screens.spendadvisor.SpendAdvisorScreen
 import com.rudra.smartworktracker.ui.screens.recurring.RecurringScreen
 import com.rudra.smartworktracker.ui.screens.realitytracker.RealityTrackerScreen
 import com.rudra.smartworktracker.ui.screens.futureimpact.FutureImpactScreen
+import com.rudra.smartworktracker.ui.screens.accounts.AccountsScreen
+import com.rudra.smartworktracker.ui.screens.accounts.AccountDetailScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -152,6 +155,7 @@ fun MainApp() {
         NavigationItem.EMI,
         NavigationItem.CreditCard,
         NavigationItem.Transfer,
+        NavigationItem.Accounts,
         NavigationItem.Recurring,
         NavigationItem.Backup,
         NavigationItem.Settings,
@@ -511,6 +515,35 @@ popExitTransition = { defaultPopExitTransition() }
                 ) {
                     TransferScreen()
                 }
+                composable(
+                    route = NavigationItem.Accounts.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    AccountsScreen(
+                        onNavigateToTransfer = { navController.navigate(NavigationItem.Transfer.route) },
+                        onNavigateToAddAccount = { },
+                        onNavigateToAccountDetail = { accountId ->
+                            navController.navigate("${NavigationItem.AccountDetail.route}/$accountId")
+                        }
+                    )
+                }
+                composable(
+                    route = NavigationItem.AccountDetail.route + "/{accountId}",
+                    arguments = listOf(navArgument("accountId") { type = NavType.LongType }),
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) { backStackEntry ->
+                    val accountId = backStackEntry.arguments?.getLong("accountId") ?: 0L
+                    AccountDetailScreen(
+                        accountId = accountId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
                  composable(
                     route = NavigationItem.Team.route,
                     enterTransition = { defaultEnterTransition() },
@@ -857,6 +890,18 @@ sealed class NavigationItem(
         title = "Transfer",
         icon = Icons.Default.SwapHoriz,
         description = "Move money between accounts"
+    )
+    object Accounts : NavigationItem(
+        route = "accounts",
+        title = "Accounts",
+        icon = Icons.Default.AccountBalance,
+        description = "Manage all your accounts"
+    )
+    object AccountDetail : NavigationItem(
+        route = "account_detail",
+        title = "Account Detail",
+        icon = Icons.Default.AccountBalance,
+        description = "View account details"
     )
     object Team : NavigationItem(
         route = "team",

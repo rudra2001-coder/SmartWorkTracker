@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.model.ExpenseCategory
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -97,10 +98,14 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var showDatePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val recentExpenses by viewModel.recentExpenses.collectAsState()
-
+    val accounts by viewModel.accounts.collectAsState()
+    var selectedAccount by remember(accounts) { 
+        mutableStateOf(accounts.find { it.name == "Cash" } ?: accounts.firstOrNull()) 
+    }
+    
     val accountTypes = AccountType.values()
     var accountTypeExpanded by remember { mutableStateOf(false) }
-    var selectedAccountType by remember { mutableStateOf(accountTypes[0]) }
+    var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
     // Premium gradient colors
     val primaryGradient = Brush.horizontalGradient(
@@ -382,57 +387,72 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    ExposedDropdownMenuBox(
-                        expanded = accountTypeExpanded,
-                        onExpandedChange = { accountTypeExpanded = !accountTypeExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            readOnly = true,
-                            value = selectedAccountType.name,
-                            onValueChange = {},
-                            label = {
-                                Text("Select account type")
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.AccountBalance,
-                                    contentDescription = "Account Type",
-                                    tint = Color(0xFFFF6B6B)
-                                )
-                            },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountTypeExpanded)
-                            },
-                            colors = textFieldColors,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = accountTypeExpanded,
-                            onDismissRequest = { accountTypeExpanded = false },
-                            modifier = Modifier.background(Color.White)
+                    Text(
+                        text = "Select Account",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF4A5568)
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    if (accounts.isNotEmpty()) {
+                        var accountExpanded by remember { mutableStateOf(false) }
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = accountExpanded,
+                            onExpandedChange = { accountExpanded = !accountExpanded },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            accountTypes.forEach { selectionOption ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            selectionOption.name,
-                                            color = Color(0xFF4A5568)
-                                        )
-                                    },
-                                    onClick = {
-                                        selectedAccountType = selectionOption
-                                        accountTypeExpanded = false
-                                    },
-                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                                )
+                            OutlinedTextField(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                readOnly = true,
+                                value = selectedAccount?.nickname ?: selectedAccount?.name ?: "Select Account",
+                                onValueChange = {},
+                                label = {
+                                    Text("Select Account (Optional)")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountBalance,
+                                        contentDescription = "Account",
+                                        tint = Color(0xFFFF6B6B)
+                                    )
+                                },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
+                                },
+                                colors = textFieldColors,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = accountExpanded,
+                                onDismissRequest = { accountExpanded = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                accounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(account.nickname ?: account.name, color = Color(0xFF4A5568))
+                                                Text("Balance: ৳ ${account.balance.toInt()}", 
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.Gray)
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedAccount = account
+                                            accountExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    )
+                                }
                             }
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Merchant Field
                     Text(
@@ -536,11 +556,13 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                             merchant = merchant.ifBlank { null },
                             notes = notes.ifBlank { null },
                             accountType = selectedAccountType,
-                            timestamp = selectedDate?.time ?: System.currentTimeMillis()
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis(),
+                            selectedAccountId = selectedAccount?.id
                         )
                         amount = ""
                         merchant = ""
                         notes = ""
+                        selectedAccount = null
                         // Show success toast
                         Toast.makeText(context, "✓ Expense Saved Successfully", Toast.LENGTH_SHORT).show()
                     } else {
