@@ -1,6 +1,7 @@
 package com.rudra.smartworktracker.ui.screens.creditcard
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,7 +40,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import com.rudra.smartworktracker.data.entity.CreditCard
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,19 +131,35 @@ fun CreditCardItem(card: CreditCard, onAddTransactionClick: () -> Unit, onPayBil
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("${card.cardName} - **** ${card.cardNumber}", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Limit: ${card.cardLimit}")
-            Text("Balance: ${card.currentBalance}")
-            Text("Statement Date: ${card.statementDate}th")
-            Text("Due Date: ${card.dueDate}th")
-            Spacer(modifier = Modifier.height(8.dp))
-            Row {
-                Button(onClick = onAddTransactionClick) { Text("Add Transaction") }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = onPayBillClick) { Text("Pay Bill") }
+        Column {
+            Surface(
+                modifier = Modifier.fillMaxWidth().background(brush = Brush.horizontalGradient(listOf(GoldenAmber, CoralRed)), shape = CardShape),
+                shape = CardShape
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("${card.cardName} - **** ${card.cardNumber}", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Limit: ${card.cardLimit}", color = Color.White)
+                    Text("Balance: ${card.currentBalance}", color = Color.White)
+                    Text("Statement Date: ${card.statementDate}th", color = Color.White)
+                    Text("Due Date: ${card.dueDate}th", color = Color.White)
+                }
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth().background(brush = Brush.horizontalGradient(listOf(CoralRed, EmeraldGreen)), shape = ChipShape),
+                shape = ChipShape
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Button(onClick = onAddTransactionClick) { Text("Add Transaction") }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Button(onClick = onPayBillClick) { Text("Pay Bill") }
+                }
             }
         }
     }

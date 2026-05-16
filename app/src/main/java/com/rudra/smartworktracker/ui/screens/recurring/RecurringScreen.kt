@@ -79,6 +79,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -114,6 +115,16 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -271,80 +282,159 @@ fun RecurringHeader(
     totalIncomeThisMonth: Double,
     totalExpensesThisMonth: Double
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-        )
-    )
-    
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(gradient)
-                .padding(20.dp)
+                .shadow(6.dp, CardShape, clip = false),
+            shape = CardShape,
+            elevation = CardDefaults.cardElevation(0.dp)
         ) {
-            Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(VioletPurple, Color(0xFF67E8F9))))
+                    .padding(20.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Recurring Transactions",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Repeat,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        StatItem(
+                            label = "Active Rules",
+                            value = activeRulesCount.toString(),
+                            icon = Icons.Default.Schedule
+                        )
+                        StatItem(
+                            label = "Upcoming",
+                            value = upcomingTransactionsCount.toString(),
+                            icon = Icons.Default.CalendarMonth
+                        )
+                    }
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(6.dp, CardShape, clip = false),
+            shape = CardShape,
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(EmeraldGreen, SapphireBlue)))
+                    .padding(16.dp)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AttachMoney,
+                            contentDescription = "Income",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Recurring Income",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "$${String.format("%.2f", totalIncomeThisMonth)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                     Text(
-                        text = "Recurring Transactions",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        text = "/month",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(6.dp, CardShape, clip = false),
+            shape = CardShape,
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(CoralRed, GoldenAmber)))
+                    .padding(16.dp)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    StatItem(
-                        label = "Active Rules",
-                        value = activeRulesCount.toString(),
-                        icon = Icons.Default.Schedule
-                    )
-                    StatItem(
-                        label = "Upcoming",
-                        value = upcomingTransactionsCount.toString(),
-                        icon = Icons.Default.CalendarMonth
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    StatItem(
-                        label = "Income/Month",
-                        value = "$${String.format("%.2f", totalIncomeThisMonth)}",
-                        icon = Icons.Default.AttachMoney,
-                        valueColor = Color(0xFF4CAF50)
-                    )
-                    StatItem(
-                        label = "Expenses/Month",
-                        value = "$${String.format("%.2f", totalExpensesThisMonth)}",
-                        icon = Icons.Default.Savings,
-                        valueColor = Color(0xFFFF5252)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Savings,
+                            contentDescription = "Expenses",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Recurring Expenses",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "$${String.format("%.2f", totalExpensesThisMonth)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "/month",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -447,8 +537,11 @@ fun RuleCard(
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -664,8 +757,11 @@ fun TransactionItem(
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -780,7 +876,11 @@ fun CalendarTransactionItem(transaction: RecurringTransaction) {
     val dateFormat = remember { SimpleDateFormat("EEE, MMM dd", Locale.getDefault()) }
     
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -1730,8 +1830,11 @@ fun HistoryTab(
         } else {
             items(executionHistory) { execution ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(6.dp, CardShape, clip = false),
+                    shape = CardShape,
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(
                         modifier = Modifier

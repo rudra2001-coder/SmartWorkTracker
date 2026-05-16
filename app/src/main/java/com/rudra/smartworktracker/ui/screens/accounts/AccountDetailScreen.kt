@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.ui.screens.accounts
 
 import android.app.Application
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,7 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,6 +26,16 @@ import com.rudra.smartworktracker.data.entity.displayName
 import com.rudra.smartworktracker.data.entity.icon
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,39 +109,46 @@ fun AccountDetailScreen(
 @Composable
 fun AccountBalanceCard(account: Account) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxWidth().background(
+                brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue))
+            )
         ) {
-            Text(
-                text = account.provider.icon(),
-                style = MaterialTheme.typography.displayLarge
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = account.nickname ?: account.name,
-                style = MaterialTheme.typography.titleLarge
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "৳ ${String.format(Locale.getDefault(), "%,.0f", account.balance)}",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = account.provider.icon(),
+                    style = MaterialTheme.typography.displayLarge
                 )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Last updated: Just now",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = account.nickname ?: account.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "৳ ${String.format(Locale.getDefault(), "%,.0f", account.balance)}",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Last updated: Just now",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
@@ -158,45 +179,70 @@ fun QuickActionsRow(account: Account) {
 
 @Composable
 fun QuickActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp)
+    Card(
+        modifier = Modifier.shadow(4.dp, ChipShape, clip = false).clickable(onClick = onClick),
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        IconButton(onClick = onClick) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.primary
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp)
+                    .background(
+                        brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
             )
         }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall
-        )
     }
 }
 
 @Composable
 fun BalanceHistoryChart(history: List<BalanceHistoryItem>) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = "📊 Balance History (Last 7 days)",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue)),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.TrendingUp, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    "Balance History (Last 7 days)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             
             Row(
@@ -256,17 +302,34 @@ fun BalanceHistoryChart(history: List<BalanceHistoryItem>) {
 @Composable
 fun RecentTransactionsSection() {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = "🧾 Recent Transactions",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Receipt, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    "Recent Transactions",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            )
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             val transactions = listOf(

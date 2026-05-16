@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +38,16 @@ import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.displayName
 import com.rudra.smartworktracker.data.entity.icon
 import com.rudra.smartworktracker.engine.SmartAlert
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,44 +203,79 @@ fun NetWorthCard(netWorth: Double) {
     val greeting = getGreeting()
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        shape = RoundedCornerShape(16.dp)
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
+        Box(
+            modifier = Modifier.fillMaxWidth().background(
+                brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue))
+            )
         ) {
-            Text(
-                text = greeting,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Total Net Worth",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
-            Text(
-                text = "৳ ${formatAmount(netWorth)}",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Total Net Worth",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+                Text(
+                    text = "৳ ${formatAmount(netWorth)}",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White
+                )
+            }
         }
     }
 }
 
 @Composable
 fun SmartAlertsSection(alerts: List<SmartAlert>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        alerts.take(2).forEach { alert ->
-            AlertItem(alert = alert)
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(GoldenAmber, CoralRed)),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Notifications, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    "Smart Alerts",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            alerts.take(2).forEach { alert ->
+                AlertItem(alert = alert)
+            }
         }
     }
 }
@@ -259,11 +306,12 @@ fun AlertItem(alert: SmartAlert) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().shadow(4.dp, ChipShape, clip = false),
         colors = CardDefaults.cardColors(
             containerColor = color.copy(alpha = 0.1f)
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -291,7 +339,9 @@ fun WalletSection(
     onDeleteClick: (Account) -> Unit
 ) {
     AccountSection(
-        title = "💳 WALLETS",
+        title = "WALLETS",
+        icon = Icons.Default.AccountBalanceWallet,
+        gradientColors = listOf(EmeraldGreen, SapphireBlue),
         accounts = wallets,
         total = total,
         onAccountClick = onAccountClick,
@@ -309,7 +359,9 @@ fun BankAccountsSection(
     onDeleteClick: (Account) -> Unit
 ) {
     AccountSection(
-        title = "🏦 BANK ACCOUNTS",
+        title = "BANK ACCOUNTS",
+        icon = Icons.Default.AccountBalance,
+        gradientColors = listOf(SapphireBlue, VioletPurple),
         accounts = accounts,
         total = total,
         onAccountClick = onAccountClick,
@@ -327,7 +379,9 @@ fun MobileBankingSection(
     onDeleteClick: (Account) -> Unit
 ) {
     AccountSection(
-        title = "📱 MOBILE BANKING",
+        title = "MOBILE BANKING",
+        icon = Icons.Default.PhoneAndroid,
+        gradientColors = listOf(SapphireBlue, VioletPurple),
         accounts = accounts,
         total = total,
         onAccountClick = onAccountClick,
@@ -339,6 +393,8 @@ fun MobileBankingSection(
 @Composable
 fun AccountSection(
     title: String,
+    icon: ImageVector,
+    gradientColors: List<Color>,
     accounts: List<Account>,
     total: Double,
     onAccountClick: (Long) -> Unit,
@@ -351,12 +407,27 @@ fun AccountSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .background(
+                            brush = Brush.linearGradient(gradientColors),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            )
+            }
             Text(
                 text = "৳ ${formatAmount(total)}",
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -392,23 +463,38 @@ fun AccountCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false)
             .clickable(onClick = onClick),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
             containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            Box(
+                modifier = Modifier.fillMaxWidth().height(4.dp).background(
+                    brush = Brush.horizontalGradient(
+                        when (account.type) {
+                            AccountCategory.WALLET -> listOf(EmeraldGreen, SapphireBlue)
+                            AccountCategory.BANK -> listOf(SapphireBlue, VioletPurple)
+                            AccountCategory.MOBILE_BANKING -> listOf(VioletPurple, EmeraldGreen)
+                        }
+                    )
+                )
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
 Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -469,7 +555,7 @@ Row(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.MoreVert, 
+                                Icons.Default.MoreVert,
                                 contentDescription = "Options",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
@@ -481,17 +567,17 @@ Row(
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Edit") },
-                                onClick = { 
+                                onClick = {
                                     showMenu = false
-                                    onEditClick() 
+                                    onEditClick()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Delete") },
-                                onClick = { 
+                                onClick = {
                                     showMenu = false
-                                    onDeleteClick() 
+                                    onDeleteClick()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                             )
@@ -531,6 +617,7 @@ Row(
                 }
             }
         }
+        }
     }
 }
 
@@ -557,28 +644,61 @@ fun QuickActionsSection(
     onTransfer: () -> Unit,
     onAddAccount: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Button(
-            onClick = onTransfer,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(12.dp)
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(Icons.Default.SwapHoriz, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Transfer")
-        }
-        
-        OutlinedButton(
-            onClick = onAddAccount,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Account")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.FlashOn, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    "Quick Actions",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onTransfer,
+                    modifier = Modifier.weight(1f),
+                    shape = PillShape
+                ) {
+                    Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Transfer")
+                }
+                
+                OutlinedButton(
+                    onClick = onAddAccount,
+                    modifier = Modifier.weight(1f),
+                    shape = PillShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Account")
+                }
+            }
         }
     }
 }
@@ -825,7 +945,7 @@ fun EditAccountDialog(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = CardShape
                 ) {
                     Row(
                         modifier = Modifier
@@ -985,7 +1105,7 @@ fun DeleteAccountDialog(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = CardShape
                 ) {
                     Row(
                         modifier = Modifier

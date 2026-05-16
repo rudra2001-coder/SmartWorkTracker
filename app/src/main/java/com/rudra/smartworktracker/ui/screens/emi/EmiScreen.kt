@@ -74,6 +74,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -90,6 +92,16 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -248,12 +260,13 @@ fun StatisticsCard(stats: EmiStatistics) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -265,11 +278,30 @@ fun StatisticsCard(stats: EmiStatistics) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "EMI Overview",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(PillShape)
+                            .background(
+                                Brush.horizontalGradient(listOf(CoralRed, GoldenAmber))
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Payment,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "EMI Overview",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (stats.overdueCount > 0) {
                         Icon(
@@ -454,10 +486,11 @@ fun EmiCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -469,24 +502,16 @@ fun EmiCard(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape)
+                            .clip(PillShape)
                             .background(
-                                when (emi.status) {
-                                    EmiStatus.PAID -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                    EmiStatus.OVERDUE -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                }
+                                Brush.horizontalGradient(listOf(SapphireBlue, VioletPurple))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Person,
                             contentDescription = null,
-                            tint = when (emi.status) {
-                                EmiStatus.PAID -> Color(0xFF4CAF50)
-                                EmiStatus.OVERDUE -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.primary
-                            }
+                            tint = Color.White
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -655,8 +680,10 @@ fun StatusChip(status: EmiStatus) {
     }
 
     Card(
+        modifier = Modifier.shadow(6.dp, ChipShape, clip = false),
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.2f)),
-        shape = RoundedCornerShape(16.dp)
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Text(
             text,
@@ -706,9 +733,12 @@ fun AddEmiBottomSheet(
             
             if (loans.isEmpty()) {
                 Card(
+                    modifier = Modifier.shadow(6.dp, CardShape, clip = false),
+                    shape = CardShape,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),

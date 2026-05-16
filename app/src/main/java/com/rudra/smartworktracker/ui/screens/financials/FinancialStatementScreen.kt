@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +36,54 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
+private val CyanLight = Color(0xFF67E8F9)
+
+@Composable
+fun SectionHeaderBox(
+    title: String,
+    icon: ImageVector,
+    gradientColors: List<Color>,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .shadow(4.dp, ChipShape, clip = false)
+                .background(
+                    brush = Brush.horizontalGradient(gradientColors),
+                    shape = ChipShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -143,11 +193,10 @@ fun FinancialStatementScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item {
-                        Text(
-                            text = "Double-Entry Ledger (Debit & Credit)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                        SectionHeaderBox(
+                            title = "Double-Entry Ledger (Debit & Credit)",
+                            icon = Icons.Default.List,
+                            gradientColors = listOf(EmeraldGreen, SapphireBlue)
                         )
                     }
                     items(items = uiState.transactions, key = { it.id }) { transaction ->
@@ -187,7 +236,6 @@ fun FilterSection(
             }
         }
 
-        // Show date range indicator when dates are set (independent of filter type)
         if (startDate != null && endDate != null) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -253,13 +301,17 @@ fun DateRangePickerDialog(
 @Composable
 fun SummaryCard(totalIncome: Double, totalExpenses: Double, netFlow: Double) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.shadow(6.dp, CardShape, clip = false).fillMaxWidth().padding(16.dp),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Financial Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeaderBox(
+                title = "Financial Overview",
+                icon = Icons.Default.AccountBalance,
+                gradientColors = listOf(VioletPurple, CyanLight)
+            )
             Spacer(modifier = Modifier.height(12.dp))
             IncomeExpenseBar(income = totalIncome, expense = totalExpenses, modifier = Modifier.fillMaxWidth().height(12.dp))
             Spacer(modifier = Modifier.height(16.dp))
@@ -306,7 +358,9 @@ fun DoubleEntryTransactionItem(
 
     Card(
         onClick = { expanded = !expanded },
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isDebit) 
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
