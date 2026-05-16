@@ -285,9 +285,12 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                 _customSixMonthCost.value = daysPerSixMonth * totalRate
                 _customYearlyCost.value = daysPerYear * totalRate
             }
-            else -> {
-                _customDaysCount.value = 0; _customMonthlyCost.value = 0.0
-                _customSixMonthCost.value = 0.0; _customYearlyCost.value = 0.0
+            CalcMode.AUTO -> {
+                val days = _officeDays.value + _homeOfficeDays.value
+                _customDaysCount.value = days
+                _customMonthlyCost.value = days * totalRate
+                _customSixMonthCost.value = days * 6 * totalRate
+                _customYearlyCost.value = days * 12 * totalRate
             }
         }
     }
