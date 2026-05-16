@@ -34,6 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -72,6 +73,9 @@ import com.rudra.smartworktracker.data.entity.IncomeCategories
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.displayName
 import com.rudra.smartworktracker.data.entity.icon
+import com.rudra.smartworktracker.ui.components.AppColors
+import com.rudra.smartworktracker.ui.components.SectionHeader
+import com.rudra.smartworktracker.ui.components.StandardCard
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -104,190 +108,205 @@ fun IncomeScreen(
     var accountTypeExpanded by remember { mutableStateOf(false) }
     var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
-    // Premium gradient colors
-    val primaryGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF6C63FF), // Vibrant purple
-            Color(0xFF4A44C6)  // Deep blue
-        )
-    )
-
-    val secondaryGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF36D1DC), // Cyan
-            Color(0xFF5B86E5)  // Light blue
-        )
-    )
-
     // Custom text field colors
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Color(0xFF6C63FF),
-        unfocusedBorderColor = Color(0xFFE2E8F0),
-        focusedLabelColor = Color(0xFF6C63FF),
-        unfocusedLabelColor = Color(0xFF718096),
-        focusedTextColor = Color(0xFF2D3748),
-        unfocusedTextColor = Color(0xFF4A5568),
-        cursorColor = Color(0xFF6C63FF),
-        errorBorderColor = Color(0xFFE53E3E),
-        errorLabelColor = Color(0xFFE53E3E),
-        errorSupportingTextColor = Color(0xFFE53E3E)
+        focusedBorderColor = AppColors.IncomeGreen,
+        unfocusedBorderColor = AppColors.SecondaryText.copy(alpha = 0.3f),
+        focusedLabelColor = AppColors.IncomeGreen,
+        unfocusedLabelColor = AppColors.SecondaryText,
+        focusedTextColor = AppColors.PrimaryText,
+        unfocusedTextColor = AppColors.PrimaryText,
+        cursorColor = AppColors.IncomeGreen,
+        errorBorderColor = AppColors.ExpenseRed,
+        errorLabelColor = AppColors.ExpenseRed,
+        errorSupportingTextColor = AppColors.ExpenseRed
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFF8F9FF), // Very light purple tint
-                        Color(0xFFEFF2FF)  // Slightly deeper tint
-                    )
-                )
-            )
+            .background(AppColors.GlobalBackground)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()), // Added scroll here
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Premium Header
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = RoundedCornerShape(20.dp),
-                        clip = true
+            // Header
+            StandardCard {
+                Text(
+                    text = "Log Your Income",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryText
                     ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    Text(
-                        text = "Log Your Income",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2D3748) // Dark gray
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                }
+                    textAlign = TextAlign.Center
+                )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Income Input Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        clip = true
+            StandardCard {
+                // Income Amount Field
+                Text(
+                    text = "Income Amount",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
                     ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = incomeInput,
+                    onValueChange = {
+                        incomeInput = it
+                        errorMessage = null
+                    },
+                    label = {
+                        Text("Enter amount")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.AttachMoney,
+                            contentDescription = "Amount",
+                            tint = AppColors.IncomeGreen
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage != null,
+                    supportingText = {
+                        errorMessage?.let {
+                            Text(it)
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Description Field
+                Text(
+                    text = "Description",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = descriptionInput,
+                    onValueChange = { descriptionInput = it },
+                    label = {
+                        Text("Optional description")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = "Description",
+                            tint = AppColors.IncomeGreen
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Category Dropdown
+                Text(
+                    text = "Category",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Income Amount Field
-                    Text(
-                        text = "Income Amount",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
                     OutlinedTextField(
-                        value = incomeInput,
-                        onValueChange = {
-                            incomeInput = it
-                            errorMessage = null
-                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        readOnly = true,
+                        value = selectedCategory,
+                        onValueChange = {},
                         label = {
-                            Text("Enter amount")
+                            Text("Select category")
                         },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.AttachMoney,
-                                contentDescription = "Amount",
-                                tint = Color(0xFF6C63FF)
+                                imageVector = Icons.Default.Category,
+                                contentDescription = "Category",
+                                tint = AppColors.IncomeGreen
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = errorMessage != null,
-                        supportingText = {
-                            errorMessage?.let {
-                                Text(it)
-                            }
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                         },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
+                        colors = textFieldColors,
+                        shape = RoundedCornerShape(12.dp)
                     )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Description Field
-                    Text(
-                        text = "Description",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = descriptionInput,
-                        onValueChange = { descriptionInput = it },
-                        label = {
-                            Text("Optional description")
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Description,
-                                contentDescription = "Description",
-                                tint = Color(0xFF6C63FF)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Category Dropdown
-                    Text(
-                        text = "Category",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    ExposedDropdownMenuBox(
+                    ExposedDropdownMenu(
                         expanded = expanded,
-                        onExpandedChange = { expanded = !expanded },
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(AppColors.CardBackground)
+                    ) {
+                        incomeCategories.forEach { selectionOption ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        selectionOption,
+                                        color = AppColors.PrimaryText
+                                    )
+                                },
+                                onClick = {
+                                    selectedCategory = selectionOption
+                                    expanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Account Type Dropdown
+                Text(
+                    text = "Account Type",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Text(
+                    text = "Select Account",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (accounts.isNotEmpty()) {
+                    var accountExpanded by remember { mutableStateOf(false) }
+                    
+                    ExposedDropdownMenuBox(
+                        expanded = accountExpanded,
+                        onExpandedChange = { accountExpanded = !accountExpanded },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
@@ -295,40 +314,42 @@ fun IncomeScreen(
                                 .fillMaxWidth()
                                 .menuAnchor(),
                             readOnly = true,
-                            value = selectedCategory,
+                            value = selectedAccount?.let { it.nickname ?: it.name } ?: "Select Account",
                             onValueChange = {},
                             label = {
-                                Text("Select category")
+                                Text("Select Account")
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.Category,
-                                    contentDescription = "Category",
-                                    tint = Color(0xFF6C63FF)
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account",
+                                    tint = AppColors.IncomeGreen
                                 )
                             },
                             trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
                             },
                             colors = textFieldColors,
                             shape = RoundedCornerShape(12.dp)
                         )
                         ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(Color.White)
+                            expanded = accountExpanded,
+                            onDismissRequest = { accountExpanded = false },
+                            modifier = Modifier.background(AppColors.CardBackground)
                         ) {
-                            incomeCategories.forEach { selectionOption ->
+                            accounts.forEach { account ->
                                 DropdownMenuItem(
                                     text = {
-                                        Text(
-                                            selectionOption,
-                                            color = Color(0xFF4A5568)
-                                        )
+                                        Column {
+                                            Text(account.nickname ?: account.name, color = AppColors.PrimaryText)
+                                            Text("Balance: ৳ ${account.balance.toInt()}", 
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = AppColors.SecondaryText)
+                                        }
                                     },
                                     onClick = {
-                                        selectedCategory = selectionOption
-                                        expanded = false
+                                        selectedAccount = account
+                                        accountExpanded = false
                                     },
                                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                                 )
@@ -336,115 +357,40 @@ fun IncomeScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(10.dp))
-
-                    // Account Type Dropdown
-                    Text(
-                        text = "Account Type",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Text(
-                        text = "Select Account",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    if (accounts.isNotEmpty()) {
-                        var accountExpanded by remember { mutableStateOf(false) }
-                        
-                        ExposedDropdownMenuBox(
-                            expanded = accountExpanded,
-                            onExpandedChange = { accountExpanded = !accountExpanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
-                                readOnly = true,
-                                value = selectedAccount?.let { it.nickname ?: it.name } ?: "Select Account",
-                                onValueChange = {},
-                                label = {
-                                    Text("Select Account")
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountBalance,
-                                        contentDescription = "Account",
-                                        tint = Color(0xFF6C63FF)
-                                    )
-                                },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
-                                },
-                                colors = textFieldColors,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            ExposedDropdownMenu(
-                                expanded = accountExpanded,
-                                onDismissRequest = { accountExpanded = false },
-                                modifier = Modifier.background(Color.White)
-                            ) {
-                                accounts.forEach { account ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Text(account.nickname ?: account.name, color = Color(0xFF4A5568))
-                                                Text("Balance: ৳ ${account.balance.toInt()}", 
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.Gray)
-                                            }
-                                        },
-                                        onClick = {
-                                            selectedAccount = account
-                                            accountExpanded = false
-                                        },
-                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-
-                    // Date Field
-                    Text(
-                        text = "Date",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
-                        onValueChange = {},
-                        label = { Text("Date") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = "Date",
-                                tint = Color(0xFF6C63FF)
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDatePicker = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors,
-                        readOnly = true,
-                        enabled = false
-                    )
                 }
+
+                // Date Field
+                Text(
+                    text = "Date",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = "Date",
+                            tint = AppColors.IncomeGreen
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors,
+                    readOnly = true,
+                    enabled = false
+                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Save Button
             Button(
@@ -473,73 +419,43 @@ fun IncomeScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp
+                    containerColor = AppColors.IncomeGreen
                 )
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(secondaryGradient)
-                        .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Savings,
-                            contentDescription = "Save",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Text(
-                            text = "Save Income",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = Color.White
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Savings,
+                        contentDescription = "Save",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Save Income",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Saved Income Display Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp) // Added bottom padding for better scroll
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        clip = true
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+            StandardCard {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                        .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "Current Balance",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF718096)
+                            color = AppColors.SecondaryText
                         )
                     )
 
@@ -550,7 +466,7 @@ fun IncomeScreen(
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
-                            color = Color(0xFF2D3748)
+                            color = AppColors.PrimaryText
                         )
                     )
 
@@ -563,54 +479,50 @@ fun IncomeScreen(
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = Color(0xFF6C63FF),
-                        trackColor = Color(0xFFE2E8F0)
+                        color = AppColors.IncomeGreen,
+                        trackColor = AppColors.SecondaryText.copy(alpha = 0.2f)
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "Keep tracking your income!",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF718096)
-                        )
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppColors.SecondaryText
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Recent Incomes
-            Text(
-                text = "Recent Incomes",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2D3748)
-                ),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            SectionHeader(text = "Recent Incomes")
             LazyColumn(modifier = Modifier.height(300.dp)) {
                 items(recentIncomes) { income ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White
-                        )
-                    ) {
+                    StandardCard {
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(text = income.description, fontWeight = FontWeight.Bold)
-                                Text(text = "৳${income.amount}", color = Color.Gray)
+                                Text(
+                                    text = income.description, 
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.PrimaryText
+                                )
+                                Text(
+                                    text = "৳${income.amount}", 
+                                    color = AppColors.SecondaryText
+                                )
                             }
                             IconButton(onClick = { viewModel.deleteIncome(income) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Income")
+                                Icon(
+                                    Icons.Default.Delete, 
+                                    contentDescription = "Delete Income",
+                                    tint = AppColors.ExpenseRed
+                                )
                             }
                         }
                     }
@@ -629,12 +541,12 @@ fun IncomeScreen(
                         }
                         showDatePicker = false
                     }) {
-                        Text("OK")
+                        Text("OK", color = AppColors.IncomeGreen)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDatePicker = false }) {
-                        Text("Cancel")
+                        Text("Cancel", color = AppColors.SecondaryText)
                     }
                 }
             ) {

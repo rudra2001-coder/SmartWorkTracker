@@ -21,6 +21,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.UserProfile
 import com.rudra.smartworktracker.data.repository.UserProfileRepository
+import com.rudra.smartworktracker.ui.components.AppColors
+import com.rudra.smartworktracker.ui.components.SectionHeader
+import com.rudra.smartworktracker.ui.components.StandardCard
 import com.rudra.smartworktracker.viewmodel.UserProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,21 +42,33 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Profile") },
+                title = { 
+                    Text(
+                        "Profile", 
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.PrimaryText
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = AppColors.PrimaryText)
                     }
                 },
                 actions = {
                     if (profileState is UserProfileViewModel.ProfileState.Success) {
                         IconButton(onClick = onNavigateToSetup) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile")
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = AppColors.PrimaryText)
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AppColors.GlobalBackground,
+                    titleContentColor = AppColors.PrimaryText
+                )
             )
-        }
+        },
+        containerColor = AppColors.GlobalBackground
     ) { padding ->
         Box(
             modifier = Modifier
@@ -62,7 +77,10 @@ fun ProfileScreen(
         ) {
             when (val state = profileState) {
                 is UserProfileViewModel.ProfileState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = AppColors.OfficeBlue
+                    )
                 }
                 is UserProfileViewModel.ProfileState.Success -> {
                     ProfileContent(state.profile)
@@ -72,16 +90,23 @@ fun ProfileScreen(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("No profile found")
-                        Button(onClick = onNavigateToSetup) {
-                            Text("Set Up Profile")
+                        Text(
+                            "No profile found",
+                            color = AppColors.SecondaryText
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = onNavigateToSetup,
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.OfficeBlue)
+                        ) {
+                            Text("Set Up Profile", color = androidx.compose.ui.graphics.Color.White)
                         }
                     }
                 }
                 is UserProfileViewModel.ProfileState.Error -> {
                     Text(
                         text = state.message,
-                        color = MaterialTheme.colorScheme.error,
+                        color = AppColors.ExpenseRed,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -104,21 +129,21 @@ fun ProfileContent(profile: UserProfile) {
             modifier = Modifier
                 .size(120.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(AppColors.OfficeBlue.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
             if (profile.name.isNotEmpty()) {
                 Text(
                     text = profile.name.take(1).uppercase(),
                     style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = AppColors.OfficeBlue
                 )
             } else {
                 Icon(
                     Icons.Default.Person,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = AppColors.OfficeBlue
                 )
             }
         }
@@ -128,43 +153,58 @@ fun ProfileContent(profile: UserProfile) {
         Text(
             text = profile.name.ifEmpty { "User Name" },
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = AppColors.PrimaryText
         )
 
         if (profile.bio.isNotEmpty()) {
             Text(
                 text = profile.bio,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = AppColors.SecondaryText,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Info Cards
-        ProfileInfoItem(Icons.Default.Email, "Email", profile.email)
-        ProfileInfoItem(Icons.Default.Phone, "Phone", profile.phone)
-        ProfileInfoItem(Icons.Default.LocationOn, "Location", profile.location)
-        ProfileInfoItem(Icons.Default.Work, "Experience", profile.experience)
-        
+        // Info Section
+        SectionHeader(text = "Contact Information")
+        StandardCard {
+            ProfileInfoItem(Icons.Default.Email, "Email", profile.email)
+            ProfileInfoItem(Icons.Default.Phone, "Phone", profile.phone)
+            ProfileInfoItem(Icons.Default.LocationOn, "Location", profile.location)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SectionHeader(text = "Professional")
+        StandardCard {
+            ProfileInfoItem(Icons.Default.Work, "Experience", profile.experience)
+        }
+
         if (profile.skills.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Skills",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                profile.skills.forEach { skill ->
-                    AssistChip(
-                        onClick = { },
-                        label = { Text(skill) }
-                    )
+            SectionHeader(text = "Skills")
+            StandardCard {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    profile.skills.forEach { skill ->
+                        AssistChip(
+                            onClick = { },
+                            label = { 
+                                Text(
+                                    skill,
+                                    color = AppColors.PrimaryText
+                                ) 
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = AppColors.GlobalBackground
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -189,22 +229,25 @@ fun FlowRow(
 fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
     if (value.isEmpty()) return
     
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text(value, style = MaterialTheme.typography.bodyLarge)
-            }
+        Icon(icon, contentDescription = null, tint = AppColors.OfficeBlue)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                label, 
+                style = MaterialTheme.typography.labelSmall, 
+                color = AppColors.OfficeBlue
+            )
+            Text(
+                value, 
+                style = MaterialTheme.typography.bodyLarge,
+                color = AppColors.PrimaryText
+            )
         }
     }
 }

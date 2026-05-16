@@ -76,13 +76,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.ui.components.AppColors
+import com.rudra.smartworktracker.ui.components.SectionHeader
+import com.rudra.smartworktracker.ui.components.StandardCard
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -107,110 +109,52 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var accountTypeExpanded by remember { mutableStateOf(false) }
     var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
-    // Premium gradient colors
-    val primaryGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFFFF6B6B), // Coral red
-            Color(0xFFFF8E53)  // Orange
-        )
-    )
-
-    val secondaryGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF36D1DC), // Cyan
-            Color(0xFF5B86E5)  // Light blue
-        )
-    )
-
-    val categoryGradients = mapOf(
-        ExpenseCategory.MEAL to Brush.horizontalGradient(
-            colors = listOf(Color(0xFFFF9A9E), Color(0xFFFAD0C4))
-        ),
-        ExpenseCategory.TRANSPORT to Brush.horizontalGradient(
-            colors = listOf(Color(0xFFA1C4FD), Color(0xFFC2E9FB))
-        ),
-        ExpenseCategory.SHOPPING to Brush.horizontalGradient(
-            colors = listOf(Color(0xFFFFD1FF), Color(0xFFF9FFA4))
-        ),
-        ExpenseCategory.ENTERTAINMENT to Brush.horizontalGradient(
-            colors = listOf(Color(0xFFFBC2EB), Color(0xFFA6C1EE))
-        ),
-        ExpenseCategory.BILLS to Brush.horizontalGradient(
-            colors = listOf(Color(0xFF43CBFF), Color(0xFF9708CC))
-        ),
-
-        ExpenseCategory.OTHER to Brush.horizontalGradient(
-            colors = listOf(Color(0xFFD4D4D4), Color(0xFFA0A0A0))
-        )
-    )
-
     // Custom text field colors
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Color(0xFFFF6B6B),
-        unfocusedBorderColor = Color(0xFFE2E8F0),
-        focusedLabelColor = Color(0xFFFF6B6B),
-        unfocusedLabelColor = Color(0xFF718096),
-        focusedTextColor = Color(0xFF2D3748),
-        unfocusedTextColor = Color(0xFF4A5568),
-        cursorColor = Color(0xFFFF6B6B),
-        errorBorderColor = Color(0xFFE53E3E),
-        errorLabelColor = Color(0xFFE53E3E),
-        errorSupportingTextColor = Color(0xFFE53E3E)
+        focusedBorderColor = AppColors.ExpenseRed,
+        unfocusedBorderColor = AppColors.SecondaryText.copy(alpha = 0.3f),
+        focusedLabelColor = AppColors.ExpenseRed,
+        unfocusedLabelColor = AppColors.SecondaryText,
+        focusedTextColor = AppColors.PrimaryText,
+        unfocusedTextColor = AppColors.PrimaryText,
+        cursorColor = AppColors.ExpenseRed,
+        errorBorderColor = AppColors.ExpenseRed,
+        errorLabelColor = AppColors.ExpenseRed,
+        errorSupportingTextColor = AppColors.ExpenseRed
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFFFF5F5), // Very light red tint
-                        Color(0xFFFFEBEB)  // Slightly deeper tint
-                    )
-                )
-            )
+            .background(AppColors.GlobalBackground)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Premium Header
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = RoundedCornerShape(20.dp),
-                        clip = true
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
+            // Header
+            StandardCard {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Icon Badge
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(primaryGradient)
+                            .background(AppColors.ExpenseRed.copy(alpha = 0.2f))
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoneyOff,
                             contentDescription = "Expense",
-                            tint = Color.White,
+                            tint = AppColors.ExpenseRed,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -219,9 +163,9 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
 
                     Text(
                         text = "Log Your Expense",
-                        style = MaterialTheme.typography.headlineMedium.copy(
+                        style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2D3748)
+                            color = AppColors.PrimaryText
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -230,320 +174,297 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
 
                     Text(
                         text = "Track and manage your spending",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF718096)
-                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppColors.SecondaryText,
                         textAlign = TextAlign.Center
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Expense Input Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        clip = true
+            StandardCard {
+                // Amount Field
+                Text(
+                    text = "Amount",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
                     ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    // Amount Field
-                    Text(
-                        text = "Amount",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                    OutlinedTextField(
-                        value = amount,
-                        onValueChange = { amount = it },
-                        label = { Text("Enter amount") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.MoneyOff,
-                                contentDescription = "Amount",
-                                tint = Color(0xFFFF6B6B)
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Enter amount") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.MoneyOff,
+                            contentDescription = "Amount",
+                            tint = AppColors.ExpenseRed
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    // Categories Section
-                    Text(
-                        text = "Category",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                // Categories Section
+                Text(
+                    text = "Category",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
 
-                    val categories = ExpenseCategory.entries.chunked(4)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        categories.forEach { rowCategories ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                rowCategories.forEach { category ->
-                                    val isSelected = selectedCategory == category
-                                    val gradient = categoryGradients[category] ?: Brush.horizontalGradient(
-                                        listOf(Color(0xFFD4D4D4), Color(0xFFA0A0A0))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .shadow(
-                                                elevation = if (isSelected) 8.dp else 4.dp,
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(
-                                                brush = if (isSelected) gradient
-                                                else Brush.linearGradient(
-                                                    colors = listOf(Color.White, Color.White)
-                                                ),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            .border(
-                                                width = if (isSelected) 2.dp else 1.dp,
-                                                color = if (isSelected) Color(0xFFFF6B6B) else Color(0xFFE2E8F0),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            .clickable { selectedCategory = category }
-                                            .padding(12.dp),
-                                        contentAlignment = Alignment.Center
+                val categories = ExpenseCategory.entries.chunked(4)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    categories.forEach { rowCategories ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowCategories.forEach { category ->
+                                val isSelected = selectedCategory == category
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .shadow(
+                                            elevation = if (isSelected) 8.dp else 4.dp,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(
+                                            color = if (isSelected) AppColors.ExpenseRed else AppColors.CardBackground,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .border(
+                                            width = if (isSelected) 2.dp else 1.dp,
+                                            color = if (isSelected) AppColors.ExpenseRed else AppColors.SecondaryText.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .clickable { selectedCategory = category }
+                                        .padding(12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            val icon = when (category) {
-                                                ExpenseCategory.MEAL -> Icons.Default.ShoppingCart
-                                                ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsCar
-                                                ExpenseCategory.SHOPPING -> Icons.Default.Store
-                                                ExpenseCategory.ENTERTAINMENT -> Icons.Default.Movie
-                                                ExpenseCategory.BILLS -> Icons.Default.Receipt
-                                                ExpenseCategory.HEALTHCARE -> Icons.Default.LocalHospital
-                                                ExpenseCategory.EDUCATION -> Icons.Default.School
-                                                ExpenseCategory.PERSONAL_CARE -> Icons.Default.Face
-                                                ExpenseCategory.GIFTS -> Icons.Default.CardGiftcard
-                                                ExpenseCategory.TRAVEL -> Icons.Default.Flight
-                                                ExpenseCategory.SUBSCRIPTIONS -> Icons.Default.Subscriptions
-                                                ExpenseCategory.OTHER -> Icons.AutoMirrored.Filled.List
-                                            }
-
-                                            Icon(
-                                                imageVector = icon,
-                                                contentDescription = category.name,
-                                                tint = if (isSelected) Color.White else Color(0xFF4A5568),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-
-                                            Text(
-                                                text = category.name.lowercase()
-                                                    .replaceFirstChar { it.uppercase() },
-                                                style = TextStyle(
-                                                    fontSize = 10.sp,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (isSelected) Color.White else Color(0xFF4A5568)
-                                                ),
-                                                maxLines = 1
-                                            )
+                                        val icon = when (category) {
+                                            ExpenseCategory.MEAL -> Icons.Default.ShoppingCart
+                                            ExpenseCategory.TRANSPORT -> Icons.Default.DirectionsCar
+                                            ExpenseCategory.SHOPPING -> Icons.Default.Store
+                                            ExpenseCategory.ENTERTAINMENT -> Icons.Default.Movie
+                                            ExpenseCategory.BILLS -> Icons.Default.Receipt
+                                            ExpenseCategory.HEALTHCARE -> Icons.Default.LocalHospital
+                                            ExpenseCategory.EDUCATION -> Icons.Default.School
+                                            ExpenseCategory.PERSONAL_CARE -> Icons.Default.Face
+                                            ExpenseCategory.GIFTS -> Icons.Default.CardGiftcard
+                                            ExpenseCategory.TRAVEL -> Icons.Default.Flight
+                                            ExpenseCategory.SUBSCRIPTIONS -> Icons.Default.Subscriptions
+                                            ExpenseCategory.OTHER -> Icons.AutoMirrored.Filled.List
                                         }
+
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = category.name,
+                                            tint = if (isSelected) Color.White else AppColors.SecondaryText,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+
+                                        Text(
+                                            text = category.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = TextStyle(
+                                                fontSize = 10.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) Color.White else AppColors.PrimaryText
+                                            ),
+                                            maxLines = 1
+                                        )
                                     }
                                 }
-                                val remaining = 4 - rowCategories.size
-                                if (remaining > 0) {
-                                    Spacer(modifier = Modifier.weight(remaining.toFloat()))
-                                }
+                            }
+                            val remaining = 4 - rowCategories.size
+                            if (remaining > 0) {
+                                Spacer(modifier = Modifier.weight(remaining.toFloat()))
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Account Type Dropdown
-                    Text(
-                        text = "Account Type",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Text(
-                        text = "Select Account",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    if (accounts.isNotEmpty()) {
-                        var accountExpanded by remember { mutableStateOf(false) }
-                        
-                        ExposedDropdownMenuBox(
-                            expanded = accountExpanded,
-                            onExpandedChange = { accountExpanded = !accountExpanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
-                                readOnly = true,
-                                value = selectedAccount?.nickname ?: selectedAccount?.name ?: "Select Account",
-                                onValueChange = {},
-                                label = {
-                                    Text("Select Account (Optional)")
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountBalance,
-                                        contentDescription = "Account",
-                                        tint = Color(0xFFFF6B6B)
-                                    )
-                                },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
-                                },
-                                colors = textFieldColors,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            ExposedDropdownMenu(
-                                expanded = accountExpanded,
-                                onDismissRequest = { accountExpanded = false },
-                                modifier = Modifier.background(Color.White)
-                            ) {
-                                accounts.forEach { account ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Text(account.nickname ?: account.name, color = Color(0xFF4A5568))
-                                                Text("Balance: ৳ ${account.balance.toInt()}", 
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.Gray)
-                                            }
-                                        },
-                                        onClick = {
-                                            selectedAccount = account
-                                            accountExpanded = false
-                                        },
-                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    // Merchant Field
-                    Text(
-                        text = "Merchant (Optional)",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = merchant,
-                        onValueChange = { merchant = it },
-                        label = { Text("Store name, restaurant, etc.") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Store,
-                                contentDescription = "Merchant",
-                                tint = Color(0xFFFF6B6B)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Notes Field
-                    Text(
-                        text = "Notes (Optional)",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        label = { Text("Add any notes") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Notes,
-                                contentDescription = "Notes",
-                                tint = Color(0xFFFF6B6B)
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors,
-                        maxLines = 4
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Date Field
-                    Text(
-                        text = "Date",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A5568)
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
-                        onValueChange = {},
-                        label = { Text("Date") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = "Date",
-                                tint = Color(0xFFFF6B6B)
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDatePicker = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors,
-                        readOnly = true,
-                        enabled = false
-                    )
-
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Account Type Dropdown
+                Text(
+                    text = "Account Type",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Text(
+                    text = "Select Account",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (accounts.isNotEmpty()) {
+                    var accountExpanded by remember { mutableStateOf(false) }
+                    
+                    ExposedDropdownMenuBox(
+                        expanded = accountExpanded,
+                        onExpandedChange = { accountExpanded = !accountExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true,
+                            value = selectedAccount?.nickname ?: selectedAccount?.name ?: "Select Account",
+                            onValueChange = {},
+                            label = {
+                                Text("Select Account (Optional)")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalance,
+                                    contentDescription = "Account",
+                                    tint = AppColors.ExpenseRed
+                                )
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
+                            },
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountExpanded,
+                            onDismissRequest = { accountExpanded = false },
+                            modifier = Modifier.background(AppColors.CardBackground)
+                        ) {
+                            accounts.forEach { account ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(account.nickname ?: account.name, color = AppColors.PrimaryText)
+                                            Text("Balance: ৳ ${account.balance.toInt()}", 
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = AppColors.SecondaryText)
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedAccount = account
+                                        accountExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Merchant Field
+                Text(
+                    text = "Merchant (Optional)",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = merchant,
+                    onValueChange = { merchant = it },
+                    label = { Text("Store name, restaurant, etc.") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Store,
+                            contentDescription = "Merchant",
+                            tint = AppColors.ExpenseRed
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Notes Field
+                Text(
+                    text = "Notes (Optional)",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Add any notes") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Notes,
+                            contentDescription = "Notes",
+                            tint = AppColors.ExpenseRed
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors,
+                    maxLines = 4
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Date Field
+                Text(
+                    text = "Date",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.SecondaryText
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = selectedDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select a date",
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = "Date",
+                            tint = AppColors.ExpenseRed
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors,
+                    readOnly = true,
+                    enabled = false
+                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Save Button
             Button(
@@ -574,79 +495,61 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                     .height(56.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp
+                    containerColor = AppColors.ExpenseRed
                 )
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(secondaryGradient)
-                        .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Save",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = "Save",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                        Text(
-                            text = "Save Expense",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        text = "Save Expense",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Recent Expenses
-            Text(
-                text = "Recent Expenses",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2D3748)
-                ),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            SectionHeader(text = "Recent Expenses")
             LazyColumn(modifier = Modifier.height(300.dp)) {
                 items(recentExpenses) { expense ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White
-                        )
-                    ) {
+                    StandardCard {
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(text = expense.notes ?: "", fontWeight = FontWeight.Bold)
-                                Text(text = "৳${expense.amount}", color = Color.Gray)
+                                Text(
+                                    text = expense.notes ?: "", 
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.PrimaryText
+                                )
+                                Text(
+                                    text = "৳${expense.amount}", 
+                                    color = AppColors.ExpenseRed
+                                )
                             }
                             IconButton(onClick = { viewModel.deleteExpense(expense) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Expense")
+                                Icon(
+                                    Icons.Default.Delete, 
+                                    contentDescription = "Delete Expense",
+                                    tint = AppColors.ExpenseRed
+                                )
                             }
                         }
                     }
@@ -665,12 +568,12 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         }
                         showDatePicker = false
                     }) {
-                        Text("OK")
+                        Text("OK", color = AppColors.ExpenseRed)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDatePicker = false }) {
-                        Text("Cancel")
+                        Text("Cancel", color = AppColors.SecondaryText)
                     }
                 }
             ) {
@@ -678,10 +581,4 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ExpenseScreenPreview() {
-    ExpenseScreen()
 }

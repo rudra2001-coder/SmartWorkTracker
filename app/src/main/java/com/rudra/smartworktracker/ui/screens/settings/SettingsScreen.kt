@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,6 +26,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.rudra.smartworktracker.ui.components.AppColors
+import com.rudra.smartworktracker.ui.components.SectionHeader
+import com.rudra.smartworktracker.ui.components.StandardCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,33 +83,36 @@ fun SettingsScreen(navController: NavController) {
                 title = {
                     Text(
                         "Settings",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.PrimaryText
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = AppColors.PrimaryText)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = AppColors.GlobalBackground,
+                    titleContentColor = AppColors.PrimaryText
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = AppColors.GlobalBackground
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             // Appearance Section
             item {
-                SettingsSection(title = "Appearance", icon = Icons.Default.Palette) {
+                SectionHeader(text = "Appearance")
+                StandardCard {
                     SettingsSwitchItem(
                         icon = Icons.Default.DarkMode,
                         title = "Dark Theme",
@@ -117,7 +125,8 @@ fun SettingsScreen(navController: NavController) {
 
             // Notifications Section
             item {
-                SettingsSection(title = "Notifications", icon = Icons.Default.Notifications) {
+                SectionHeader(text = "Notifications")
+                StandardCard {
                     SettingsSwitchItem(
                         icon = Icons.Default.NotificationsActive,
                         title = "Enable Notifications",
@@ -125,6 +134,7 @@ fun SettingsScreen(navController: NavController) {
                         isChecked = notificationsEnabled,
                         onCheckedChange = { viewModel.setNotifications(it) }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsSwitchItem(
                         icon = Icons.Default.Vibration,
                         title = "Enable Vibration",
@@ -137,7 +147,8 @@ fun SettingsScreen(navController: NavController) {
 
             // Financial Settings Section
             item {
-                SettingsSection(title = "Financial", icon = Icons.Default.AttachMoney) {
+                SectionHeader(text = "Financial")
+                StandardCard {
                     SettingsItem(
                         icon = Icons.Default.Restaurant,
                         title = "Meal Rate",
@@ -149,7 +160,8 @@ fun SettingsScreen(navController: NavController) {
 
             // Data Management Section
             item {
-                SettingsSection(title = "Data Management", icon = Icons.Default.Storage) {
+                SectionHeader(text = "Data Management")
+                StandardCard {
                     SettingsSwitchItem(
                         icon = Icons.Default.CloudUpload,
                         title = "Auto Backup",
@@ -157,6 +169,7 @@ fun SettingsScreen(navController: NavController) {
                         isChecked = autoBackupEnabled,
                         onCheckedChange = { viewModel.setAutoBackup(it) }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Backup,
                         title = "Backup Data",
@@ -165,6 +178,7 @@ fun SettingsScreen(navController: NavController) {
                             backupLauncher.launch("smart_work_tracker_backup_${System.currentTimeMillis()}.json")
                         }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Restore,
                         title = "Restore Data",
@@ -173,6 +187,7 @@ fun SettingsScreen(navController: NavController) {
                             restoreLauncher.launch(arrayOf("application/json", "application/octet-stream"))
                         }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Delete,
                         title = "Reset All Data",
@@ -185,7 +200,8 @@ fun SettingsScreen(navController: NavController) {
 
             // About Section
             item {
-                SettingsSection(title = "About", icon = Icons.Default.Info) {
+                SectionHeader(text = "About")
+                StandardCard {
                     SettingsItem(
                         icon = Icons.Default.Shield,
                         title = "Privacy Policy",
@@ -195,6 +211,7 @@ fun SettingsScreen(navController: NavController) {
                             context.startActivity(intent)
                         }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Description,
                         title = "Terms of Service",
@@ -204,6 +221,7 @@ fun SettingsScreen(navController: NavController) {
                             context.startActivity(intent)
                         }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Email,
                         title = "Contact Support",
@@ -220,6 +238,7 @@ fun SettingsScreen(navController: NavController) {
                             }
                         }
                     )
+                    Divider(color = AppColors.SecondaryText.copy(alpha = 0.2f), thickness = 0.5.dp)
                     SettingsItem(
                         icon = Icons.Default.Star,
                         title = "Rate App",
@@ -239,31 +258,24 @@ fun SettingsScreen(navController: NavController) {
 
             // App Version
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
+                StandardCard {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
+                            .padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             "Smart Work Tracker",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = AppColors.PrimaryText
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Version 1.0.0",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            color = AppColors.SecondaryText
                         )
                     }
                 }
@@ -281,7 +293,8 @@ fun SettingsScreen(navController: NavController) {
                 Text(
                     "Set Meal Rate",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.PrimaryText
                 )
             },
             text = {
@@ -289,7 +302,7 @@ fun SettingsScreen(navController: NavController) {
                     Text(
                         "Set the default cost per meal for expense calculations",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = AppColors.SecondaryText
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -303,7 +316,11 @@ fun SettingsScreen(navController: NavController) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        prefix = { Text("৳") }
+                        prefix = { Text("৳") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AppColors.OfficeBlue,
+                            focusedLabelColor = AppColors.OfficeBlue
+                        )
                     )
                 }
             },
@@ -318,9 +335,10 @@ fun SettingsScreen(navController: NavController) {
                         }
                     },
                     enabled = newMealRate.toDoubleOrNull() != null && newMealRate.toDoubleOrNull()!! >= 0,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.OfficeBlue)
                 ) {
-                    Text("Save")
+                    Text("Save", color = Color.White)
                 }
             },
             dismissButton = {
@@ -328,10 +346,11 @@ fun SettingsScreen(navController: NavController) {
                     onClick = { showMealRateDialog = false },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel")
+                    Text("Cancel", color = AppColors.SecondaryText)
                 }
             },
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(20.dp),
+            containerColor = AppColors.CardBackground
         )
     }
 
@@ -343,7 +362,8 @@ fun SettingsScreen(navController: NavController) {
                 Text(
                     "Reset All Data",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.PrimaryText
                 )
             },
             text = {
@@ -354,24 +374,25 @@ fun SettingsScreen(navController: NavController) {
                         modifier = Modifier
                             .size(48.dp)
                             .align(Alignment.CenterHorizontally),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = AppColors.ExpenseRed
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         "This will permanently delete:",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = AppColors.PrimaryText
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("• All journal entries")
-                    Text("• Financial records")
-                    Text("• User preferences")
-                    Text("• App settings")
+                    Text("• All journal entries", color = AppColors.SecondaryText)
+                    Text("• Financial records", color = AppColors.SecondaryText)
+                    Text("• User preferences", color = AppColors.SecondaryText)
+                    Text("• App settings", color = AppColors.SecondaryText)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         "This action cannot be undone!",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
+                        color = AppColors.ExpenseRed,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -384,8 +405,8 @@ fun SettingsScreen(navController: NavController) {
                         Toast.makeText(context, "All data has been reset", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
+                        containerColor = AppColors.ExpenseRed,
+                        contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -397,50 +418,12 @@ fun SettingsScreen(navController: NavController) {
                     onClick = { showResetDialog = false },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel")
+                    Text("Cancel", color = AppColors.SecondaryText)
                 }
             },
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(20.dp),
+            containerColor = AppColors.CardBackground
         )
-    }
-}
-
-@Composable
-fun SettingsSection(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Section Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            // Section Content
-            content()
-        }
     }
 }
 
@@ -464,19 +447,19 @@ fun SettingsSwitchItem(
                 icon,
                 contentDescription = title,
                 modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = AppColors.SecondaryText
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     title,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = AppColors.PrimaryText
                 )
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = AppColors.SecondaryText
                 )
             }
         }
@@ -484,10 +467,10 @@ fun SettingsSwitchItem(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                checkedThumbColor = AppColors.IncomeGreen,
+                checkedTrackColor = AppColors.IncomeGreen.copy(alpha = 0.5f),
+                uncheckedThumbColor = AppColors.SecondaryText,
+                uncheckedTrackColor = AppColors.SecondaryText.copy(alpha = 0.3f)
             )
         )
     }
@@ -501,11 +484,8 @@ fun SettingsItem(
     onClick: () -> Unit,
     isDestructive: Boolean = false
 ) {
-    val contentColor = if (isDestructive) MaterialTheme.colorScheme.error
-    else MaterialTheme.colorScheme.onSurface
-
-    val subtitleColor = if (isDestructive) MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-    else MaterialTheme.colorScheme.onSurfaceVariant
+    val contentColor = if (isDestructive) AppColors.ExpenseRed else AppColors.PrimaryText
+    val subtitleColor = if (isDestructive) AppColors.ExpenseRed.copy(alpha = 0.8f) else AppColors.SecondaryText
 
     Row(
         modifier = Modifier
@@ -539,7 +519,7 @@ fun SettingsItem(
             Icons.Default.ChevronRight,
             contentDescription = "Navigate",
             modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = AppColors.SecondaryText
         )
     }
 }
