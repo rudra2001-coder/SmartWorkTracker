@@ -50,12 +50,13 @@ import com.rudra.smartworktracker.model.*
         ConsequenceDebt::class,
         WeeklyReport::class,
         UserHistory::class,
-        Account::class
+        Account::class,
+        MealRateSetting::class
     ],
     views = [
         MonthlySummary::class
     ],
-    version = 8, // Fresh Start Version 2 - Forces destructive migration for schema changes
+    version = 9, // Added MealRateSetting entity
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -96,6 +97,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun weeklyReportDao(): WeeklyReportDao
     abstract fun userHistoryDao(): UserHistoryDao
     abstract fun accountDao(): AccountDao
+    abstract fun mealRateSettingDao(): MealRateSettingDao
 
     companion object {
         @Volatile

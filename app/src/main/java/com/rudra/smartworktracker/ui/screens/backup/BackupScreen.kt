@@ -17,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +29,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val EmeraldGreen = Color(0xFF00C896)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,50 +68,50 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
     }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Backup & Security", fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {}
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- System Status Header ---
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(52.dp).background(
+                        brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                        shape = RoundedCornerShape(14.dp)
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Backup, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Backup & Security", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Protect your data", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            }
+
             StatusHeader(
                 lastBackup = if (lastBackupTime > 0) dateFormat.format(Date(lastBackupTime)) else "Never",
                 nextBackup = if (isAutoBackupEnabled && nextBackupTime > 0) dateFormat.format(Date(nextBackupTime)) else "Disabled",
                 isAutoEnabled = isAutoBackupEnabled
             )
 
-            // --- Auto Backup Toggle ---
             AutoBackupToggleCard(
                 isEnabled = isAutoBackupEnabled,
                 onToggle = { viewModel.toggleAutoBackup(it) }
-            )
-
-            // --- Primary Actions ---
-            Text(
-                "Manual Actions",
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
             )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -128,44 +136,68 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
                 )
             }
 
-            // --- Detailed Info Section ---
-            Text(
-                "System Intelligence",
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+                shape = CardShape,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(36.dp).background(
+                            brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                            shape = RoundedCornerShape(10.dp)
+                        ), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Update, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                        Column {
+                            Text("Auto-Backup Intelligence", fontWeight = FontWeight.Bold)
+                            Text("Scheduled for 12:05 AM daily", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("When enabled, the system automatically creates a survival snapshot in your Downloads folder. This process is 100% safe, non-destructive, and never affects your app's performance or core database version.", style = MaterialTheme.typography.bodySmall, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
-            DetailedInfoCard(
-                title = "Auto-Backup Intelligence",
-                info = "Scheduled for 12:05 AM daily",
-                icon = Icons.Default.Update,
-                detail = "When enabled, the system automatically creates a survival snapshot in your Downloads folder. This process is 100% safe, non-destructive, and never affects your app's performance or core database version."
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+                shape = CardShape,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(36.dp).background(
+                            brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue)),
+                            shape = RoundedCornerShape(10.dp)
+                        ), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Security, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                        Column {
+                            Text("Data Integrity Shield", fontWeight = FontWeight.Bold)
+                            Text("Offline-First Standard", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("Your data remains under your total control. Manual backups allow you to move your history between devices safely without touching the app's internal structural integrity.", style = MaterialTheme.typography.bodySmall, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
-            DetailedInfoCard(
-                title = "Data Integrity Shield",
-                info = "Offline-First Standard",
-                icon = Icons.Default.Security,
-                detail = "Your data remains under your total control. Manual backups allow you to move your history between devices safely without touching the app's internal structural integrity."
-            )
-
-            // --- Refresh System ---
             OutlinedButton(
-                onClick = { 
+                onClick = {
                     viewModel.loadBackupStatus()
                     Toast.makeText(context, "System Status Refreshed", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = ChipShape
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Refresh Backup Engine Status")
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(Modifier.height(40.dp))
         }
     }
 
@@ -174,8 +206,8 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
             onDismissRequest = { showRestoreConfirmDialog = null },
             icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Confirm Restore Operation") },
-            text = { 
-                Text("Restoring will merge the backup data with your current records. Any existing data with matching IDs will be safely updated. This process is purely data-level and will NOT change your database version or app structure.\n\nProceed with the restore?") 
+            text = {
+                Text("Restoring will merge the backup data with your current records. Any existing data with matching IDs will be safely updated. This process is purely data-level and will NOT change your database version or app structure.\n\nProceed with the restore?")
             },
             confirmButton = {
                 Button(
@@ -193,10 +225,9 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRestoreConfirmDialog = null }) {
-                    Text("Cancel")
-                }
-            }
+                TextButton(onClick = { showRestoreConfirmDialog = null }) { Text("Cancel") }
+            },
+            shape = CardShape
         )
     }
 }
@@ -205,21 +236,19 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
 fun StatusHeader(lastBackup: String, nextBackup: String, isAutoEnabled: Boolean) {
     val statusColor = if (isAutoEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val onStatusColor = if (isAutoEnabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().shadow(8.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = statusColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(onStatusColor.copy(alpha = 0.1f), CircleShape),
+                modifier = Modifier.size(64.dp).background(onStatusColor.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -229,14 +258,14 @@ fun StatusHeader(lastBackup: String, nextBackup: String, isAutoEnabled: Boolean)
                     tint = onStatusColor
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 if (isAutoEnabled) "Automatic Protection ON" else "Manual Protection Mode",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = onStatusColor
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 InfoColumn("Last Backup", lastBackup, Alignment.Start, onStatusColor)
                 InfoColumn("Next Schedule", nextBackup, Alignment.End, onStatusColor)
@@ -256,25 +285,19 @@ fun InfoColumn(label: String, value: String, alignment: Alignment.Horizontal, co
 @Composable
 fun AutoBackupToggleCard(isEnabled: Boolean, onToggle: (Boolean) -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Daily Auto-Backup", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Automatically backup data every day at 12:05 AM.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Automatically backup data every day at 12:05 AM.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(
                 checked = isEnabled,
@@ -300,7 +323,7 @@ fun ActionTile(
     Surface(
         onClick = onClick,
         modifier = modifier.height(140.dp),
-        shape = RoundedCornerShape(20.dp),
+        shape = CardShape,
         color = color.copy(alpha = 0.1f),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
@@ -310,36 +333,9 @@ fun ActionTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             Text(title, fontWeight = FontWeight.Bold, color = color)
             Text(description, style = MaterialTheme.typography.labelSmall, color = color.copy(alpha = 0.7f), textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-fun DetailedInfoCard(title: String, info: String, icon: ImageVector, detail: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                    Text(info, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                lineHeight = 18.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

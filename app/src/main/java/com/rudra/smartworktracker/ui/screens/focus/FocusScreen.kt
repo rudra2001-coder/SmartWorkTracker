@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -29,6 +30,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.FocusType
 
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 const val DEEP_WORK_DURATION = 90 * 60L
 const val POMODORO_DURATION = 25 * 60L
@@ -40,18 +50,10 @@ fun FocusScreen(viewModel: FocusViewModel = viewModel()) {
     val timerState by viewModel.timerState.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
 
-    val backgroundGradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surfaceVariant
-        )
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         when (val state = timerState) {
             is TimerState.Idle -> {
@@ -78,7 +80,6 @@ fun FocusScreen(viewModel: FocusViewModel = viewModel()) {
             }
         }
 
-        // Session stats floating button
         AnimatedVisibility(
             visible = timerState is TimerState.Idle,
             enter = fadeIn() + slideInVertically(),
@@ -98,88 +99,78 @@ fun FocusScreen(viewModel: FocusViewModel = viewModel()) {
 @Composable
 fun FocusSelection(onStart: (FocusType, Long) -> Unit) {
     var selectedDuration by remember { mutableStateOf<Long?>(null) }
-    val customDurationOptions = listOf(15, 30, 45, 60, 90, 120) // in minutes
+    val customDurationOptions = listOf(15, 30, 45, 60, 90, 120)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
-        Text(
-            text = "Focus Sessions",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Text(
-            text = "Choose your focus mode",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        // Preset Sessions
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            FocusSessionCard(
-                title = "Deep Work",
-                subtitle = "90 minutes • Intense focus",
-                icon = Icons.Default.Work,
-                duration = DEEP_WORK_DURATION,
-                color = MaterialTheme.colorScheme.primary,
-                onClick = { onStart(FocusType.DEEP_WORK, DEEP_WORK_DURATION) }
-            )
-
-            FocusSessionCard(
-                title = "Pomodoro",
-                subtitle = "25 min work • 5 min break",
-                icon = Icons.Default.Timer,
-                duration = POMODORO_DURATION,
-                color = MaterialTheme.colorScheme.secondary,
-                onClick = { onStart(FocusType.POMODORO, POMODORO_DURATION) }
-            )
-
-            FocusSessionCard(
-                title = "Short Break",
-                subtitle = "5 minutes • Quick refresh",
-                icon = Icons.Default.Coffee,
-                duration = SHORT_BREAK_DURATION,
-                color = MaterialTheme.colorScheme.tertiary,
-                onClick = { onStart(FocusType.SHORT_BREAK, SHORT_BREAK_DURATION) }
-            )
-
-            FocusSessionCard(
-                title = "Long Break",
-                subtitle = "15 minutes • Full recharge",
-                icon = Icons.Default.Spa,
-                duration = LONG_BREAK_DURATION,
-                color = MaterialTheme.colorScheme.errorContainer,
-                onClick = { onStart(FocusType.LONG_BREAK, LONG_BREAK_DURATION) }
-            )
+            Box(
+                modifier = Modifier.size(52.dp).background(
+                    brush = Brush.linearGradient(listOf(VioletPurple, SapphireBlue)),
+                    shape = RoundedCornerShape(14.dp)
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Timer, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Focus Sessions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Choose your focus mode", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        FocusSessionCard(
+            title = "Deep Work",
+            subtitle = "90 minutes • Intense focus",
+            icon = Icons.Default.Work,
+            duration = DEEP_WORK_DURATION,
+            gradientColors = listOf(SapphireBlue, VioletPurple),
+            onClick = { onStart(FocusType.DEEP_WORK, DEEP_WORK_DURATION) }
+        )
 
-        // Custom Duration
+        FocusSessionCard(
+            title = "Pomodoro",
+            subtitle = "25 min work • 5 min break",
+            icon = Icons.Default.Timer,
+            duration = POMODORO_DURATION,
+            gradientColors = listOf(EmeraldGreen, SapphireBlue),
+            onClick = { onStart(FocusType.POMODORO, POMODORO_DURATION) }
+        )
+
+        FocusSessionCard(
+            title = "Short Break",
+            subtitle = "5 minutes • Quick refresh",
+            icon = Icons.Default.Coffee,
+            duration = SHORT_BREAK_DURATION,
+            gradientColors = listOf(GoldenAmber, CoralRed),
+            onClick = { onStart(FocusType.SHORT_BREAK, SHORT_BREAK_DURATION) }
+        )
+
+        FocusSessionCard(
+            title = "Long Break",
+            subtitle = "15 minutes • Full recharge",
+            icon = Icons.Default.Spa,
+            duration = LONG_BREAK_DURATION,
+            gradientColors = listOf(EmeraldGreen, GoldenAmber),
+            onClick = { onStart(FocusType.LONG_BREAK, LONG_BREAK_DURATION) }
+        )
+
         Text(
             text = "Custom Duration",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(customDurationOptions) { minutes ->
                 CustomDurationChip(
                     minutes = minutes,
@@ -200,66 +191,43 @@ fun FocusSessionCard(
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     duration: Long,
-    color: Color,
+    gradientColors: List<Color>,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = MaterialTheme.shapes.medium
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false).clickable { onClick() },
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(color.copy(alpha = 0.2f))
-                        .border(2.dp, color, CircleShape),
+                    modifier = Modifier.size(44.dp).background(
+                        brush = Brush.linearGradient(gradientColors),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
                 }
-
                 Column {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-
             Text(
                 text = "${duration / 60} min",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = gradientColors[0]
             )
         }
     }
@@ -269,10 +237,10 @@ fun FocusSessionCard(
 fun CustomDurationChip(minutes: Int, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(ChipShape)
             .clickable { onClick() },
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (isSelected) VioletPurple else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
         border = BorderStroke(
             width = if (isSelected) 0.dp else 1.dp,
             color = MaterialTheme.colorScheme.outline
@@ -305,33 +273,37 @@ fun FocusTimer(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Session Type with Icon
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(bottom = 24.dp)
         ) {
-            Icon(
-                imageVector = if (state.type == FocusType.DEEP_WORK) Icons.Default.Work else Icons.Default.Timer,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
+            Box(
+                modifier = Modifier.size(36.dp).background(
+                    brush = Brush.linearGradient(listOf(VioletPurple, SapphireBlue)),
+                    shape = RoundedCornerShape(10.dp)
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (state.type == FocusType.DEEP_WORK) Icons.Default.Work else Icons.Default.Timer,
+                    null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Text(
                 text = state.type.displayName,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        // Progress Circle
         Box(
             modifier = Modifier.size(300.dp),
             contentAlignment = Alignment.Center
@@ -339,11 +311,8 @@ fun FocusTimer(
             AnimatedCircularProgress(progress = progress, time = formatTime(timeRemaining))
         }
 
-        // Progress Stats
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 40.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             ProgressStat("Time Spent", formatTime(elapsedSeconds))
@@ -353,52 +322,42 @@ fun FocusTimer(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Control Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Interruption Button
             FloatingActionButton(
                 onClick = onInterruption,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
+                containerColor = CoralRed.copy(alpha = 0.15f),
+                contentColor = CoralRed,
                 modifier = Modifier.size(60.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Record Interruption",
-                    modifier = Modifier.size(24.dp)
-                )
+                Icon(Icons.Default.Warning, "Record Interruption", modifier = Modifier.size(24.dp))
             }
 
-            // Pause/Resume Button
             FloatingActionButton(
                 onClick = onPauseResume,
-                containerColor = if (isPaused) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                containerColor = if (isPaused) GoldenAmber else EmeraldGreen,
+                contentColor = Color.White,
                 modifier = Modifier.size(80.dp)
             ) {
                 Icon(
-                    imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                    contentDescription = if (isPaused) "Resume" else "Pause",
+                    if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    if (isPaused) "Resume" else "Pause",
                     modifier = Modifier.size(32.dp)
                 )
             }
 
-            // Stop Button
             FloatingActionButton(
                 onClick = onStop,
-                containerColor = MaterialTheme.colorScheme.error,
+                containerColor = CoralRed,
+                contentColor = Color.White,
                 modifier = Modifier.size(60.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Stop,
-                    contentDescription = "Stop",
-                    modifier = Modifier.size(24.dp)
-                )
+                Icon(Icons.Default.Stop, "Stop", modifier = Modifier.size(24.dp))
             }
         }
 
-        // Pause Indicator
         AnimatedVisibility(
             visible = isPaused,
             enter = fadeIn() + slideInVertically(),
@@ -408,21 +367,18 @@ fun FocusTimer(
                 text = "PAUSED",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.tertiary,
+                color = GoldenAmber,
                 modifier = Modifier.padding(top = 16.dp)
             )
         }
 
-        // Motivation Quote
-        if (!isPaused && timeRemaining < 300) { // Show when less than 5 minutes remain
+        if (!isPaused && timeRemaining < 300) {
             Text(
                 text = getMotivationalQuote(progress),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp, start = 32.dp, end = 32.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp, start = 32.dp, end = 32.dp)
             )
         }
     }
@@ -431,136 +387,62 @@ fun FocusTimer(
 @Composable
 fun ProgressStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 @Composable
-fun FocusCompletion(
-    type: FocusType,
-    score: Int,
-    onRestart: () -> Unit,
-    onNewSession: () -> Unit
-) {
+fun FocusCompletion(type: FocusType, score: Int, onRestart: () -> Unit, onNewSession: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Celebration Icon
-        Icon(
-            imageVector = Icons.Default.Celebration,
-            contentDescription = "Completed",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(80.dp)
-        )
+        Icon(Icons.Default.Celebration, "Completed", tint = EmeraldGreen, modifier = Modifier.size(80.dp))
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "Session Complete!",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Text("Session Complete!", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "${type.displayName} session finished successfully",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+        Text("${type.displayName} session finished successfully", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Score Card
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
+            modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+            shape = CardShape,
+            elevation = CardDefaults.cardElevation(0.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Focus Score",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Focus Score", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Score Circle
-                Box(
-                    modifier = Modifier.size(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = score / 100f,
                         modifier = Modifier.size(120.dp),
                         strokeWidth = 8.dp,
-                        color = when {
-                            score >= 80 -> Color.Green
-                            score >= 60 -> Color.Yellow
-                            else -> Color.Red
-                        }
+                        color = when { score >= 80 -> EmeraldGreen; score >= 60 -> GoldenAmber; else -> CoralRed }
                     )
-
-                    Text(
-                        text = "$score",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("$score", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 }
 
-                Text(
-                    text = getScoreFeedback(score),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+                Text(getScoreFeedback(score), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp))
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Button(
-                onClick = onNewSession,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedButton(onClick = onNewSession, modifier = Modifier.weight(1f)) {
                 Text("New Session")
             }
-
-            Button(
-                onClick = onRestart,
-                modifier = Modifier.weight(1f)
-            ) {
+            Button(onClick = onRestart, modifier = Modifier.weight(1f)) {
                 Text("Restart Session")
             }
         }
@@ -574,27 +456,19 @@ fun SessionStatsButton() {
     Box {
         FloatingActionButton(
             onClick = { showStats = !showStats },
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            containerColor = VioletPurple.copy(alpha = 0.15f),
+            contentColor = VioletPurple
         ) {
-            Icon(Icons.Default.BarChart, contentDescription = "Session Statistics")
+            Icon(Icons.Default.BarChart, "Session Statistics")
         }
 
         DropdownMenu(
             expanded = showStats,
             onDismissRequest = { showStats = false }
         ) {
-            DropdownMenuItem(
-                text = { Text("Today: 3 sessions") },
-                onClick = { showStats = false }
-            )
-            DropdownMenuItem(
-                text = { Text("Weekly Avg: 85%") },
-                onClick = { showStats = false }
-            )
-            DropdownMenuItem(
-                text = { Text("Total Focus: 12h 30m") },
-                onClick = { showStats = false }
-            )
+            DropdownMenuItem(text = { Text("Today: 3 sessions") }, onClick = { showStats = false })
+            DropdownMenuItem(text = { Text("Weekly Avg: 85%") }, onClick = { showStats = false })
+            DropdownMenuItem(text = { Text("Total Focus: 12h 30m") }, onClick = { showStats = false })
         }
     }
 }
@@ -607,11 +481,10 @@ fun AnimatedCircularProgress(progress: Float, time: String) {
     )
 
     val sweepAngle = animatedProgress * 360f
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val primaryColor = VioletPurple
+    val secondaryColor = SapphireBlue
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        // Background circle
         drawArc(
             color = Color.LightGray.copy(alpha = 0.3f),
             startAngle = -90f,
@@ -620,34 +493,19 @@ fun AnimatedCircularProgress(progress: Float, time: String) {
             style = Stroke(width = 20f, cap = StrokeCap.Round)
         )
 
-        // Progress arc with gradient
         drawArc(
-            brush = Brush.sweepGradient(
-                colors = listOf(secondaryColor, primaryColor, secondaryColor)
-            ),
+            brush = Brush.sweepGradient(colors = listOf(secondaryColor, primaryColor, secondaryColor)),
             startAngle = -90f,
             sweepAngle = sweepAngle,
             useCenter = false,
             style = Stroke(width = 20f, cap = StrokeCap.Round)
         )
-
-        // Time text (drawn in separate Box for better positioning)
     }
 
-    // Time display in center
     Box(contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = time,
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "remaining",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(time, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text("remaining", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -656,29 +514,20 @@ private fun formatTime(totalSeconds: Long): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-
-    return if (hours > 0) {
-        "%02d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%02d:%02d".format(minutes, seconds)
-    }
+    return if (hours > 0) "%02d:%02d:%02d".format(hours, minutes, seconds) else "%02d:%02d".format(minutes, seconds)
 }
 
-private fun getMotivationalQuote(progress: Float): String {
-    return when {
-        progress < 0.25 -> "Great start! Keep up the momentum!"
-        progress < 0.5 -> "You're doing amazing! Stay focused!"
-        progress < 0.75 -> "Halfway there! Push through!"
-        else -> "Almost done! Finish strong!"
-    }
+private fun getMotivationalQuote(progress: Float): String = when {
+    progress < 0.25 -> "Great start! Keep up the momentum!"
+    progress < 0.5 -> "You're doing amazing! Stay focused!"
+    progress < 0.75 -> "Halfway there! Push through!"
+    else -> "Almost done! Finish strong!"
 }
 
-private fun getScoreFeedback(score: Int): String {
-    return when {
-        score >= 90 -> "Excellent focus! You're on fire! 🔥"
-        score >= 80 -> "Great work! Very consistent focus!"
-        score >= 70 -> "Good session! Room for improvement."
-        score >= 60 -> "Decent effort. Try minimizing distractions."
-        else -> "Keep practicing! You'll improve!"
-    }
+private fun getScoreFeedback(score: Int): String = when {
+    score >= 90 -> "Excellent focus! You're on fire!"
+    score >= 80 -> "Great work! Very consistent focus!"
+    score >= 70 -> "Good session! Room for improvement."
+    score >= 60 -> "Decent effort. Try minimizing distractions."
+    else -> "Keep practicing! You'll improve!"
 }
