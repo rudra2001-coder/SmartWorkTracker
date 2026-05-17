@@ -57,6 +57,8 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.TrendingUp
@@ -1419,38 +1421,78 @@ fun TodayStatusCard(
     onWorkTypeSelected: (WorkType) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-
     val (accentColor, _) = remember(workType) { workTypeStyle(workType) }
 
-    val backgroundColor by animateColorAsState(
-        targetValue = accentColor.copy(alpha = 0.07f),
-        label = "bg_color"
-    )
+    val (title, subtitle) = remember(workType) {
+        when (workType) {
+            WorkType.OFFICE -> "Office Day 🏢" to "You're working from office today"
+            WorkType.HOME_OFFICE -> "Home Office 🏠" to "Working comfortably from home"
+            WorkType.OFF_DAY -> "Off Day 🌴" to "Enjoy your rest!"
+            WorkType.EXTRA_WORK -> "Extra Work ⚡" to "Going above and beyond!"
+            WorkType.OVERTIME -> "Overtime 🚀" to "Crushing it!"
+            null -> "Log Attendance" to "What are you working on today?"
+        }
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(8.dp, CardShape, clip = false),
         shape = CardShape,
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         onClick = { expanded = !expanded }
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            WorkTypeAnimation(workType = workType)
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Status Icon with Gradient
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(accentColor.copy(alpha = 0.7f), accentColor)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (workType) {
+                            WorkType.OFFICE -> Icons.Default.Work
+                            WorkType.HOME_OFFICE -> Icons.Default.Home
+                            WorkType.OFF_DAY -> Icons.Default.BeachAccess
+                            WorkType.EXTRA_WORK, WorkType.OVERTIME -> Icons.Default.Bolt
+                            null -> Icons.Default.Add
+                        },
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-            Spacer(Modifier.height(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = subtitle,
+                        style = typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
 
-            AnimatedContent(
-                targetState = workType,
-                transitionSpec = {
-                    (slideInVertically { it } + fadeIn()).togetherWith(slideOutVertically { -it } + fadeOut())
-                },
-                label = "work_content"
-            ) { targetWorkType ->
-                WorkTypeContent(workType = targetWorkType)
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
             AnimatedVisibility(
@@ -1459,57 +1501,41 @@ fun TodayStatusCard(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column {
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(20.dp))
+                    HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+                    Spacer(Modifier.height(20.dp))
                     WorkTypeSelectionButtons(
                         workType = workType,
-                        onWorkTypeSelected = onWorkTypeSelected
+                        onWorkTypeSelected = {
+                            onWorkTypeSelected(it)
+                            expanded = false
+                        }
                     )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // Tap hint
-            AnimatedVisibility(visible = !expanded) {
-                Text(
-                    text = if (workType == null) "Tap to log today's work" else "Tap to change",
-                    style = typography.labelSmall,
-                    color = accentColor,
-                    fontWeight = FontWeight.Medium
-                )
+            if (!expanded) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = PillShape,
+                        color = accentColor.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            text = if (workType == null) "Log Status" else "Change",
+                            style = typography.labelSmall,
+                            color = accentColor,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun WorkTypeContent(workType: WorkType?) {
-    val (title, subtitle) = remember(workType) {
-        when (workType) {
-            WorkType.OFFICE -> "Office Day 🏢" to "You're working from office today"
-            WorkType.HOME_OFFICE -> "Home Office 🏠" to "Working comfortably from home"
-            WorkType.OFF_DAY -> "Off Day 🌴" to "Enjoy your well-deserved rest!"
-            WorkType.EXTRA_WORK -> "Extra Work ⚡" to "Going above and beyond!"
-            WorkType.OVERTIME -> "Overtime 🚀" to "You are absolutely crushing it!"
-            null -> "Mark Today" to "What kind of day is it?"
-        }
-    }
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = title,
-            style = typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = colorScheme.onSurface
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = subtitle,
-            style = typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -1563,9 +1589,9 @@ fun RowScope.AnimatedWorkTypeButton(
         modifier = Modifier
             .weight(1f)
             .graphicsLayer { scaleX = buttonScale; scaleY = buttonScale }
-            .shadow(if (selected) 6.dp else 2.dp, RoundedCornerShape(14.dp))
+            .shadow(if (selected) 6.dp else 2.dp, ChipShape)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = ChipShape,
         color = bgColor
     ) {
         Column(
@@ -1575,59 +1601,6 @@ fun RowScope.AnimatedWorkTypeButton(
             Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
             Spacer(Modifier.height(4.dp))
             Text(label, style = typography.labelSmall, color = contentColor, fontWeight = FontWeight.Medium)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Work Type Particle Animation (kept, refined)
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun WorkTypeAnimation(workType: WorkType?) {
-    val infiniteTransition = rememberInfiniteTransition(label = "orbit")
-    val angle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "angle"
-    )
-
-    val (primaryColor, _) = workTypeStyle(workType)
-
-    val secondaryColor by animateColorAsState(
-        targetValue = when (workType) {
-            WorkType.OFFICE -> SapphireBlue.copy(alpha = 0.5f)
-            WorkType.HOME_OFFICE -> EmeraldGreen.copy(alpha = 0.5f)
-            WorkType.OFF_DAY -> VioletPurple.copy(alpha = 0.5f)
-            WorkType.EXTRA_WORK -> GoldenAmber.copy(alpha = 0.5f)
-            WorkType.OVERTIME -> CoralRed.copy(alpha = 0.5f)
-            null -> SlateGray.copy(alpha = 0.3f)
-        },
-        label = "secondary_color"
-    )
-
-    Canvas(modifier = Modifier.size(100.dp)) {
-        val radius = size.minDimension / 2f
-        val particleCount = 16
-
-        (0 until particleCount).forEach { i ->
-            val progress = (i.toFloat() / particleCount + angle / 360f) % 1f
-            val currentAngle = progress * 360f
-            val currentRadius = radius * (0.5f + (1 - progress) * 0.5f)
-            val radians = (currentAngle * PI / 180).toFloat()
-            val x = center.x + currentRadius * cos(radians)
-            val y = center.y + currentRadius * sin(radians)
-
-            drawCircle(
-                color = if (i % 2 == 0) primaryColor else secondaryColor,
-                radius = (1 - progress) * 5f,
-                center = Offset(x, y),
-                alpha = (1 - progress) * 0.9f
-            )
         }
     }
 }

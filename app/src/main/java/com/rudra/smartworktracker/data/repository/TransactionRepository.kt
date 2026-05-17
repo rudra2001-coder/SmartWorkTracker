@@ -11,15 +11,19 @@ class TransactionRepository(private val transactionDao: FinancialTransactionDao)
     fun getAllTransactions(): Flow<List<FinancialTransaction>> = transactionDao.getAllTransactions()
 
     fun getTotalIncome(): Flow<Double> {
-        return transactionDao.getAllTransactions().map {
-            it.filter { it.type == TransactionType.INCOME || it.type == TransactionType.LOAN_RECEIVE }.sumOf { it.amount }
-        }
+        return transactionDao.getTotalIncome().map { it ?: 0.0 }
     }
 
     fun getTotalExpenses(): Flow<Double> {
-        return transactionDao.getAllTransactions().map {
-            it.filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.EMI_PAID }.sumOf { it.amount }
-        }
+        return transactionDao.getTotalExpenses().map { it ?: 0.0 }
+    }
+
+    fun getTotalIncomeBetween(startTime: Long, endTime: Long): Flow<Double> {
+        return transactionDao.getTotalIncomeBetween(startTime, endTime).map { it ?: 0.0 }
+    }
+
+    fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double> {
+        return transactionDao.getTotalExpensesBetween(startTime, endTime).map { it ?: 0.0 }
     }
 
     suspend fun deleteTransaction(transaction: FinancialTransaction) {

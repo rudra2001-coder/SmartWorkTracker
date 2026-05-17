@@ -36,6 +36,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
         return expenseDao.getTotalExpensesUpTo(endTime)
     }
 
+    fun getTotalExpenses(): Flow<Double?> {
+        return expenseDao.getTotalExpenses()
+    }
+
     fun getExpensesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<ExpenseByCategory>> {
         return expenseDao.getExpensesByCategoryBetween(startTime, endTime)
     }
