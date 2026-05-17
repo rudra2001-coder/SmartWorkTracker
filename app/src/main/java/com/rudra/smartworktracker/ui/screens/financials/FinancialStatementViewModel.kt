@@ -8,7 +8,6 @@ import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.repository.TransactionRepository
 import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
-import com.rudra.smartworktracker.model.Expense
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -394,15 +393,8 @@ class FinancialStatementViewModel(
                         }
                     }
                     TransactionSource.EXPENSE -> {
-                        // Expense.id is String (UUID), but DAO expects Long - use delete by full object
-                        // Create a minimal Expense object with just the ID for deletion
                         val id = transaction.originalId
-                        val expenseToDelete = com.rudra.smartworktracker.model.Expense(
-                            id = id.toString(),
-                            amount = 0.0,
-                            timestamp = 0
-                        )
-                        expenseRepository.deleteExpense(expenseToDelete)
+                        expenseRepository.deleteExpenseById(id.toString())
                     }
                 }
                 _snackbarMessage.value = "Transaction deleted successfully"

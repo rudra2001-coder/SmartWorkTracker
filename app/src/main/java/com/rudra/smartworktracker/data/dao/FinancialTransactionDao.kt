@@ -36,6 +36,12 @@ interface FinancialTransactionDao {
     @Query("SELECT SUM(amount) FROM financial_transactions WHERE type IN ('EXPENSE', 'EMI_PAID') AND date BETWEEN :startTime AND :endTime")
     fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?>
 
+    @Query("SELECT COALESCE(category, 'Other') as category, SUM(amount) as total FROM financial_transactions WHERE type IN ('EXPENSE', 'EMI_PAID') AND date BETWEEN :startTime AND :endTime GROUP BY category")
+    fun getExpenseByCategoryBetween(startTime: Long, endTime: Long): Flow<List<com.rudra.smartworktracker.model.IncomeByCategory>>
+
+    @Query("SELECT COALESCE(category, 'Other') as category, SUM(amount) as total FROM financial_transactions WHERE type IN ('INCOME', 'LOAN_RECEIVE') AND date BETWEEN :startTime AND :endTime GROUP BY category")
+    fun getIncomeByCategoryBetween(startTime: Long, endTime: Long): Flow<List<com.rudra.smartworktracker.model.IncomeByCategory>>
+
     @Delete
     suspend fun delete(financialTransaction: FinancialTransaction)
 }

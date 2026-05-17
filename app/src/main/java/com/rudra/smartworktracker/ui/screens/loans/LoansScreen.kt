@@ -2,8 +2,13 @@ package com.rudra.smartworktracker.ui.screens.loans
 
 import android.app.Application
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,14 +71,14 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,8 +87,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -94,6 +99,7 @@ import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanCategory
 import com.rudra.smartworktracker.data.entity.LoanType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -109,6 +115,13 @@ private val CoralRed = Color(0xFFFF5757)
 private val SapphireBlue = Color(0xFF3B82F6)
 private val GoldenAmber = Color(0xFFF59E0B)
 private val VioletPurple = Color(0xFF8B5CF6)
+private val SlateGray = Color(0xFF64748B)
+
+private val GreenSurface = Color(0xFFE6FBF4)
+private val RedSurface = Color(0xFFFFEDED)
+private val BlueSurface = Color(0xFFEFF6FF)
+private val AmberSurface = Color(0xFFFFFBEB)
+private val PurpleSurface = Color(0xFFF5F3FF)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,34 +133,14 @@ fun LoansScreen(
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Loan Management") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                actions = {
-                    if (uiState.statistics.overdueCount > 0) {
-                        BadgedBox(
-                            badge = {
-                                Badge { Text(uiState.statistics.overdueCount.toString()) }
-                            }
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = "Overdue loans",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-            )
-        },
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {},
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openAddLoanDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = SapphireBlue,
+                contentColor = Color.White,
+                shape = CircleShape
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Loan")
             }
@@ -158,69 +151,143 @@ fun LoansScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            StatisticsCard(uiState.statistics)
-            
-            SearchBar(
-                query = uiState.searchQuery,
-                onQueryChange = { viewModel.setSearchQuery(it) }
-            )
-            
-            TabRow(
-                selectedTabIndex = LoanTab.entries.indexOf(uiState.selectedTab),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
             ) {
-                LoanTab.entries.forEach { tab ->
-                    Tab(
-                        selected = uiState.selectedTab == tab,
-                        onClick = { viewModel.setSelectedTab(tab) },
-                        text = {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(52.dp).background(
+                                brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue)),
+                                shape = RoundedCornerShape(14.dp)
+                            ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Payment, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(tab.title)
-                                val count = when (tab) {
-                                    LoanTab.ALL -> uiState.loans.size
-                                    LoanTab.BORROWED -> uiState.statistics.borrowedCount
-                                    LoanTab.LENT -> uiState.statistics.lentCount
-                                    LoanTab.OVERDUE -> uiState.statistics.overdueCount
-                                }
-                                if (count > 0) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        "($count)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                Text("Loan Management", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                if (uiState.statistics.overdueCount > 0) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Surface(shape = PillShape, color = CoralRed.copy(alpha = 0.12f)) {
+                                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, tint = CoralRed, modifier = Modifier.size(14.dp))
+                                            Text("${uiState.statistics.overdueCount}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = CoralRed)
+                                        }
+                                    }
                                 }
                             }
+                            Text("Track borrowed & lent money", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    )
-                }
-            }
-
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (uiState.filteredLoans.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Payment,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "No loans found",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
-            } else {
-                LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+
+                item { StatisticsCard(stats = uiState.statistics) }
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+
+                item {
+                    SearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = { viewModel.setSearchQuery(it) }
+                    )
+                }
+
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+
+                item {
+                    TabRow(
+                        selectedTabIndex = LoanTab.entries.indexOf(uiState.selectedTab),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        indicator = {},
+                        divider = {}
+                    ) {
+                        LoanTab.entries.forEach { tab ->
+                            val selected = uiState.selectedTab == tab
+                            val count = when (tab) {
+                                LoanTab.ALL -> uiState.loans.size
+                                LoanTab.BORROWED -> uiState.statistics.borrowedCount
+                                LoanTab.LENT -> uiState.statistics.lentCount
+                                LoanTab.OVERDUE -> uiState.statistics.overdueCount
+                            }
+                            Tab(
+                                selected = selected,
+                                onClick = { viewModel.setSelectedTab(tab) },
+                                text = {
+                                    Surface(
+                                        shape = PillShape,
+                                        color = if (selected) VioletPurple.copy(alpha = 0.12f) else Color.Transparent
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                tab.title,
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (selected) VioletPurple else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            if (count > 0) {
+                                                Surface(
+                                                    shape = PillShape,
+                                                    color = if (selected) VioletPurple else MaterialTheme.colorScheme.surfaceVariant
+                                                ) {
+                                                    Text(
+                                                        "$count",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (uiState.isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxSize().height(200.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = SapphireBlue)
+                        }
+                    }
+                } else if (uiState.filteredLoans.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier.size(72.dp).background(
+                                        brush = Brush.linearGradient(listOf(SlateGray.copy(alpha = 0.3f), SlateGray.copy(alpha = 0.1f))),
+                                        shape = CircleShape
+                                    ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(36.dp), tint = SlateGray.copy(alpha = 0.5f))
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("No loans found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Tap + to add a new loan", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                } else {
                     items(uiState.filteredLoans, key = { it.id }) { loan ->
+                        Spacer(modifier = Modifier.height(8.dp))
                         LoanCard(
                             loan = loan,
                             onClick = { viewModel.openLoanDetailsDialog(loan) },
@@ -230,6 +297,8 @@ fun LoansScreen(
                         )
                     }
                 }
+
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
 
@@ -304,110 +373,99 @@ fun LoansScreen(
 @Composable
 fun StatisticsCard(stats: LoanStatistics) {
     val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
-    
+
+    var animatedBorrowed by remember { mutableFloatStateOf(0f) }
+    var animatedLent by remember { mutableFloatStateOf(0f) }
+    var animatedNet by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(stats) {
+        delay(200)
+        animatedBorrowed = stats.totalBorrowed.toFloat()
+        animatedLent = stats.totalLent.toFloat()
+        animatedNet = stats.netPosition.toFloat()
+    }
+
+    val borrowedAnim by animateFloatAsState(animatedBorrowed, tween(1000), label = "b")
+    val lentAnim by animateFloatAsState(animatedLent, tween(1000), label = "l")
+    val netAnim by animateFloatAsState(animatedNet, tween(1000), label = "n")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .shadow(6.dp, CardShape, clip = false),
+            .shadow(8.dp, CardShape, clip = false),
         shape = CardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .clip(PillShape)
-                        .background(
-                            Brush.horizontalGradient(listOf(EmeraldGreen, SapphireBlue))
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.size(36.dp).background(
+                        brush = Brush.linearGradient(listOf(EmeraldGreen, VioletPurple)),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Loan Overview",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (stats.overdueCount > 0) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            "${stats.overdueCount} overdue",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                Text("Loan Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                if (stats.overdueCount > 0) {
+                    Surface(shape = PillShape, color = CoralRed.copy(alpha = 0.12f)) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = CoralRed, modifier = Modifier.size(14.dp))
+                            Text("${stats.overdueCount} overdue", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = CoralRed)
+                        }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                EnhancedStatItem(
+                StatCard(
                     label = "Borrowed",
-                    value = currencyFormat.format(stats.totalBorrowed),
-                    color = Color(0xFFF44336),
-                    icon = Icons.Default.ArrowBack,
+                    value = "৳${"%,.0f".format(borrowedAnim)}",
+                    accentColor = CoralRed,
+                    bgColor = RedSurface,
                     modifier = Modifier.weight(1f)
                 )
-                EnhancedStatItem(
+                StatCard(
                     label = "Lent",
-                    value = currencyFormat.format(stats.totalLent),
-                    color = Color(0xFF4CAF50),
-                    icon = Icons.Default.Payment,
+                    value = "৳${"%,.0f".format(lentAnim)}",
+                    accentColor = EmeraldGreen,
+                    bgColor = GreenSurface,
                     modifier = Modifier.weight(1f)
                 )
-                EnhancedStatItem(
+                StatCard(
                     label = "Net",
-                    value = currencyFormat.format(stats.netPosition),
-                    color = if (stats.netPosition >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
-                    icon = Icons.Default.CheckCircle,
+                    value = "৳${"%,.0f".format(netAnim)}",
+                    accentColor = if (stats.netPosition >= 0) EmeraldGreen else CoralRed,
+                    bgColor = if (stats.netPosition >= 0) GreenSurface else RedSurface,
                     modifier = Modifier.weight(1f)
                 )
             }
-            
+
             if (stats.totalCount > 0) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        "Total: ${stats.totalCount} loans",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(shape = PillShape, color = SlateGray.copy(alpha = 0.08f)) {
+                        Text(
+                            "Total: ${stats.totalCount} loans",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                        )
+                    }
                 }
             }
         }
@@ -415,57 +473,66 @@ fun StatisticsCard(stats: LoanStatistics) {
 }
 
 @Composable
-fun EnhancedStatItem(
+fun StatCard(
     label: String,
     value: String,
-    color: Color,
-    icon: ImageVector,
+    accentColor: Color,
+    bgColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Card(
+        modifier = modifier.shadow(4.dp, RoundedCornerShape(14.dp), clip = false),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(color.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
+            Box(
+                modifier = Modifier.size(32.dp).background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    when (label) {
+                        "Borrowed" -> Icons.Default.ArrowBack
+                        "Lent" -> Icons.Default.Payment
+                        else -> Icons.Default.CheckCircle
+                    },
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = accentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
 @Composable
 fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 1.dp
+        modifier = Modifier.fillMaxWidth().shadow(4.dp, ChipShape, clip = false),
+        shape = ChipShape,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -473,7 +540,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             androidx.compose.material3.TextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -506,187 +573,167 @@ fun LoanCard(
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
-    
-    val cardColor by animateColorAsState(
-        targetValue = when {
-            loan.isFullyPaid -> MaterialTheme.colorScheme.surfaceVariant
-            loan.isOverdue -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-            loan.loanType == LoanType.BORROWED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-            else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-        },
-        label = "cardColor"
-    )
+
+    val isBorrowed = loan.loanType == LoanType.BORROWED
+    val accentColor = if (isBorrowed) CoralRed else EmeraldGreen
+    val bgColor = if (isBorrowed) RedSurface else GreenSurface
+    val cardBg = when {
+        loan.isFullyPaid -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        loan.isOverdue -> CoralRed.copy(alpha = 0.06f)
+        else -> MaterialTheme.colorScheme.surface
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable(onClick = onClick)
             .shadow(6.dp, CardShape, clip = false),
         shape = CardShape,
-        colors = CardDefaults.cardColors(containerColor = cardColor),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error
-                                   else MaterialTheme.colorScheme.primary
+                Box(
+                    modifier = Modifier.size(44.dp).background(
+                        brush = Brush.linearGradient(if (isBorrowed) listOf(CoralRed, CoralRed.copy(alpha = 0.7f)) else listOf(EmeraldGreen, EmeraldGreen.copy(alpha = 0.7f))),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        loan.personName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(shape = PillShape, color = accentColor.copy(alpha = 0.12f)) {
+                            Text(
+                                if (isBorrowed) "Borrowed" else "Lent",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                        Text(
+                            "• ${loan.loanCategory.name}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            loan.personName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                loan.loanType.name,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error
-                                        else MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                " - ${loan.loanCategory.name}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Row {
+                        if (loan.isFullyPaid) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Paid", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                        } else if (loan.isOverdue) {
+                            Icon(Icons.Default.Warning, contentDescription = "Overdue", tint = CoralRed, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        IconButton(onClick = onEditClick, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = SlateGray)
+                        }
+                        IconButton(onClick = onDeleteClick, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = CoralRed.copy(alpha = 0.7f))
                         }
                     }
                 }
-                Row {
-                    if (loan.isFullyPaid) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Paid",
-                            tint = Color(0xFF4CAF50)
-                        )
-                    } else if (loan.isOverdue) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "Overdue",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    IconButton(onClick = onEditClick) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
+                    Text("Remaining", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "Remaining",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        currencyFormat.format(loan.remainingAmount),
+                        "৳${"%,.0f".format(loan.remainingAmount)}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.ExtraBold,
+                        color = accentColor
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
+                    Text("Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "Total",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        currencyFormat.format(loan.initialAmount),
-                        style = MaterialTheme.typography.titleMedium
+                        "৳${"%,.0f".format(loan.initialAmount)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            LinearProgressIndicator(
-                progress = { loan.progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-            
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(accentColor.copy(alpha = 0.12f))
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(loan.progress).height(8.dp).background(
+                        brush = Brush.horizontalGradient(listOf(accentColor.copy(alpha = 0.7f), accentColor)),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier.size(32.dp).background(SlateGray.copy(alpha = 0.08f), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateGray)
+                    }
+                    Text(dateFormat.format(Date(loan.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Surface(shape = PillShape, color = SlateGray.copy(alpha = 0.08f)) {
                     Text(
-                        dateFormat.format(Date(loan.date)),
+                        "${(loan.progress * 100).toInt()}% paid",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
-                Text(
-                    "${(loan.progress * 100).toInt()}% paid",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-            
+
             if (!loan.isFullyPaid) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Button(
-                    onClick = onRepayClick,
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        if (!loan.isFullyPaid) onRepayClick()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    shape = ChipShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (loan.loanType == LoanType.BORROWED) MaterialTheme.colorScheme.error
-                                         else MaterialTheme.colorScheme.primary
+                        containerColor = if (isBorrowed) CoralRed else EmeraldGreen
                     )
                 ) {
-                    Icon(Icons.Default.Payment, contentDescription = null)
+                    Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (loan.loanType == LoanType.BORROWED) "Make Payment" else "Receive Payment")
+                    Text(if (isBorrowed) "Make Payment" else "Receive Payment", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -714,7 +761,7 @@ fun AddEditLoanBottomSheet(
     var destinationAccount by remember { mutableStateOf(loan?.destinationAccount ?: AccountType.CASH) }
     var selectedDueDate by remember { mutableStateOf(loan?.dueDate) }
     var showDatePicker by remember { mutableStateOf(false) }
-    
+
     var loanTypeExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var sourceExpanded by remember { mutableStateOf(false) }
@@ -722,78 +769,94 @@ fun AddEditLoanBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                if (isEditing) "Edit Loan" else "Add New Loan",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier.size(40.dp).background(
+                        brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Text(
+                    if (isEditing) "Edit Loan" else "Add New Loan",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             OutlinedTextField(
                 value = personName,
                 onValueChange = { personName = it },
                 label = { Text("Person Name *") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = ChipShape
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = contactNumber,
                 onValueChange = { contactNumber = it },
                 label = { Text("Contact Number") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                shape = ChipShape
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it },
                 label = { Text("Amount *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                shape = ChipShape
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth()) {
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = loanType == LoanType.BORROWED,
                     onClick = { loanType = LoanType.BORROWED },
                     label = { Text("I Borrowed") },
                     modifier = Modifier.weight(1f),
+                    shape = PillShape,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                        selectedContainerColor = CoralRed.copy(alpha = 0.15f)
                     )
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 FilterChip(
                     selected = loanType == LoanType.LENT,
                     onClick = { loanType = LoanType.LENT },
                     label = { Text("I Lent") },
                     modifier = Modifier.weight(1f),
+                    shape = PillShape,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        selectedContainerColor = EmeraldGreen.copy(alpha = 0.15f)
                     )
                 )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
                 onExpandedChange = { categoryExpanded = !categoryExpanded }
@@ -804,9 +867,8 @@ fun AddEditLoanBottomSheet(
                     readOnly = true,
                     label = { Text("Category") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    shape = ChipShape
                 )
                 ExposedDropdownMenu(
                     expanded = categoryExpanded,
@@ -823,9 +885,9 @@ fun AddEditLoanBottomSheet(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = selectedDueDate?.let {
                     SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()).format(Date(it))
@@ -833,52 +895,53 @@ fun AddEditLoanBottomSheet(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Due Date (Optional)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                 trailingIcon = {
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = "Select date")
                     }
                 },
-                enabled = false
+                enabled = false,
+                shape = ChipShape
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth()) {
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = interestRate,
                     onValueChange = { interestRate = it },
                     label = { Text("Interest %") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    shape = ChipShape
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 OutlinedTextField(
                     value = emiAmount,
                     onValueChange = { emiAmount = it },
                     label = { Text("EMI Amount") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    shape = ChipShape
                 )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = totalEmis,
                 onValueChange = { totalEmis = it },
                 label = { Text("Total EMIs") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = ChipShape
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             ExposedDropdownMenuBox(
                 expanded = sourceExpanded,
                 onExpandedChange = { sourceExpanded = !sourceExpanded }
@@ -889,9 +952,8 @@ fun AddEditLoanBottomSheet(
                     readOnly = true,
                     label = { Text("Source Account") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    shape = ChipShape
                 )
                 ExposedDropdownMenu(
                     expanded = sourceExpanded,
@@ -908,9 +970,9 @@ fun AddEditLoanBottomSheet(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             ExposedDropdownMenuBox(
                 expanded = destExpanded,
                 onExpandedChange = { destExpanded = !destExpanded }
@@ -921,9 +983,8 @@ fun AddEditLoanBottomSheet(
                     readOnly = true,
                     label = { Text("Destination Account") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    shape = ChipShape
                 )
                 ExposedDropdownMenu(
                     expanded = destExpanded,
@@ -940,28 +1001,30 @@ fun AddEditLoanBottomSheet(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Notes") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
-                maxLines = 4
+                maxLines = 4,
+                shape = ChipShape
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onDismiss) {
                     Text("Cancel")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Button(
                     onClick = {
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
@@ -982,16 +1045,17 @@ fun AddEditLoanBottomSheet(
                             )
                         }
                     },
-                    enabled = personName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0
+                    enabled = personName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0,
+                    shape = ChipShape
                 ) {
-                    Text(if (isEditing) "Update" else "Add Loan")
+                    Text(if (isEditing) "Update" else "Add Loan", fontWeight = FontWeight.SemiBold)
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
-    
+
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = selectedDueDate ?: System.currentTimeMillis()
@@ -1004,14 +1068,10 @@ fun AddEditLoanBottomSheet(
                         selectedDueDate = datePickerState.selectedDateMillis
                         showDatePicker = false
                     }
-                ) {
-                    Text("OK")
-                }
+                ) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -1030,171 +1090,177 @@ fun LoanDetailsBottomSheet(
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
+    val isBorrowed = loan.loanType == LoanType.BORROWED
+    val accentColor = if (isBorrowed) CoralRed else EmeraldGreen
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(PillShape)
-                        .background(
-                            Brush.horizontalGradient(listOf(CoralRed, GoldenAmber))
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Payment,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Loan Details",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier.size(40.dp).background(
+                            brush = Brush.linearGradient(if (isBorrowed) listOf(CoralRed, GoldenAmber) else listOf(EmeraldGreen, SapphireBlue)),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Payment, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
+                    Text("Loan Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = SlateGray)
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(6.dp, CardShape, clip = false),
+                modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
                 shape = CardShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                ),
+                colors = CardDefaults.cardColors(containerColor = accentColor.copy(alpha = 0.06f)),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Person, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                loan.personName,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "${loan.loanType.name} - ${loan.loanCategory.name}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(
+                        modifier = Modifier.size(48.dp).background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = accentColor, modifier = Modifier.size(28.dp))
+                    }
+                    Column {
+                        Text(loan.personName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(shape = PillShape, color = accentColor.copy(alpha = 0.12f)) {
+                                Text(
+                                    loan.loanType.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = accentColor,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                            Text("• ${loan.loanCategory.name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                DetailColumn("Initial Amount", currencyFormat.format(loan.initialAmount))
-                DetailColumn("Remaining", currencyFormat.format(loan.remainingAmount))
+                DetailColumn("Initial Amount", "৳${"%,.0f".format(loan.initialAmount)}")
+                DetailColumn("Remaining", "৳${"%,.0f".format(loan.remainingAmount)}")
                 DetailColumn("Progress", "${(loan.progress * 100).toInt()}%")
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
             loan.contactNumber?.let {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier.size(28.dp).background(SlateGray.copy(alpha = 0.08f), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateGray)
+                    }
                     Text(it, style = MaterialTheme.typography.bodyMedium)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier.size(28.dp).background(SlateGray.copy(alpha = 0.08f), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateGray)
+                }
                 Column {
                     Text("Start: ${dateFormat.format(Date(loan.date))}", style = MaterialTheme.typography.bodyMedium)
                     loan.dueDate?.let { Text("Due: ${dateFormat.format(Date(it))}", style = MaterialTheme.typography.bodyMedium) }
                 }
             }
-            
+
             loan.interestRate?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Interest Rate: $it%", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailInfoRow("Interest Rate", "$it%")
             }
-            
+
             loan.notes?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Notes: $it", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailInfoRow("Notes", it)
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (!loan.isFullyPaid) {
                     Button(
                         onClick = onMarkPaid,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = ChipShape
                     ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null)
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Mark as Paid")
+                        Text("Mark as Paid", fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Button(
                     onClick = onDelete,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = CoralRed),
+                    shape = ChipShape
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Delete")
+                    Text("Delete", fontWeight = FontWeight.SemiBold)
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
+fun HorizontalDivider(color: Color, thickness: androidx.compose.ui.unit.Dp) {
+    Box(modifier = Modifier.fillMaxWidth().height(thickness).background(color))
+}
+
+@Composable
 fun DetailColumn(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun DetailInfoRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1205,42 +1271,53 @@ fun RepayLoanDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: (Double) -> Un
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Record Payment") },
+        shape = CardShape,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Payment, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(20.dp))
+                Text("Record Payment", fontWeight = FontWeight.Bold)
+            }
+        },
         text = {
-            Column {
-                Text("For loan with ${loan.personName}")
-                Text("Remaining: ${loan.remainingAmount}", style = MaterialTheme.typography.bodySmall)
-                Spacer(modifier = Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("For loan with ${loan.personName}", style = MaterialTheme.typography.bodyMedium)
+                Surface(shape = PillShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Text(
+                        "Remaining: ৳${"%,.0f".format(loan.remainingAmount)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text("Amount") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = ChipShape,
+                    singleLine = true
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 FilterChip(
                     selected = showFullAmount,
                     onClick = {
                         showFullAmount = !showFullAmount
                         if (showFullAmount) amount = loan.remainingAmount.toString()
                     },
-                    label = { Text("Pay Full Amount") }
+                    label = { Text("Pay Full Amount") },
+                    shape = PillShape
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onConfirm(amount.toDoubleOrNull() ?: 0.0) },
-                enabled = (amount.toDoubleOrNull() ?: 0.0) > 0
-            ) {
-                Text("Confirm")
-            }
+                enabled = (amount.toDoubleOrNull() ?: 0.0) > 0,
+                shape = ChipShape
+            ) { Text("Confirm") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
@@ -1249,22 +1326,25 @@ fun RepayLoanDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: (Double) -> Un
 fun DeleteConfirmationDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Loan") },
-        text = { Text("Are you sure you want to delete the loan with ${loan.personName}? This will also delete all associated transactions.") },
+        shape = CardShape,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = CoralRed, modifier = Modifier.size(20.dp))
+                Text("Delete Loan", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Text("Are you sure you want to delete the loan with ${loan.personName}? This will also delete all associated transactions.")
+        },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("Delete")
-            }
+                colors = ButtonDefaults.buttonColors(containerColor = CoralRed),
+                shape = ChipShape
+            ) { Text("Delete") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
