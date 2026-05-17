@@ -7,7 +7,7 @@ import java.util.UUID
 @Entity(tableName = "calculations")
 data class Calculation(
     @PrimaryKey
-    val id: String = UUID.randomUUID().toString(),
+    val id: String = "1",
     val dailyMealRate: Double = 0.0,
     val overtimeRate: Double = 0.0,
 

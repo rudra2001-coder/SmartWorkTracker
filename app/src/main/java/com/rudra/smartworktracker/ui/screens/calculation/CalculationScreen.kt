@@ -106,14 +106,22 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
     var showEndDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(calculation, travelExpense) {
-        calculation?.let { 
+        calculation?.let {
             val rate = it.dailyMealRate
-            if (rate > 0 && dailyMealRate.toDoubleOrNull() != rate) dailyMealRate = rate.toString()
+            if (dailyMealRate.isEmpty() || (rate >= 0 && dailyMealRate.toDoubleOrNull() != rate)) {
+                dailyMealRate = if (rate % 1.0 == 0.0) rate.toInt().toString() else rate.toString()
+            }
         }
         travelExpense?.let {
-            if (it.dailyTravelCost > 0 && dailyTravelCost.toDoubleOrNull() != it.dailyTravelCost) dailyTravelCost = it.dailyTravelCost.toString()
-            if (it.otherExpenses > 0 && otherExpenses.toDoubleOrNull() != it.otherExpenses) otherExpenses = it.otherExpenses.toString()
-            if (it.otherExpenseDescription.isNotEmpty() && otherExpenseDescription != it.otherExpenseDescription) otherExpenseDescription = it.otherExpenseDescription
+            if (dailyTravelCost.isEmpty() || (it.dailyTravelCost >= 0 && dailyTravelCost.toDoubleOrNull() != it.dailyTravelCost)) {
+                dailyTravelCost = if (it.dailyTravelCost % 1.0 == 0.0) it.dailyTravelCost.toInt().toString() else it.dailyTravelCost.toString()
+            }
+            if (otherExpenses.isEmpty() || (it.otherExpenses >= 0 && otherExpenses.toDoubleOrNull() != it.otherExpenses)) {
+                otherExpenses = if (it.otherExpenses % 1.0 == 0.0) it.otherExpenses.toInt().toString() else it.otherExpenses.toString()
+            }
+            if (otherExpenseDescription.isEmpty() || (it.otherExpenseDescription.isNotEmpty() && otherExpenseDescription != it.otherExpenseDescription)) {
+                otherExpenseDescription = it.otherExpenseDescription
+            }
         }
     }
 
@@ -184,8 +192,22 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
                                     onDailyTravelCostChange = { dailyTravelCost = it },
                                     onOtherExpensesChange = { otherExpenses = it },
                                     onOtherExpenseDescriptionChange = { otherExpenseDescription = it },
-                                    onSaveMealRate = { rate -> rate.toDoubleOrNull()?.let { viewModel.saveDailyMealRate(it) } },
-                                    onSaveTravelExpense = { travel, other, desc -> viewModel.saveTravelExpense(travel.toDoubleOrNull() ?: 0.0, other.toDoubleOrNull() ?: 0.0, desc) },
+                                    onSaveMealRate = { rate -> 
+                                        viewModel.saveAllSettings(
+                                            rate.toDoubleOrNull() ?: 0.0,
+                                            dailyTravelCost.toDoubleOrNull() ?: 0.0,
+                                            otherExpenses.toDoubleOrNull() ?: 0.0,
+                                            otherExpenseDescription
+                                        )
+                                    },
+                                    onSaveTravelExpense = { travel, other, desc -> 
+                                        viewModel.saveAllSettings(
+                                            dailyMealRate.toDoubleOrNull() ?: 0.0,
+                                            travel.toDoubleOrNull() ?: 0.0,
+                                            other.toDoubleOrNull() ?: 0.0,
+                                            desc
+                                        )
+                                    },
                                     focusManager = focusManager
                                 )
                             }

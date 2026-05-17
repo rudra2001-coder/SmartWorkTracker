@@ -123,9 +123,8 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                         )
                         _calculation.value = currentCalc
                         _travelExpense.value = currentTravelExp
-                        fetchWorkLogData(currentCalc.dailyMealRate, currentTravelExp, _selectedDate.value)
-                        fetchMonthlyBreakdown(currentCalc.dailyMealRate, currentTravelExp)
-                        recalculateCustom()
+                        updateTotalMealRate()
+                        refreshCalculations()
                     }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load data: ${e.message}"
@@ -145,6 +144,50 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
+    private fun updateTotalMealRate() {
+        val baseRate = _calculation.value?.dailyMealRate ?: 0.0
+        val extraRate = _mealRateEntries.value.sumOf { it.rate }
+        _totalMealRate.value = baseRate + extraRate
+    }
+
+    private suspend fun refreshCalculations() {
+        fetchWorkLogData()
+        fetchMonthlyBreakdown()
+        recalculateCustom()
+    }
+
+    fun saveAllSettings(dailyMealRate: Double, dailyTravelCost: Double, otherExpenses: Double, otherExpenseDescription: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Save Meal Rate
+                val currentCalc = _calculation.value ?: Calculation(id = "1", lastUpdated = System.currentTimeMillis())
+                val updatedCalc = currentCalc.copy(dailyMealRate = dailyMealRate, lastUpdated = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
+                db.calculationDao().insert(updatedCalc)
+                _calculation.value = updatedCalc
+
+                // Save Travel Expense
+                val currentTravel = _travelExpense.value ?: TravelAndExpense()
+                val updatedTravel = currentTravel.copy(
+                    dailyTravelCost = dailyTravelCost,
+                    otherExpenses = otherExpenses,
+                    otherExpenseDescription = otherExpenseDescription,
+                    lastUpdated = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                )
+                db.travelExpenseDao().insert(updatedTravel)
+                _travelExpense.value = updatedTravel
+
+                updateTotalMealRate()
+                refreshCalculations()
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to save settings: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun addMealRateEntry(label: String, rate: Double) {
         viewModelScope.launch {
             db.mealRateSettingDao().insert(
@@ -157,10 +200,6 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         viewModelScope.launch {
             db.mealRateSettingDao().deleteById(id)
         }
-    }
-
-    private fun updateTotalMealRate() {
-        _totalMealRate.value = _mealRateEntries.value.sumOf { it.rate }
     }
 
     fun setCalcMode(mode: CalcMode) {
@@ -185,28 +224,38 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         recalculateCustom()
     }
 
-    private suspend fun fetchWorkLogData(dailyMealRate: Double, travelExpense: TravelAndExpense, date: Date) {
+    private suspend fun fetchWorkLogData() {
         try {
+            val date = _selectedDate.value
+            val totalMealRate = _totalMealRate.value
+            val travelExpense = _travelExpense.value ?: TravelAndExpense()
+
             val monthYearFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
             val selectedMonthYear = monthYearFormat.format(date)
             val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
             val officeDaysCount = workLogs.count { it.workType == WorkType.OFFICE }
             val homeOfficeDaysCount = workLogs.count { it.workType == WorkType.HOME_OFFICE }
+            
             _officeDays.value = officeDaysCount
             _homeOfficeDays.value = homeOfficeDaysCount
             _pieChartData.value = mapOf("Office" to officeDaysCount.toFloat(), "Home Office" to homeOfficeDaysCount.toFloat())
-            calculateAllCosts(dailyMealRate, travelExpense, officeDaysCount)
+            
+            calculateAllCosts(totalMealRate, travelExpense, officeDaysCount)
         } catch (e: Exception) {
             _errorMessage.value = "Failed to fetch work logs: ${e.message}"
         }
     }
 
-    private suspend fun fetchMonthlyBreakdown(dailyMealRate: Double, travelExpense: TravelAndExpense) {
+    private suspend fun fetchMonthlyBreakdown() {
         try {
+            val totalMealRate = _totalMealRate.value
+            val travelExpense = _travelExpense.value ?: TravelAndExpense()
+            
             val calendar = Calendar.getInstance()
             val currentYear = calendar.get(Calendar.YEAR)
             val monthlyData = mutableListOf<Pair<String, Double>>()
             val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+            
             for (month in 0..11) {
                 calendar.set(currentYear, month, 1)
                 val monthName = monthFormat.format(calendar.time)
@@ -214,7 +263,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                 val selectedMonthYear = yearMonthFormat.format(calendar.time)
                 val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
                 val officeDaysCount = workLogs.count { it.workType == WorkType.OFFICE }
-                val monthlyCost = (dailyMealRate + travelExpense.dailyTravelCost) * officeDaysCount + travelExpense.otherExpenses
+                val monthlyCost = (totalMealRate + travelExpense.dailyTravelCost) * officeDaysCount + travelExpense.otherExpenses
                 monthlyData.add(monthName to monthlyCost)
             }
             _monthlyBreakdown.value = monthlyData
@@ -223,21 +272,25 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    private fun calculateAllCosts(dailyMealRate: Double, travelExpense: TravelAndExpense, officeDays: Int) {
+    private fun calculateAllCosts(totalMealRate: Double, travelExpense: TravelAndExpense, officeDays: Int) {
         try {
             val calendar = Calendar.getInstance()
             calendar.time = _selectedDate.value
             val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
             val weeksInMonth = if (daysInMonth > 0) daysInMonth / 7.0 else 4.33
             val weeklyOfficeDays = if (weeksInMonth > 0) officeDays / weeksInMonth else 0.0
-            _mealCostPerWeek.value = dailyMealRate * weeklyOfficeDays
-            _mealCostPerMonth.value = dailyMealRate * officeDays
+            
+            _mealCostPerWeek.value = totalMealRate * weeklyOfficeDays
+            _mealCostPerMonth.value = totalMealRate * officeDays
             _mealCostPerYear.value = _mealCostPerMonth.value * 12
+            
             _travelCostPerWeek.value = travelExpense.dailyTravelCost * weeklyOfficeDays
             _travelCostPerMonth.value = travelExpense.dailyTravelCost * officeDays
             _travelCostPerYear.value = _travelCostPerMonth.value * 12
+            
             _otherExpensePerMonth.value = travelExpense.otherExpenses
             _otherExpensePerYear.value = travelExpense.otherExpenses * 12
+            
             _totalExpensePerMonth.value = _mealCostPerMonth.value + _travelCostPerMonth.value + _otherExpensePerMonth.value
             _totalExpensePerYear.value = _mealCostPerYear.value + _travelCostPerYear.value + _otherExpensePerYear.value
         } catch (e: Exception) {
@@ -246,7 +299,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
     }
 
     private fun recalculateCustom() {
-        val totalRate = _mealRateEntries.value.sumOf { it.rate }
+        val totalRate = _totalMealRate.value
         if (totalRate <= 0) {
             _customMonthlyCost.value = 0.0
             _customSixMonthCost.value = 0.0
@@ -296,63 +349,23 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
     }
 
     fun saveDailyMealRate(rate: Double) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val currentCalculation = _calculation.value ?: Calculation(dailyMealRate = 0.0, lastUpdated = System.currentTimeMillis())
-                val updatedCalculation = currentCalculation.copy(dailyMealRate = rate, lastUpdated = System.currentTimeMillis())
-                db.calculationDao().insert(updatedCalculation)
-                _calculation.value = updatedCalculation
-                fetchWorkLogData(rate, _travelExpense.value ?: TravelAndExpense(), _selectedDate.value)
-                fetchMonthlyBreakdown(rate, _travelExpense.value ?: TravelAndExpense())
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to save meal rate: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
+        saveAllSettings(rate, _travelExpense.value?.dailyTravelCost ?: 0.0, _travelExpense.value?.otherExpenses ?: 0.0, _travelExpense.value?.otherExpenseDescription ?: "")
     }
 
     fun saveTravelExpense(dailyTravelCost: Double, otherExpenses: Double, description: String = "") {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val currentExpense = _travelExpense.value ?: TravelAndExpense()
-                val updatedExpense = currentExpense.copy(
-                    dailyTravelCost = dailyTravelCost, otherExpenses = otherExpenses,
-                    otherExpenseDescription = description, lastUpdated = System.currentTimeMillis()
-                )
-                db.travelExpenseDao().insert(updatedExpense)
-                _travelExpense.value = updatedExpense
-                fetchWorkLogData(_calculation.value?.dailyMealRate ?: 0.0, updatedExpense, _selectedDate.value)
-                fetchMonthlyBreakdown(_calculation.value?.dailyMealRate ?: 0.0, updatedExpense)
-            } catch (e: Exception) {
-                _errorMessage.value = "Failed to save travel expense: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
+        saveAllSettings(_calculation.value?.dailyMealRate ?: 0.0, dailyTravelCost, otherExpenses, description)
     }
 
     fun goToPreviousMonth() {
         val calendar = Calendar.getInstance(); calendar.time = _selectedDate.value
         calendar.add(Calendar.MONTH, -1); _selectedDate.value = calendar.time
-        refreshData()
+        viewModelScope.launch { refreshCalculations() }
     }
 
     fun goToNextMonth() {
         val calendar = Calendar.getInstance(); calendar.time = _selectedDate.value
         calendar.add(Calendar.MONTH, 1); _selectedDate.value = calendar.time
-        refreshData()
-    }
-
-    private fun refreshData() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                fetchWorkLogData(_calculation.value?.dailyMealRate ?: 0.0, _travelExpense.value ?: TravelAndExpense(), _selectedDate.value)
-            } catch (e: Exception) { _errorMessage.value = "Failed to refresh data: ${e.message}" } finally { _isLoading.value = false }
-        }
+        viewModelScope.launch { refreshCalculations() }
     }
 
     fun clearErrorMessage() { _errorMessage.value = null }
