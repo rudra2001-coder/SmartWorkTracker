@@ -1,9 +1,9 @@
 package com.rudra.smartworktracker.data.repository
 
-import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.dao.EmiDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.LoanDao
+import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Emi
 import com.rudra.smartworktracker.data.entity.EmiStatus
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
@@ -18,8 +18,7 @@ import java.util.Calendar
 class EmiRepository(
     private val emiDao: EmiDao,
     private val loanDao: LoanDao,
-    private val transactionDao: FinancialTransactionDao,
-    private val accountDao: AccountDao
+    private val transactionDao: FinancialTransactionDao
 ) {
     fun getActiveEmis(): Flow<List<Emi>> = emiDao.getActiveEmis()
 
@@ -108,8 +107,8 @@ class EmiRepository(
         val transaction = FinancialTransaction(
             type = transactionType,
             amount = emi.amount,
-            sourceAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
-            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) emi.paymentAccountId else 0,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else emi.paymentAccountId,
             note = buildString {
                 append("EMI payment for ${loan.personName}")
                 if (emi.interestAmount > 0) append(" (Principal: ${emi.principalAmount}, Interest: ${emi.interestAmount})")

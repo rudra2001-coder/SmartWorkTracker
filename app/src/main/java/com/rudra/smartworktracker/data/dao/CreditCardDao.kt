@@ -11,23 +11,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CreditCardDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCard(creditCard: CreditCard)
+    suspend fun insertCard(creditCard: CreditCard): Long
 
     @Update
     suspend fun updateCard(creditCard: CreditCard)
 
-    @Query("SELECT * FROM credit_cards WHERE isDeleted = 0 ORDER BY cardName ASC")
+    @Query("DELETE FROM credit_cards WHERE id = :cardId")
+    suspend fun deleteCard(cardId: Int)
+
+    @Query("SELECT * FROM credit_cards ORDER BY cardName ASC")
     fun getAllCards(): Flow<List<CreditCard>>
 
     @Query("SELECT * FROM credit_cards WHERE id = :cardId")
     fun getCardById(cardId: Int): Flow<CreditCard?>
 
-    @Query("SELECT * FROM credit_cards WHERE isDeleted = 0")
+    @Query("SELECT * FROM credit_cards")
     fun getAllCreditCards(): Flow<List<CreditCard>>
-
-    @Query("UPDATE credit_cards SET isDeleted = 1, updatedAt = :timestamp WHERE id = :cardId")
-    suspend fun softDeleteCard(cardId: Int, timestamp: Long = System.currentTimeMillis())
-
-    @Query("DELETE FROM credit_cards WHERE id = :cardId")
-    suspend fun deleteCard(cardId: Int)
 }

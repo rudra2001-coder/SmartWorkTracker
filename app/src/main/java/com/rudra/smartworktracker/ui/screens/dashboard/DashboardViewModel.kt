@@ -289,8 +289,8 @@ class DashboardViewModel(
                         val settingsRepository = SettingsRepository(context)
                         val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
                         val transactionRepository = TransactionRepository(appDatabase.financialTransactionDao())
-                        val loanRepository = LoanRepository(appDatabase.loanDao(), appDatabase.financialTransactionDao(), appDatabase.accountDao())
                         val accountRepository = AccountRepository(appDatabase.accountDao())
+                        val loanRepository = LoanRepository(appDatabase.loanDao(), appDatabase.financialTransactionDao(), accountRepository)
                         return DashboardViewModel(
                             workLogRepository,
                             expenseRepository,

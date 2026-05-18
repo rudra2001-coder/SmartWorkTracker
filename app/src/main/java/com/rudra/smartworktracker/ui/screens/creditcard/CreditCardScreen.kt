@@ -11,8 +11,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,11 +90,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Account
-import com.rudra.smartworktracker.data.entity.AccountCategory
-import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.CreditCard
 import com.rudra.smartworktracker.data.entity.CreditCardTransaction
-import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -184,7 +183,8 @@ fun CreditCardScreen() {
                         onTransferClick = { selectedCardForActions = it },
                         onViewHistoryClick = { selectedCardForActions = it },
                         onEditClick = { selectedCardForActions = it },
-                        onDeleteClick = { showDeleteConfirmation = it }
+                        onDeleteClick = { showDeleteConfirmation = it },
+                        onLongClick = { showDeleteConfirmation = it }
                     )
                 }
             }
@@ -410,6 +410,7 @@ fun CreditCardSummaryCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CreditCardItem(
     card: CreditCard,
@@ -418,7 +419,8 @@ fun CreditCardItem(
     onTransferClick: (CreditCard) -> Unit,
     onViewHistoryClick: (CreditCard) -> Unit,
     onEditClick: (CreditCard) -> Unit,
-    onDeleteClick: (CreditCard) -> Unit
+    onDeleteClick: (CreditCard) -> Unit,
+    onLongClick: (CreditCard) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val availableCredit = (card.cardLimit - card.currentBalance).coerceAtLeast(0.0)
@@ -442,7 +444,12 @@ fun CreditCardItem(
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { },
+                onLongClick = { onLongClick(card) }
+            ),
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -778,8 +785,8 @@ fun AddEditCreditCardSheet(
     var expanded by remember { mutableStateOf(false) }
     var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
 
-    if (accounts.isEmpty()) {
-        accounts = runBlocking { viewModel.getAllAccounts() }
+    LaunchedEffect(Unit) {
+        accounts = viewModel.getAllAccounts()
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1011,12 +1018,12 @@ fun CreditCardActionsBottomSheet(
     var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
     var transactions by remember { mutableStateOf<List<CreditCardTransaction>>(emptyList()) }
 
-    if (accounts.isEmpty()) {
-        accounts = runBlocking { viewModel.getAllAccounts() }
+    LaunchedEffect(Unit) {
+        accounts = viewModel.getAllAccounts()
     }
 
     LaunchedEffect(card.id) {
-        transactions = runBlocking { viewModel.getTransactionsForCard(card.id) }
+        transactions = viewModel.getTransactionsForCard(card.id)
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = currentAction != null)
@@ -1286,8 +1293,9 @@ fun CardActionForm(
                 expanded = accountExpanded,
                 onExpandedChange = { onAccountExpandedChange(it) }
             ) {
+                val defaultText = if (action == CardAction.PAY_BILL) "Select account to pay from" else "Select destination account"
                 OutlinedTextField(
-                    value = selectedAccount?.name ?: "Main Balance (Default)",
+                    value = selectedAccount?.name ?: defaultText,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(if (action == CardAction.PAY_BILL) "Pay From" else "Transfer To") },
@@ -1305,15 +1313,6 @@ fun CardActionForm(
                     expanded = accountExpanded,
                     onDismissRequest = { onAccountExpandedChange(false) }
                 ) {
-                    if (action == CardAction.PAY_BILL) {
-                        DropdownMenuItem(
-                            text = { Text("Main Balance (Default)") },
-                            onClick = {
-                                onAccountSelected(Account(name = "Main Balance", type = com.rudra.smartworktracker.data.entity.AccountCategory.MOBILE_BANKING, provider = com.rudra.smartworktracker.data.entity.AccountProvider.BKASH, accountNumber = "0", balance = 0.0))
-                                onAccountExpandedChange(false)
-                            }
-                        )
-                    }
                     accounts.forEach { account ->
                         DropdownMenuItem(
                             text = { Text("${account.name} (৳${String.format("%.0f", account.balance)})") },

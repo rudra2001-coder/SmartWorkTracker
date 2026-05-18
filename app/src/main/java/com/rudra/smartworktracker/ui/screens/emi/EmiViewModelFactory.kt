@@ -13,8 +13,7 @@ class EmiViewModelFactory(private val application: Application) : ViewModelProvi
             val emiRepository = EmiRepository(
                 database.emiDao(),
                 database.loanDao(),
-                database.financialTransactionDao(),
-                database.accountDao()
+                database.financialTransactionDao()
             )
             @Suppress("UNCHECKED_CAST")
             return EmiViewModel(emiRepository) as T

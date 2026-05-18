@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Account
+import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanCategory
 import com.rudra.smartworktracker.data.entity.LoanType
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class LoanStatistics(
@@ -31,6 +34,7 @@ data class LoansUiState(
     val filteredLoans: List<Loan> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
     val showAddLoanDialog: Boolean = false,
     val showEditLoanDialog: Loan? = null,
     val showRepayDialogForLoan: Loan? = null,
@@ -38,7 +42,11 @@ data class LoansUiState(
     val showLoanDetailsDialog: Loan? = null,
     val selectedTab: LoanTab = LoanTab.ALL,
     val searchQuery: String = "",
-    val statistics: LoanStatistics = LoanStatistics()
+    val statistics: LoanStatistics = LoanStatistics(),
+    val loanTransactions: List<FinancialTransaction> = emptyList(),
+    val accounts: List<Account> = emptyList(),
+    val transactionDateFilterStart: Long? = null,
+    val transactionDateFilterEnd: Long? = null
 )
 
 enum class LoanTab(val title: String) {
@@ -48,7 +56,10 @@ enum class LoanTab(val title: String) {
     OVERDUE("Overdue")
 }
 
-class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
+class LoanViewModel(
+    private val loanRepository: LoanRepository,
+    private val accountRepository: com.rudra.smartworktracker.data.repository.AccountRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoansUiState())
     val uiState: StateFlow<LoansUiState> = _uiState.asStateFlow()
@@ -56,6 +67,7 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
     init {
         loadLoans()
         loadStatistics()
+        loadAccounts()
     }
 
     private fun loadLoans() {
@@ -100,6 +112,34 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
                 _uiState.value = _uiState.value.copy(statistics = stats)
             }
         }
+    }
+
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            accountRepository.getAllAccounts().collect { accountList ->
+                _uiState.value = _uiState.value.copy(accounts = accountList)
+            }
+        }
+    }
+
+    fun loadLoanTransactions(loanId: Int, startTime: Long? = null, endTime: Long? = null) {
+        viewModelScope.launch {
+            val allTransactions = loanRepository.getAllTransactions()
+            var filtered = allTransactions.filter { it.relatedLoanId == loanId }
+            if (startTime != null && endTime != null) {
+                filtered = filtered.filter { it.date in startTime..endTime }
+            }
+            _uiState.value = _uiState.value.copy(
+                loanTransactions = filtered.sortedByDescending { it.date },
+                transactionDateFilterStart = startTime,
+                transactionDateFilterEnd = endTime
+            )
+        }
+    }
+
+    fun setTransactionDateFilter(startTime: Long?, endTime: Long?) {
+        val loanId = _uiState.value.showLoanDetailsDialog?.id ?: return
+        loadLoanTransactions(loanId, startTime, endTime)
     }
 
     private fun filterLoans(loans: List<Loan>, tab: LoanTab, query: String): List<Loan> {
@@ -149,51 +189,88 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
         accountId: Long
     ) {
         viewModelScope.launch {
-            val loan = Loan(
-                personName = personName,
-                contactNumber = contactNumber,
-                initialAmount = amount,
-                remainingAmount = amount,
-                loanType = loanType,
-                loanCategory = loanCategory,
-                date = System.currentTimeMillis(),
-                dueDate = dueDate,
-                interestRate = interestRate,
-                emiAmount = emiAmount,
-                totalEmis = totalEmis,
-                notes = notes,
-                accountId = accountId
-            )
-            loanRepository.insertLoan(loan)
-            closeAddLoanDialog()
+            try {
+                val loan = Loan(
+                    personName = personName,
+                    contactNumber = contactNumber,
+                    initialAmount = amount,
+                    remainingAmount = amount,
+                    loanType = loanType,
+                    loanCategory = loanCategory,
+                    date = System.currentTimeMillis(),
+                    dueDate = dueDate,
+                    interestRate = interestRate,
+                    emiAmount = emiAmount,
+                    totalEmis = totalEmis,
+                    notes = notes,
+                    accountId = accountId
+                )
+                loanRepository.insertLoan(loan)
+                _uiState.value = _uiState.value.copy(successMessage = "Loan added successfully")
+                closeAddLoanDialog()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(errorMessage = e.message ?: "Failed to add loan")
+            }
         }
     }
 
     fun updateLoan(loan: Loan) {
         viewModelScope.launch {
-            loanRepository.updateLoan(loan)
-            closeEditLoanDialog()
+            try {
+                loanRepository.updateLoan(loan)
+                _uiState.value = _uiState.value.copy(successMessage = "Loan updated successfully")
+                closeEditLoanDialog()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(errorMessage = e.message ?: "Failed to update loan")
+            }
         }
     }
 
     fun deleteLoan(loan: Loan) {
         viewModelScope.launch {
-            loanRepository.deleteLoan(loan)
-            closeDeleteConfirmationDialog()
+            try {
+                loanRepository.deleteLoan(loan)
+                _uiState.value = _uiState.value.copy(successMessage = "Loan deleted successfully")
+                closeDeleteConfirmationDialog()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(errorMessage = e.message ?: "Failed to delete loan")
+            }
         }
     }
 
-    fun repayLoan(loan: Loan, amount: Double) {
+    fun repayLoan(loan: Loan, amount: Double, paymentAccountId: Long) {
         viewModelScope.launch {
-            loanRepository.repayLoan(loan, amount)
-            closeRepayDialog()
+            try {
+                loanRepository.repayLoan(loan, amount, paymentAccountId)
+                _uiState.value = _uiState.value.copy(successMessage = "Payment recorded successfully")
+                closeRepayDialog()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = e.message ?: "Failed to process payment"
+                )
+            }
         }
     }
 
     fun markLoanAsPaid(loan: Loan) {
         viewModelScope.launch {
-            loanRepository.markLoanAsPaid(loan)
+            try {
+                loanRepository.markLoanAsPaid(loan)
+                _uiState.value = _uiState.value.copy(successMessage = "Loan marked as paid")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = e.message ?: "Failed to mark loan as paid"
+                )
+            }
         }
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun clearSuccess() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
     }
 
     fun openAddLoanDialog() {

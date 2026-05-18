@@ -30,42 +30,35 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
             initialValue = emptyList()
         )
 
-    private suspend fun updateAccountBalance(accountId: Long, amountChange: Double) {
-        val account = accountDao.getAccountById(accountId)
-        account?.let {
-            val newBalance = (it.balance + amountChange).coerceAtLeast(0.0)
-            accountDao.updateBalance(accountId, newBalance)
+    fun addCreditCard(card: CreditCard) {
+        viewModelScope.launch {
+            creditCardDao.insertCard(card)
         }
     }
 
-    fun addCreditCard(card: CreditCard, transferAmount: Double, transferToAccountId: Long?) {
+    fun addCreditCard(card: CreditCard, transferAmount: Double, accountId: Long?) {
         viewModelScope.launch {
-            creditCardDao.insertCard(card)
-
-            if (transferAmount > 0 && transferToAccountId != null) {
-                val targetAccount = accountDao.getAccountById(transferToAccountId)
-                targetAccount?.let {
-                    accountDao.updateBalance(transferToAccountId, it.balance + transferAmount)
-                }
-
-                val timestamp = System.currentTimeMillis()
-                val cardTransaction = CreditCardTransaction(
-                    cardId = card.id,
-                    amount = transferAmount,
-                    description = "Credit limit transferred to ${targetAccount?.name ?: "account"}",
-                    date = timestamp
+            val cardId = creditCardDao.insertCard(card)
+            if (transferAmount > 0 && accountId != null && accountId > 0) {
+                val updatedCard = card.copy(
+                    id = cardId.toInt(),
+                    currentBalance = card.currentBalance + transferAmount
                 )
-                creditCardTransactionDao.insertTransaction(cardTransaction)
+                creditCardDao.updateCard(updatedCard)
+
+                val account = accountDao.getAccountById(accountId)
+                if (account != null) {
+                    accountDao.updateBalance(accountId, account.balance + transferAmount)
+                }
 
                 val financialTransaction = FinancialTransaction(
                     type = TransactionType.TRANSFER,
                     amount = transferAmount,
-                    sourceAccountId = card.accountId,
-                    destinationAccountId = transferToAccountId,
-                    note = "Credit transfer from ${card.cardName} to ${targetAccount?.name}",
-                    date = timestamp,
-                    relatedLoanId = null,
-                    relatedCreditCardId = card.id
+                    sourceAccountId = 0,
+                    destinationAccountId = accountId,
+                    note = "Initial transfer from card ${card.cardName} to ${account?.name ?: "account"}",
+                    date = System.currentTimeMillis(),
+                    relatedCreditCardId = cardId.toInt()
                 )
                 financialTransactionDao.insertTransaction(financialTransaction)
             }
@@ -75,10 +68,7 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
     fun addCardTransaction(card: CreditCard, amount: Double, description: String) {
         viewModelScope.launch {
             val timestamp = System.currentTimeMillis()
-            val updatedCard = card.copy(
-                currentBalance = card.currentBalance + amount,
-                updatedAt = timestamp
-            )
+            val updatedCard = card.copy(currentBalance = card.currentBalance + amount)
             creditCardDao.updateCard(updatedCard)
 
             val cardTransaction = CreditCardTransaction(
@@ -93,80 +83,86 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
                 type = TransactionType.EXPENSE,
                 amount = amount,
                 sourceAccountId = card.accountId,
-                destinationAccountId = null,
+                destinationAccountId = 0,
                 note = description,
                 date = timestamp,
-                relatedLoanId = null,
                 relatedCreditCardId = card.id
             )
             financialTransactionDao.insertTransaction(financialTransaction)
         }
     }
 
-    fun transferFromCreditCard(card: CreditCard, amount: Double, targetAccountId: Long) {
+    fun payCreditCardBill(card: CreditCard, amount: Double) {
         viewModelScope.launch {
-            if (amount <= 0) return@launch
-            val availableCredit = card.cardLimit - card.currentBalance
-            if (amount > availableCredit) return@launch
-
             val timestamp = System.currentTimeMillis()
-
-            val updatedCard = card.copy(
-                currentBalance = card.currentBalance + amount,
-                updatedAt = timestamp
-            )
+            val updatedCard = card.copy(currentBalance = card.currentBalance - amount)
             creditCardDao.updateCard(updatedCard)
-
-            updateAccountBalance(targetAccountId, amount)
-
-            val targetAccount = accountDao.getAccountById(targetAccountId)
-            val cardTransaction = CreditCardTransaction(
-                cardId = card.id,
-                amount = amount,
-                description = "Transfer to ${targetAccount?.name ?: "account"}",
-                date = timestamp
-            )
-            creditCardTransactionDao.insertTransaction(cardTransaction)
 
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,
                 amount = amount,
                 sourceAccountId = card.accountId,
-                destinationAccountId = targetAccountId,
-                note = "Credit transfer from ${card.cardName} to ${targetAccount?.name}",
+                destinationAccountId = 0,
+                note = "Paid bill for ${card.cardName}",
                 date = timestamp,
-                relatedLoanId = null,
                 relatedCreditCardId = card.id
             )
             financialTransactionDao.insertTransaction(financialTransaction)
         }
     }
 
-    fun payCreditCardBill(card: CreditCard, amount: Double, sourceAccountId: Long?) {
+    fun payCreditCardBill(card: CreditCard, amount: Double, accountId: Long?) {
         viewModelScope.launch {
             val timestamp = System.currentTimeMillis()
-            val paymentAmount = amount.coerceAtMost(card.currentBalance)
-
-            val updatedCard = card.copy(
-                currentBalance = (card.currentBalance - paymentAmount).coerceAtLeast(0.0),
-                updatedAt = timestamp
-            )
+            val updatedCard = card.copy(currentBalance = card.currentBalance - amount)
             creditCardDao.updateCard(updatedCard)
 
-            val actualSourceAccountId = sourceAccountId ?: card.accountId
-            if (actualSourceAccountId > 0) {
-                updateAccountBalance(actualSourceAccountId, -paymentAmount)
+            val sourceId = accountId ?: card.accountId
+
+            val account = accountDao.getAccountById(sourceId)
+            if (account != null) {
+                accountDao.updateBalance(sourceId, account.balance - amount)
             }
 
-            val sourceAccount = accountDao.getAccountById(actualSourceAccountId)
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,
-                amount = paymentAmount,
-                sourceAccountId = actualSourceAccountId,
-                destinationAccountId = card.accountId,
+                amount = amount,
+                sourceAccountId = sourceId,
+                destinationAccountId = 0,
                 note = "Paid bill for ${card.cardName}",
                 date = timestamp,
-                relatedLoanId = null,
+                relatedCreditCardId = card.id
+            )
+            financialTransactionDao.insertTransaction(financialTransaction)
+        }
+    }
+
+    fun transferFromCreditCard(card: CreditCard, amount: Double, accountId: Long) {
+        viewModelScope.launch {
+            val timestamp = System.currentTimeMillis()
+            val updatedCard = card.copy(currentBalance = card.currentBalance + amount)
+            creditCardDao.updateCard(updatedCard)
+
+            val cardTransaction = CreditCardTransaction(
+                cardId = card.id,
+                amount = amount,
+                description = "Transfer to account",
+                date = timestamp
+            )
+            creditCardTransactionDao.insertTransaction(cardTransaction)
+
+            val account = accountDao.getAccountById(accountId)
+            if (account != null) {
+                accountDao.updateBalance(accountId, account.balance + amount)
+            }
+
+            val financialTransaction = FinancialTransaction(
+                type = TransactionType.TRANSFER,
+                amount = amount,
+                sourceAccountId = 0,
+                destinationAccountId = accountId,
+                note = "Transfer from ${card.cardName} to ${account?.name ?: "account"}",
+                date = timestamp,
                 relatedCreditCardId = card.id
             )
             financialTransactionDao.insertTransaction(financialTransaction)
@@ -175,14 +171,13 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
 
     fun deleteCreditCard(card: CreditCard) {
         viewModelScope.launch {
-            val timestamp = System.currentTimeMillis()
-
-            if (card.currentBalance > 0 && card.accountId > 0) {
-                updateAccountBalance(card.accountId, -card.currentBalance)
+            if (card.currentBalance > 0) {
+                val account = accountDao.getAccountById(card.accountId)
+                if (account != null) {
+                    accountDao.updateBalance(card.accountId, account.balance - card.currentBalance)
+                }
             }
-
-            creditCardTransactionDao.deleteTransactionsByCardId(card.id)
-            creditCardDao.softDeleteCard(card.id, timestamp)
+            creditCardDao.deleteCard(card.id)
         }
     }
 

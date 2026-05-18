@@ -1,6 +1,5 @@
 package com.rudra.smartworktracker.data.repository
 
-import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.LoanDao
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
@@ -13,8 +12,10 @@ import kotlinx.coroutines.flow.first
 class LoanRepository(
     private val loanDao: LoanDao,
     private val transactionDao: FinancialTransactionDao,
-    private val accountDao: AccountDao
+    private val accountRepository: AccountRepository
 ) {
+
+    suspend fun getAllTransactions(): List<FinancialTransaction> = transactionDao.getAllTransactions().first()
 
     fun getAllLoans(): Flow<List<Loan>> = loanDao.getAllLoans()
 
@@ -38,25 +39,25 @@ class LoanRepository(
 
     fun getActiveLentCount(): Flow<Int> = loanDao.getActiveLoanCountByType(LoanType.LENT)
 
-    private suspend fun updateAccountBalance(accountId: Long, amountChange: Double) {
-        val account = accountDao.getAccountById(accountId)
-        account?.let {
-            val newBalance = (it.balance + amountChange).coerceAtLeast(0.0)
-            accountDao.updateBalance(accountId, newBalance)
-        }
-    }
-
     suspend fun insertLoan(loan: Loan) {
+        if (loan.loanType == LoanType.LENT) {
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+                ?: throw IllegalStateException("Loan account not found")
+            if (loanAccount.balance < loan.initialAmount) {
+                throw IllegalStateException(
+                    "Loan account does not have sufficient balance. " +
+                    "Current balance: ৳${"%,.0f".format(loanAccount.balance)}. " +
+                    "Please add some money there."
+                )
+            }
+        }
+
         val loanId = loanDao.insertLoan(loan)
 
         if (loan.loanType == LoanType.BORROWED) {
-            if (loan.accountId > 0) {
-                updateAccountBalance(loan.accountId, loan.initialAmount)
-            }
+            accountRepository.addIncomeToAccount(loan.accountId, loan.initialAmount)
         } else {
-            if (loan.accountId > 0) {
-                updateAccountBalance(loan.accountId, -loan.initialAmount)
-            }
+            accountRepository.deductExpenseFromAccount(loan.accountId, loan.initialAmount)
         }
 
         val transactionType = if (loan.loanType == LoanType.BORROWED) {
@@ -65,7 +66,6 @@ class LoanRepository(
             TransactionType.LOAN_LEND
         }
 
-        val account = accountDao.getAccountById(loan.accountId)
         val transaction = FinancialTransaction(
             type = transactionType,
             amount = loan.initialAmount,
@@ -92,7 +92,37 @@ class LoanRepository(
         transactionDao.deleteTransactionsByLoanId(loan.id)
     }
 
-    suspend fun repayLoan(loan: Loan, amount: Double) {
+    suspend fun repayLoan(loan: Loan, amount: Double, paymentAccountId: Long = loan.accountId) {
+        if (amount != loan.remainingAmount) {
+            throw IllegalStateException(
+                "You must repay the full remaining amount (৳${"%,.0f".format(loan.remainingAmount)}). " +
+                "Partial payments are not allowed."
+            )
+        }
+
+        if (loan.loanType == LoanType.BORROWED) {
+            val paymentAccount = accountRepository.getAccountById(paymentAccountId)
+                ?: throw IllegalStateException("Payment account not found")
+            if (paymentAccount.balance < amount) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${paymentAccount.name}. " +
+                    "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}. " +
+                    "Please add some more money and repay the whole amount."
+                )
+            }
+            accountRepository.updateBalance(paymentAccountId, paymentAccount.balance - amount)
+
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+            if (loanAccount != null) {
+                accountRepository.updateBalance(loan.accountId, loanAccount.balance - amount)
+            }
+        } else {
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+            if (loanAccount != null) {
+                accountRepository.updateBalance(loan.accountId, loanAccount.balance + amount)
+            }
+        }
+
         val newRemaining = (loan.remainingAmount - amount).coerceAtLeast(0.0)
         val isFullyPaid = newRemaining <= 0.0
 
@@ -105,18 +135,10 @@ class LoanRepository(
         )
         loanDao.updateLoan(updatedLoan)
 
-        if (loan.accountId > 0) {
-            if (loan.loanType == LoanType.BORROWED) {
-                updateAccountBalance(loan.accountId, -amount)
-            } else {
-                updateAccountBalance(loan.accountId, amount)
-            }
-        }
-
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,
             amount = amount,
-            sourceAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) paymentAccountId else 0,
             destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
             note = "Payment ${if (loan.loanType == LoanType.BORROWED) "to" else "from"} ${loan.personName}",
             date = System.currentTimeMillis(),
@@ -125,21 +147,29 @@ class LoanRepository(
         transactionDao.insertTransaction(transaction)
     }
 
-    suspend fun receiveLoanRepayment(loan: Loan, amount: Double) {
-        repayLoan(loan, amount)
-    }
-
     suspend fun markLoanAsPaid(loan: Loan) {
         val remaining = loan.remainingAmount
-        loanDao.markLoanAsPaid(loan.id)
 
-        if (loan.accountId > 0) {
-            if (loan.loanType == LoanType.BORROWED) {
-                updateAccountBalance(loan.accountId, -remaining)
-            } else {
-                updateAccountBalance(loan.accountId, remaining)
+        if (loan.loanType == LoanType.BORROWED) {
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+            if (loanAccount != null) {
+                val paymentAccount = accountRepository.getAccountById(loan.accountId)
+                if (paymentAccount != null && paymentAccount.balance < remaining) {
+                    throw IllegalStateException(
+                        "Insufficient balance in ${paymentAccount.name} to mark as paid. " +
+                        "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}."
+                    )
+                }
+                accountRepository.updateBalance(loan.accountId, loanAccount.balance - remaining)
+            }
+        } else {
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+            if (loanAccount != null) {
+                accountRepository.updateBalance(loan.accountId, loanAccount.balance + remaining)
             }
         }
+
+        loanDao.markLoanAsPaid(loan.id)
 
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,

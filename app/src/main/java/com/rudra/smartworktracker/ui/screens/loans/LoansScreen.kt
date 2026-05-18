@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -66,6 +67,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -96,11 +99,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanCategory
 import com.rudra.smartworktracker.data.entity.LoanType
+import com.rudra.smartworktracker.data.entity.TransactionType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -132,9 +137,25 @@ fun LoansScreen(
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearSuccess()
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {},
         floatingActionButton = {
             FloatingActionButton(
@@ -339,8 +360,9 @@ fun LoansScreen(
         uiState.showRepayDialogForLoan?.let { loan ->
             RepayLoanDialog(
                 loan = loan,
+                accounts = uiState.accounts,
                 onDismiss = { viewModel.closeRepayDialog() },
-                onConfirm = { amount -> viewModel.repayLoan(loan, amount) }
+                onConfirm = { amount, accountId -> viewModel.repayLoan(loan, amount, accountId) }
             )
         }
 
@@ -770,6 +792,13 @@ fun AddEditLoanBottomSheet(
         accounts = accountDao.getAllAccountsList()
     }
 
+    LaunchedEffect(accounts) {
+        if (selectedAccountId == 0L && accounts.isNotEmpty()) {
+            val cashAccount = accounts.find { it.name == "Cash" } ?: accounts.first()
+            selectedAccountId = cashAccount.id
+        }
+    }
+
     var loanTypeExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
@@ -1065,9 +1094,31 @@ fun LoanDetailsBottomSheet(
     onDelete: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
-    val currencyFormat = remember { NumberFormat.getCurrencyInstance() }
+    val dateTimeFormat = remember { SimpleDateFormat("dd MMM, yyyy HH:mm", Locale.getDefault()) }
     val isBorrowed = loan.loanType == LoanType.BORROWED
     val accentColor = if (isBorrowed) CoralRed else EmeraldGreen
+
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val accountDao = db.accountDao()
+    val scope = rememberCoroutineScope()
+    var accountName by remember { mutableStateOf("") }
+    var transactions by remember { mutableStateOf<List<FinancialTransaction>>(emptyList()) }
+    var showDateFilter by remember { mutableStateOf(false) }
+    var filterStart by remember { mutableStateOf<Long?>(null) }
+    var filterEnd by remember { mutableStateOf<Long?>(null) }
+    var startDateText by remember { mutableStateOf("") }
+    var endDateText by remember { mutableStateOf("") }
+
+    LaunchedEffect(loan) {
+        accountName = if (loan.accountId > 0) {
+            accountDao.getAccountById(loan.accountId)?.name ?: "Unknown"
+        } else "Not set"
+        scope.launch {
+            val all = db.financialTransactionDao().getAllTransactions().first()
+            transactions = all.filter { it.relatedLoanId == loan.id }.sortedByDescending { it.date }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1075,7 +1126,7 @@ fun LoanDetailsBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp)
+            modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1147,6 +1198,17 @@ fun LoanDetailsBottomSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             Spacer(modifier = Modifier.height(16.dp))
 
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier.size(28.dp).background(SlateGray.copy(alpha = 0.08f), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.AccountBalance, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateGray)
+                }
+                Text("Account: $accountName", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
             loan.contactNumber?.let {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
@@ -1213,6 +1275,93 @@ fun LoanDetailsBottomSheet(
                 }
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Transaction History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                TextButton(onClick = { showDateFilter = !showDateFilter }) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (showDateFilter) "Hide Filter" else "Filter by Date")
+                }
+            }
+
+            if (showDateFilter) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = startDateText,
+                        onValueChange = { startDateText = it },
+                        label = { Text("From (dd/MM/yyyy)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = ChipShape
+                    )
+                    OutlinedTextField(
+                        value = endDateText,
+                        onValueChange = { endDateText = it },
+                        label = { Text("To (dd/MM/yyyy)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = ChipShape
+                    )
+                    IconButton(onClick = {
+                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                        try {
+                            filterStart = sdf.parse(startDateText)?.time
+                            filterEnd = sdf.parse(endDateText)?.time?.plus(86400000L)
+                            scope.launch {
+                                val all = db.financialTransactionDao().getAllTransactions().first()
+                                var filtered = all.filter { it.relatedLoanId == loan.id }
+                                if (filterStart != null && filterEnd != null) {
+                                    filtered = filtered.filter { it.date in filterStart!!..filterEnd!! }
+                                }
+                                transactions = filtered.sortedByDescending { it.date }
+                            }
+                        } catch (_: Exception) {}
+                    }) {
+                        Icon(Icons.Default.Search, contentDescription = "Filter", tint = SapphireBlue)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (transactions.isEmpty()) {
+                Text("No transactions yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
+            } else {
+                transactions.forEach { txn ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        shape = ChipShape,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(txn.note, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(dateTimeFormat.format(Date(txn.date)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                "৳${"%,.0f".format(txn.amount)}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (txn.type.name.contains("REPAY") || txn.type == TransactionType.LOAN_RECEIVE) EmeraldGreen else CoralRed
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -1240,10 +1389,18 @@ fun DetailInfoRow(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RepayLoanDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
-    var amount by remember { mutableStateOf("") }
-    var showFullAmount by remember { mutableStateOf(false) }
+fun RepayLoanDialog(
+    loan: Loan,
+    accounts: List<com.rudra.smartworktracker.data.entity.Account>,
+    onDismiss: () -> Unit,
+    onConfirm: (Double, Long) -> Unit
+) {
+    val isBorrowed = loan.loanType == LoanType.BORROWED
+    var selectedAccountId by remember { mutableStateOf(loan.accountId) }
+    var accountExpanded by remember { mutableStateOf(false) }
+    val fullAmount = loan.remainingAmount
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1251,46 +1408,77 @@ fun RepayLoanDialog(loan: Loan, onDismiss: () -> Unit, onConfirm: (Double) -> Un
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Payment, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(20.dp))
-                Text("Record Payment", fontWeight = FontWeight.Bold)
+                Text(if (isBorrowed) "Repay Loan" else "Receive Payment", fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("For loan with ${loan.personName}", style = MaterialTheme.typography.bodyMedium)
-                Surface(shape = PillShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+
+                Surface(shape = PillShape, color = if (isBorrowed) CoralRed.copy(alpha = 0.12f) else EmeraldGreen.copy(alpha = 0.12f)) {
                     Text(
-                        "Remaining: ৳${"%,.0f".format(loan.remainingAmount)}",
+                        "Remaining: ৳${"%,.0f".format(fullAmount)}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = if (isBorrowed) CoralRed else EmeraldGreen,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = ChipShape,
-                    singleLine = true
+
+                Text(
+                    if (isBorrowed) "Full amount of ৳${"%,.0f".format(fullAmount)} will be paid from the selected account."
+                    else "Full amount of ৳${"%,.0f".format(fullAmount)} will be added to the loan account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                FilterChip(
-                    selected = showFullAmount,
-                    onClick = {
-                        showFullAmount = !showFullAmount
-                        if (showFullAmount) amount = loan.remainingAmount.toString()
-                    },
-                    label = { Text("Pay Full Amount") },
-                    shape = PillShape
-                )
+
+                if (isBorrowed) {
+                    ExposedDropdownMenuBox(
+                        expanded = accountExpanded,
+                        onExpandedChange = { accountExpanded = !accountExpanded }
+                    ) {
+                        val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
+                        OutlinedTextField(
+                            value = selectedAccountName,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Pay From Account *") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            shape = ChipShape
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountExpanded,
+                            onDismissRequest = { accountExpanded = false }
+                        ) {
+                            accounts.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text("${account.name} (৳${"%,.0f".format(account.balance)})") },
+                                    onClick = {
+                                        selectedAccountId = account.id
+                                        accountExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(amount.toDoubleOrNull() ?: 0.0) },
-                enabled = (amount.toDoubleOrNull() ?: 0.0) > 0,
-                shape = ChipShape
-            ) { Text("Confirm") }
+                onClick = { onConfirm(fullAmount, selectedAccountId) },
+                enabled = selectedAccountId > 0,
+                shape = ChipShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isBorrowed) CoralRed else EmeraldGreen
+                )
+            ) {
+                Text(
+                    if (isBorrowed) "Pay ৳${"%,.0f".format(fullAmount)}" else "Receive ৳${"%,.0f".format(fullAmount)}",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
