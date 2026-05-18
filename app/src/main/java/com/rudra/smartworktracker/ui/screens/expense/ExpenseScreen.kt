@@ -58,6 +58,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var selectedAccount by remember(accounts) {
         mutableStateOf(accounts.find { it.name == "Cash" } ?: accounts.firstOrNull())
     }
+    var showInsufficientBalanceDialog by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = CoralRed,
@@ -268,20 +269,26 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                 onClick = {
                     val accountId = selectedAccount?.id
                     if (amount.isNotBlank() && accountId != null && accountId > 0) {
-                        viewModel.saveExpense(
-                            amount = amount.toDouble(),
-                            currency = "BDT",
-                            category = selectedCategory,
-                            merchant = merchant.ifBlank { null },
-                            notes = notes.ifBlank { null },
-                            timestamp = selectedDate?.time ?: System.currentTimeMillis(),
-                            selectedAccountId = accountId
-                        )
-                        amount = ""
-                        merchant = ""
-                        notes = ""
-                        selectedAccount = null
-                        Toast.makeText(context, "✓ Expense Saved Successfully", Toast.LENGTH_SHORT).show()
+                        val expenseAmount = amount.toDouble()
+                        val account = selectedAccount!!
+                        if (account.balance >= expenseAmount) {
+                            viewModel.saveExpense(
+                                amount = expenseAmount,
+                                currency = "BDT",
+                                category = selectedCategory,
+                                merchant = merchant.ifBlank { null },
+                                notes = notes.ifBlank { null },
+                                timestamp = selectedDate?.time ?: System.currentTimeMillis(),
+                                selectedAccountId = accountId
+                            )
+                            amount = ""
+                            merchant = ""
+                            notes = ""
+                            selectedAccount = null
+                            Toast.makeText(context, "✓ Expense Saved Successfully", Toast.LENGTH_SHORT).show()
+                        } else {
+                            showInsufficientBalanceDialog = true
+                        }
                     } else {
                         Toast.makeText(context, "Please enter an amount and select an account", Toast.LENGTH_SHORT).show()
                     }
@@ -317,33 +324,49 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
-                        LazyColumn(modifier = Modifier.heightIn(max = 400.dp).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            items(recentExpenses) { expense ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = ChipShape,
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                                    elevation = CardDefaults.cardElevation(0.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                        Column {
+                            LazyColumn(modifier = Modifier.heightIn(max = 400.dp).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                items(recentExpenses) { expense ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = ChipShape,
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                        elevation = CardDefaults.cardElevation(0.dp)
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
-                                            Box(Modifier.size(36.dp).background(CoralRed.copy(alpha = 0.1f), ChipShape), contentAlignment = Alignment.Center) {
-                                                Icon(Icons.Default.MoneyOff, null, tint = CoralRed, modifier = Modifier.size(18.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+                                                Box(Modifier.size(36.dp).background(CoralRed.copy(alpha = 0.1f), ChipShape), contentAlignment = Alignment.Center) {
+                                                    Icon(Icons.Default.MoneyOff, null, tint = CoralRed, modifier = Modifier.size(18.dp))
+                                                }
+                                                Column {
+                                                    Text(expense.notes ?: "", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                                    Text("৳${expense.amount}", color = CoralRed, fontWeight = FontWeight.SemiBold)
+                                                }
                                             }
-                                            Column {
-                                                Text(expense.notes ?: "", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-                                                Text("৳${expense.amount}", color = CoralRed, fontWeight = FontWeight.SemiBold)
+                                            IconButton(onClick = { viewModel.deleteExpense(expense) }) {
+                                                Icon(Icons.Default.Delete, "Delete Expense", tint = CoralRed.copy(alpha = 0.6f))
                                             }
-                                        }
-                                        IconButton(onClick = { viewModel.deleteExpense(expense) }) {
-                                            Icon(Icons.Default.Delete, "Delete Expense", tint = CoralRed.copy(alpha = 0.6f))
                                         }
                                     }
                                 }
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Total", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    "৳${recentExpenses.sumOf { it.amount }}",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = CoralRed
+                                )
                             }
                         }
                     }
@@ -352,6 +375,28 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
 
             item { Spacer(Modifier.height(80.dp)) }
         }
+    }
+
+    if (showInsufficientBalanceDialog) {
+        AlertDialog(
+            onDismissRequest = { showInsufficientBalanceDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Warning, null, tint = CoralRed)
+                    Text("Insufficient Balance", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text("Your account has not sufficient balance. Please change it or add some money there for completing the transaction.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showInsufficientBalanceDialog = false }) {
+                    Text("OK", color = CoralRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 
     if (showDatePicker) {
