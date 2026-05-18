@@ -8,11 +8,12 @@ data class Savings(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val amount: Double,
+    val note: String = "",
+    val category: String = "General",
     val timestamp: Long,
 
     // UUID field for future primary key transition - Rule 1.1
     val uuid: String? = null,
-
 
     // Audit fields - Rule 1.2
     override val createdAt: Long = System.currentTimeMillis(),
@@ -20,3 +21,11 @@ data class Savings(
     override val isDeleted: Boolean = false,
     override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY
 ) : BaseEntity
+
+enum class SavingsCategory(val displayName: String) {
+    DEPOSIT("Deposit"),
+    WITHDRAWAL("Withdrawal"),
+    INTEREST("Interest"),
+    TRANSFER("Transfer"),
+    OTHER("Other")
+}

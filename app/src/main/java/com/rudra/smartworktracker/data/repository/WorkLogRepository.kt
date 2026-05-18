@@ -21,14 +21,17 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         val officeDays = workLogDao.countByType(monthYear, WorkType.OFFICE)
         val homeOfficeDays = workLogDao.countByType(monthYear, WorkType.HOME_OFFICE)
         val offDays = workLogDao.countByType(monthYear, WorkType.OFF_DAY)
+        val extraWorkDays = workLogDao.countByType(monthYear, WorkType.EXTRA_WORK)
+        val overtimeDays = workLogDao.countByType(monthYear, WorkType.OVERTIME)
         val extraHours = workLogDao.getTotalExtraHours(monthYear) ?: 0.0
+        val overtimeHours = workLogDao.getTotalExtraHours(monthYear, WorkType.OVERTIME) ?: 0.0
         emit(
             MonthlyStats(
                 officeDays = officeDays,
                 homeOfficeDays = homeOfficeDays,
                 offDays = offDays,
-                extraHours = extraHours,
-                totalWorkDays = officeDays + homeOfficeDays
+                extraHours = extraHours + overtimeHours,
+                totalWorkDays = officeDays + homeOfficeDays + extraWorkDays + overtimeDays
             )
         )
     }

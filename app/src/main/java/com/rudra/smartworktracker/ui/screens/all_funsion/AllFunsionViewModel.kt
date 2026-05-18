@@ -67,7 +67,12 @@ class AllFunsionViewModel(application: Application) : AndroidViewModel(applicati
             NavigationItem.Backup,
             NavigationItem.AllFunsion,
             NavigationItem.Settings,
-            NavigationItem.Team
+            NavigationItem.Team,
+            NavigationItem.Overtime,
+            NavigationItem.Scheduler,
+            NavigationItem.Recurring,
+
+
         )
     }
 }

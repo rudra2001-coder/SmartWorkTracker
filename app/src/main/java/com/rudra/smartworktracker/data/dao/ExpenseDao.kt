@@ -36,6 +36,15 @@ interface ExpenseDao {
     @Query("SELECT SUM(amount) FROM expenses WHERE timestamp BETWEEN :startTime AND :endTime")
     fun getTotalExpensesBetween(startTime: Long, endTime: Long): Flow<Double?>
 
+    @Query("SELECT SUM(amount) FROM expenses")
+    fun getTotalExpenses(): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM expenses WHERE timestamp < :endTime")
+    fun getTotalExpensesBefore(endTime: Long): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM expenses WHERE timestamp <= :endTime")
+    fun getTotalExpensesUpTo(endTime: Long): Flow<Double?>
+
     @Update
     suspend fun updateExpense(expense: Expense)
 
@@ -43,7 +52,7 @@ interface ExpenseDao {
     suspend fun deleteExpense(expense: Expense)
 
     @Query("DELETE FROM expenses WHERE id = :expenseId")
-    suspend fun deleteExpenseById(expenseId: Long)
+    suspend fun deleteExpenseById(expenseId: String)
 
     @Query("DELETE FROM expenses")
     suspend fun deleteAll()

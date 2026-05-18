@@ -20,12 +20,28 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         incomeDao.deleteIncome(income)
     }
 
+    suspend fun deleteIncomeById(incomeId: Long) {
+        incomeDao.deleteIncomeById(incomeId)
+    }
+
     fun getIncomesBetween(startTime: Long, endTime: Long): Flow<List<Income>> {
         return incomeDao.getIncomesBetween(startTime, endTime)
     }
 
     fun getTotalIncomeBetween(startTime: Long, endTime: Long): Flow<Double?> {
         return incomeDao.getTotalIncomeBetween(startTime, endTime)
+    }
+
+    fun getTotalIncomeBefore(endTime: Long): Flow<Double?> {
+        return incomeDao.getTotalIncomeBefore(endTime)
+    }
+
+    fun getTotalIncomeUpTo(endTime: Long): Flow<Double?> {
+        return incomeDao.getTotalIncomeUpTo(endTime)
+    }
+
+    fun getTotalIncome(): Flow<Double?> {
+        return incomeDao.getTotalIncome()
     }
 
     fun getIncomesByCategoryBetween(startTime: Long, endTime: Long): Flow<List<IncomeByCategory>> {

@@ -28,7 +28,9 @@ class DashboardViewModel(
     private val incomeRepository: IncomeRepository,
     private val savingsRepository: SavingsRepository,
     private val settingsRepository: SettingsRepository,
-    private val userProfileRepository: UserProfileRepository
+    private val userProfileRepository: UserProfileRepository,
+    private val transactionRepository: TransactionRepository,
+    private val loanRepository: LoanRepository
 ) : ViewModel() {
 
     private val _uiSate = MutableStateFlow(DashboardUiState())
@@ -36,14 +38,68 @@ class DashboardViewModel(
 
     init {
         loadDashboardData()
+        loadLoanData()
+    }
+
+    private fun loadLoanData() {
+        viewModelScope.launch {
+            combine(
+                loanRepository.getTotalBorrowed(),
+                loanRepository.getTotalLent()
+            ) { borrowed, lent ->
+                Pair(borrowed ?: 0.0, lent ?: 0.0)
+            }.collect { (borrowed, lent) ->
+                _uiSate.update {
+                    it.copy(
+                        financialSummary = it.financialSummary.copy(
+                            totalLoan = borrowed + lent
+                        )
+                    )
+                }
+            }
+        }
     }
 
     private fun loadDashboardData() {
         viewModelScope.launch {
-            val today = Calendar.getInstance()
-            val startTime = today.apply { set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
-            val endTime = today.apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); add(Calendar.DATE, -1) }.timeInMillis
+            val calendar = Calendar.getInstance()
+            
+            // Monthly range
+            val startTime = (calendar.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val endTime = (calendar.clone() as Calendar).apply {
+                add(Calendar.MONTH, 1)
+                set(Calendar.DAY_OF_MONTH, 1)
+                add(Calendar.DATE, -1)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
 
+            val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
+
+            // Today range
+            val todayStart = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            val todayEnd = (calendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            
             val flows = listOf(
                 workLogRepository.getTodayWorkLog(),
                 expenseRepository.getTotalExpensesBetween(startTime, endTime),
@@ -57,15 +113,27 @@ class DashboardViewModel(
                 workLogRepository.getMonthlyStats(),
                 incomeRepository.getIncomes(1, 50),
                 expenseRepository.getExpenses(1, 50),
-                workLogRepository.getWorkLogs(1, 50),
-                userProfileRepository.userProfile
+                workLogRepository.getOvertimeLogsByMonth(monthYear),
+                userProfileRepository.userProfile,
+                transactionRepository.getTotalIncome(),
+                transactionRepository.getTotalExpenses(),
+                incomeRepository.getTotalIncomeBetween(todayStart, todayEnd),
+                expenseRepository.getTotalExpensesBetween(todayStart, todayEnd),
+                transactionRepository.getTotalIncomeBetween(startTime, endTime),
+                transactionRepository.getTotalExpensesBetween(startTime, endTime),
+                transactionRepository.getTotalIncomeBetween(todayStart, todayEnd),
+                transactionRepository.getTotalExpensesBetween(todayStart, todayEnd),
+                incomeRepository.getTotalIncome(),
+                expenseRepository.getTotalExpenses(),
+                transactionRepository.getExpenseByCategoryBetween(startTime, endTime),
+                transactionRepository.getIncomeByCategoryBetween(startTime, endTime)
             )
 
             combine(flows) { array ->
                 val todayWorkLog = array[0] as? WorkLog
-                val totalExpense = array[1] as? Double ?: 0.0
+                val monthlyExpense = (array[1] as? Double ?: 0.0) + (array[19] as? Double ?: 0.0)
                 val monthlyMealExpenses = array[2] as? Double ?: 0.0
-                val totalIncome = array[3] as? Double ?: 0.0
+                val monthlyIncome = (array[3] as? Double ?: 0.0) + (array[18] as? Double ?: 0.0)
                 val totalSavings = array[4] as? Double ?: 0.0
                 val recentActivities = array[6] as? List<WorkLog> ?: emptyList()
                 val expensesByCategory = array[7] as? List<ExpenseByCategory> ?: emptyList()
@@ -73,41 +141,49 @@ class DashboardViewModel(
                 val monthlyStats = array[9] as MonthlyStats
                 val incomes = array[10] as? List<com.rudra.smartworktracker.data.entity.Income> ?: emptyList()
                 val expenses = array[11] as? List<Expense> ?: emptyList()
-                val workLogs = array[12] as? List<WorkLog> ?: emptyList()
+                val overtimeLogs = array[12] as? List<WorkLog> ?: emptyList()
                 val userProfile = array[13] as? com.rudra.smartworktracker.data.entity.UserProfile
 
-                val dailyIncome = incomes.filter {
-                    val incomeDate = Calendar.getInstance()
-                    incomeDate.timeInMillis = it.timestamp
-                    val now = Calendar.getInstance()
-                    now.get(Calendar.YEAR) == incomeDate.get(Calendar.YEAR) &&
-                            now.get(Calendar.DAY_OF_YEAR) == incomeDate.get(Calendar.DAY_OF_YEAR)
-                }.sumOf { it.amount }
+                val allTimeIncome = (array[14] as? Double ?: 0.0) + (array[22] as? Double ?: 0.0)
+                val allTimeExpense = (array[15] as? Double ?: 0.0) + (array[23] as? Double ?: 0.0)
+                val todayIncome = (array[16] as? Double ?: 0.0) + (array[20] as? Double ?: 0.0)
+                val todayExpense = (array[17] as? Double ?: 0.0) + (array[21] as? Double ?: 0.0)
 
-                val dailyExpense = expenses.filter {
-                    val expenseDate = Calendar.getInstance()
-                    expenseDate.timeInMillis = it.timestamp
-                    val now = Calendar.getInstance()
-                    now.get(Calendar.YEAR) == expenseDate.get(Calendar.YEAR) &&
-                            now.get(Calendar.DAY_OF_YEAR) == expenseDate.get(Calendar.DAY_OF_YEAR)
-                }.sumOf { it.amount }
-
+                val dailyIncome = todayIncome
+                val dailyExpense = todayExpense
                 val dailySavings = dailyIncome - dailyExpense
 
-                val overtimeHours = workLogs.filter { it.isOvertime }.sumOf { log ->
-                    val start = log.startTime?.let { DateTimeUtils.parseTime(it) } ?: 0L
-                    val end = log.endTime?.let { DateTimeUtils.parseTime(it) } ?: 0L
-                    (end - start).toDouble() / (1000 * 60 * 60)
-                }
+                val overtimeHours = monthlyStats.extraHours
 
-                val overtimeEarnings = workLogs.filter { it.isOvertime }.sumOf { log ->
+                val overtimeEarnings = overtimeLogs.sumOf { log ->
                     val hours = (log.endTime?.let { DateTimeUtils.parseTime(it) } ?: 0L) - (log.startTime?.let { DateTimeUtils.parseTime(it) } ?: 0L)
                     (hours.toDouble() / (1000 * 60 * 60)) * (log.overtimeRate ?: 0.0)
                 }
 
-                val netSavings = totalIncome - totalExpense
-                val expensesByCategoryMap = expensesByCategory.associate { it.category to it.total }
-                val incomesByCategoryMap = incomesByCategory.associate { it.category to it.total }
+                val ftExpenseCategories = array[24] as? List<IncomeByCategory> ?: emptyList()
+                val ftIncomeCategories = array[25] as? List<IncomeByCategory> ?: emptyList()
+
+                // Merge financial_transactions expense categories (string -> ExpenseCategory)
+                val ftExpenseByCategory = ftExpenseCategories.map {
+                    ExpenseByCategory(
+                        category = it.category.toExpenseCategory(),
+                        total = it.total
+                    )
+                }
+
+                // Merge financial_transactions income categories (both are string-keyed)
+                val combinedExpensesByCategory = expensesByCategory + ftExpenseByCategory
+                val combinedIncomesByCategory = incomesByCategory + ftIncomeCategories
+
+                val expensesByCategoryMap = combinedExpensesByCategory
+                    .groupBy { it.category }
+                    .mapValues { it.value.sumOf { e -> e.total } }
+                val incomesByCategoryMap = combinedIncomesByCategory
+                    .groupBy { it.category }
+                    .mapValues { it.value.sumOf { e -> e.total } }
+
+                val netSavings = monthlyIncome - monthlyExpense
+                val allTimeNetSavings = allTimeIncome - allTimeExpense
 
                 DashboardUiState(
                     userName = userProfile?.name,
@@ -115,22 +191,25 @@ class DashboardViewModel(
                     monthlyStats = monthlyStats,
                     recentActivities = recentActivities.map { it.toUiModel() },
                     financialSummary = FinancialSummary(
-                        totalIncome = totalIncome,
-                        totalExpense = totalExpense,
+                        totalIncome = monthlyIncome,
+                        totalExpense = monthlyExpense,
                         totalSavings = totalSavings,
-                        netSavings = netSavings,
+                        netSavings = allTimeNetSavings,
+                        monthlyNetSavings = netSavings,
                         dailyIncome = dailyIncome,
                         dailyExpense = dailyExpense,
                         dailySavings = dailySavings,
                         totalMealCost = monthlyMealExpenses,
                         overtimeHours = overtimeHours,
-                        overtimeEarnings = overtimeEarnings
+                        overtimeEarnings = overtimeEarnings,
+                        allTimeIncome = allTimeIncome,
+                        allTimeExpense = allTimeExpense
                     ),
                     expensesByCategory = expensesByCategoryMap,
                     incomesByCategory = incomesByCategoryMap,
                     incomes = incomes,
                     expenses = expenses,
-                    workLogs = workLogs
+                    workLogs = overtimeLogs
                 )
             }.collect { newState ->
                 _uiSate.value = newState
@@ -201,6 +280,15 @@ class DashboardViewModel(
         }
     }
 
+    private fun String.toExpenseCategory(): ExpenseCategory {
+        return try {
+            ExpenseCategory.valueOf(this.uppercase())
+        } catch (e: IllegalArgumentException) {
+            ExpenseCategory.entries.find { it.displayName.equals(this, ignoreCase = true) }
+                ?: ExpenseCategory.OTHER
+        }
+    }
+
     companion object {
         fun factory(appDatabase: AppDatabase, context: Context): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
@@ -213,7 +301,18 @@ class DashboardViewModel(
                         val savingsRepository = SavingsRepository(appDatabase.savingsDao())
                         val settingsRepository = SettingsRepository(context)
                         val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
-                        return DashboardViewModel(workLogRepository, expenseRepository, incomeRepository, savingsRepository, settingsRepository, userProfileRepository) as T
+                        val transactionRepository = TransactionRepository(appDatabase.financialTransactionDao())
+                        val loanRepository = LoanRepository(appDatabase.loanDao(), appDatabase.financialTransactionDao())
+                        return DashboardViewModel(
+                            workLogRepository,
+                            expenseRepository,
+                            incomeRepository,
+                            savingsRepository,
+                            settingsRepository,
+                            userProfileRepository,
+                            transactionRepository,
+                            loanRepository
+                        ) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }

@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.repository.TransactionRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
 
 class FinancialStatementViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FinancialStatementViewModel::class.java)) {
-            val transactionDao = AppDatabase.getDatabase(application).financialTransactionDao()
-            val transactionRepository = TransactionRepository(transactionDao)
+            val database = AppDatabase.getDatabase(application)
+            val transactionRepository = TransactionRepository(database.financialTransactionDao())
+            val incomeRepository = IncomeRepository(database.incomeDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao())
             @Suppress("UNCHECKED_CAST")
-            return FinancialStatementViewModel(transactionRepository) as T
+            return FinancialStatementViewModel(transactionRepository, incomeRepository, expenseRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
