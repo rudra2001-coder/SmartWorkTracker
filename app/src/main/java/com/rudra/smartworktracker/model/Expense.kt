@@ -19,10 +19,10 @@ data class Expense(
     val timestamp: Long = System.currentTimeMillis(),
     val imageUri: String? = null,
     
-    // UUID for future sync preparation - Rule 1.1
     val uuid: String = id,
 
-    // Audit fields - Rule 1.2
+    val accountId: Long = 0,
+
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),
     override val isDeleted: Boolean = false,

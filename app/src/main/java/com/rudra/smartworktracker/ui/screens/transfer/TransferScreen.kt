@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.displayName
 import com.rudra.smartworktracker.data.entity.icon
+import com.rudra.smartworktracker.ui.components.AppColors
 import kotlinx.coroutines.flow.collectLatest
 import java.util.*
 
@@ -279,11 +280,11 @@ fun AccountSelectorCard(
 ) {
     val cardColor = selectedAccount?.let { 
         when (it.type) {
-            com.rudra.smartworktracker.data.entity.AccountCategory.WALLET -> Color(0xFFF8F5FF)
-            com.rudra.smartworktracker.data.entity.AccountCategory.BANK -> Color(0xFFE8F5E9)
-            com.rudra.smartworktracker.data.entity.AccountCategory.MOBILE_BANKING -> Color(0xFFFFF3E0)
+            com.rudra.smartworktracker.data.entity.AccountCategory.WALLET -> AppColors.PurpleSurface
+            com.rudra.smartworktracker.data.entity.AccountCategory.BANK -> AppColors.GreenSurface
+            com.rudra.smartworktracker.data.entity.AccountCategory.MOBILE_BANKING -> AppColors.AmberSurface
         }
-    } ?: MaterialTheme.colorScheme.surfaceVariant
+    } ?: AppColors.GraySurface
 
     Card(
         modifier = Modifier

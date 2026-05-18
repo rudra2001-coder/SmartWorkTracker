@@ -305,8 +305,8 @@ class RecurringViewModelFactory(private val context: Context) : ViewModelProvide
                 database.recurringRuleDao(),
                 database.recurringTransactionDao()
             )
-            val incomeRepository = IncomeRepository(database.incomeDao())
-            val expenseRepository = ExpenseRepository(database.expenseDao())
+            val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
             val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
             @Suppress("UNCHECKED_CAST")
             return RecurringViewModel(repository, engine, incomeRepository, expenseRepository) as T

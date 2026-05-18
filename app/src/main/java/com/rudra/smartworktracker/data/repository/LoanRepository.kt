@@ -1,8 +1,8 @@
 package com.rudra.smartworktracker.data.repository
 
+import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.LoanDao
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanType
@@ -10,7 +10,11 @@ import com.rudra.smartworktracker.data.entity.TransactionType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-class LoanRepository(private val loanDao: LoanDao, private val transactionDao: FinancialTransactionDao) {
+class LoanRepository(
+    private val loanDao: LoanDao,
+    private val transactionDao: FinancialTransactionDao,
+    private val accountDao: AccountDao
+) {
 
     fun getAllLoans(): Flow<List<Loan>> = loanDao.getAllLoans()
 
@@ -34,19 +38,39 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
 
     fun getActiveLentCount(): Flow<Int> = loanDao.getActiveLoanCountByType(LoanType.LENT)
 
+    private suspend fun updateAccountBalance(accountId: Long, amountChange: Double) {
+        val account = accountDao.getAccountById(accountId)
+        account?.let {
+            val newBalance = (it.balance + amountChange).coerceAtLeast(0.0)
+            accountDao.updateBalance(accountId, newBalance)
+        }
+    }
+
     suspend fun insertLoan(loan: Loan) {
         val loanId = loanDao.insertLoan(loan)
+
+        if (loan.loanType == LoanType.BORROWED) {
+            if (loan.accountId > 0) {
+                updateAccountBalance(loan.accountId, loan.initialAmount)
+            }
+        } else {
+            if (loan.accountId > 0) {
+                updateAccountBalance(loan.accountId, -loan.initialAmount)
+            }
+        }
+
         val transactionType = if (loan.loanType == LoanType.BORROWED) {
             TransactionType.LOAN_BORROW
         } else {
             TransactionType.LOAN_LEND
         }
-        
+
+        val account = accountDao.getAccountById(loan.accountId)
         val transaction = FinancialTransaction(
             type = transactionType,
             amount = loan.initialAmount,
-            source = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
             note = buildString {
                 append("Loan ${if (loan.loanType == LoanType.BORROWED) "from" else "to"}: ${loan.personName}")
                 if (!loan.notes.isNullOrBlank()) append(" - ${loan.notes}")
@@ -71,7 +95,7 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
     suspend fun repayLoan(loan: Loan, amount: Double) {
         val newRemaining = (loan.remainingAmount - amount).coerceAtLeast(0.0)
         val isFullyPaid = newRemaining <= 0.0
-        
+
         val updatedLoan = loan.copy(
             remainingAmount = newRemaining,
             isFullyPaid = isFullyPaid,
@@ -80,12 +104,20 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
             updatedAt = System.currentTimeMillis()
         )
         loanDao.updateLoan(updatedLoan)
-        
+
+        if (loan.accountId > 0) {
+            if (loan.loanType == LoanType.BORROWED) {
+                updateAccountBalance(loan.accountId, -amount)
+            } else {
+                updateAccountBalance(loan.accountId, amount)
+            }
+        }
+
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,
             amount = amount,
-            source = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
             note = "Payment ${if (loan.loanType == LoanType.BORROWED) "to" else "from"} ${loan.personName}",
             date = System.currentTimeMillis(),
             relatedLoanId = loan.id
@@ -100,12 +132,20 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
     suspend fun markLoanAsPaid(loan: Loan) {
         val remaining = loan.remainingAmount
         loanDao.markLoanAsPaid(loan.id)
-        
+
+        if (loan.accountId > 0) {
+            if (loan.loanType == LoanType.BORROWED) {
+                updateAccountBalance(loan.accountId, -remaining)
+            } else {
+                updateAccountBalance(loan.accountId, remaining)
+            }
+        }
+
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,
             amount = remaining,
-            source = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
             note = "Final settlement for loan ${if (loan.loanType == LoanType.BORROWED) "from" else "to"} ${loan.personName}",
             date = System.currentTimeMillis(),
             relatedLoanId = loan.id

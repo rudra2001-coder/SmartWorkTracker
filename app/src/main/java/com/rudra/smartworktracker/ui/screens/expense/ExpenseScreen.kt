@@ -29,7 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Account
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.model.ExpenseCategory
 import java.text.SimpleDateFormat
 import java.util.*
@@ -59,10 +58,6 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var selectedAccount by remember(accounts) {
         mutableStateOf(accounts.find { it.name == "Cash" } ?: accounts.firstOrNull())
     }
-
-    val accountTypes = AccountType.values()
-    var accountTypeExpanded by remember { mutableStateOf(false) }
-    var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = CoralRed,
@@ -270,27 +265,27 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
 
             item {
                 Button(
-                    onClick = {
-                        if (amount.isNotBlank()) {
-                            viewModel.saveExpense(
-                                amount = amount.toDouble(),
-                                currency = "BDT",
-                                category = selectedCategory,
-                                merchant = merchant.ifBlank { null },
-                                notes = notes.ifBlank { null },
-                                accountType = selectedAccountType,
-                                timestamp = selectedDate?.time ?: System.currentTimeMillis(),
-                                selectedAccountId = selectedAccount?.id
-                            )
-                            amount = ""
-                            merchant = ""
-                            notes = ""
-                            selectedAccount = null
-                            Toast.makeText(context, "✓ Expense Saved Successfully", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Please enter an amount", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                onClick = {
+                    val accountId = selectedAccount?.id
+                    if (amount.isNotBlank() && accountId != null && accountId > 0) {
+                        viewModel.saveExpense(
+                            amount = amount.toDouble(),
+                            currency = "BDT",
+                            category = selectedCategory,
+                            merchant = merchant.ifBlank { null },
+                            notes = notes.ifBlank { null },
+                            timestamp = selectedDate?.time ?: System.currentTimeMillis(),
+                            selectedAccountId = accountId
+                        )
+                        amount = ""
+                        merchant = ""
+                        notes = ""
+                        selectedAccount = null
+                        Toast.makeText(context, "✓ Expense Saved Successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Please enter an amount and select an account", Toast.LENGTH_SHORT).show()
+                    }
+                },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = ChipShape,
                     colors = ButtonDefaults.buttonColors(containerColor = CoralRed)

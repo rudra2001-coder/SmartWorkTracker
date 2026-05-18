@@ -65,6 +65,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -83,7 +84,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.Emi
 import com.rudra.smartworktracker.data.entity.EmiStatus
 import com.rudra.smartworktracker.data.entity.Loan
@@ -700,7 +702,7 @@ fun StatusChip(status: EmiStatus) {
 fun AddEmiBottomSheet(
     loans: List<Loan>,
     onDismiss: () -> Unit,
-    onSave: (Int, Double, Double, Double, Int, String?, AccountType) -> Unit
+    onSave: (Int, Double, Double, Double, Int, String?, Long) -> Unit
 ) {
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
     var amount by remember { mutableStateOf("") }
@@ -708,7 +710,18 @@ fun AddEmiBottomSheet(
     var interestAmount by remember { mutableStateOf("") }
     var dueDay by remember { mutableStateOf("5") }
     var notes by remember { mutableStateOf("") }
-    var paymentAccount by remember { mutableStateOf(AccountType.BANK) }
+    var selectedPaymentAccountId by remember { mutableStateOf(0L) }
+    
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        accounts = db.accountDao().getAllAccountsList()
+        if (accounts.isNotEmpty()) {
+            selectedPaymentAccountId = accounts.first().id
+        }
+    }
     
     var isLoansExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
@@ -857,8 +870,9 @@ fun AddEmiBottomSheet(
                 expanded = accountExpanded,
                 onExpandedChange = { accountExpanded = !accountExpanded }
             ) {
+                val selectedAccountName = accounts.find { it.id == selectedPaymentAccountId }?.name ?: "Select Account"
                 OutlinedTextField(
-                    value = paymentAccount.name,
+                    value = selectedAccountName,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Payment Account") },
@@ -871,11 +885,11 @@ fun AddEmiBottomSheet(
                     expanded = accountExpanded,
                     onDismissRequest = { accountExpanded = false }
                 ) {
-                    AccountType.entries.forEach { account ->
+                    accounts.forEach { account ->
                         DropdownMenuItem(
-                            text = { Text(account.name) },
+                            text = { Text("${account.name} (${account.balance.toInt()} BDT)") },
                             onClick = {
-                                paymentAccount = account
+                                selectedPaymentAccountId = account.id
                                 accountExpanded = false
                             }
                         )
@@ -912,7 +926,7 @@ fun AddEmiBottomSheet(
                         val interest = interestAmount.toDoubleOrNull() ?: 0.0
                         val day = dueDay.toIntOrNull() ?: 5
                         
-                        if (loanId > 0 && emiAmountVal > 0 && day in 1..31) {
+                        if (loanId > 0 && emiAmountVal > 0 && day in 1..31 && selectedPaymentAccountId > 0) {
                             onSave(
                                 loanId,
                                 emiAmountVal,
@@ -920,13 +934,14 @@ fun AddEmiBottomSheet(
                                 interest,
                                 day,
                                 notes.takeIf { it.isNotBlank() },
-                                paymentAccount
+                                selectedPaymentAccountId
                             )
                         }
                     },
                     enabled = selectedLoan != null && 
                               (amount.toDoubleOrNull() ?: 0.0) > 0 && 
-                              (dueDay.toIntOrNull() ?: 0) in 1..31
+                              (dueDay.toIntOrNull() ?: 0) in 1..31 &&
+                              selectedPaymentAccountId > 0
                 ) {
                     Text("Add EMI")
                 }

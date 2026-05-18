@@ -46,8 +46,8 @@ class FusionEngine(
         val transaction = FinancialTransaction(
             type = TransactionType.TRANSFER,
             amount = amount,
-            source = fromAccount.type.toOldAccountType(),
-            destination = toAccount.type.toOldAccountType(),
+            sourceAccountId = fromAccountId,
+            destinationAccountId = toAccountId,
             note = note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}",
             date = timestamp
         )
@@ -73,12 +73,8 @@ class FusionEngine(
 
         val transactions = financialTransactionDao.getAllTransactions().first()
         return transactions
-            .filter { it.date >= today && it.source.name == getAccountTypeName(accountId) }
+            .filter { it.date >= today && it.sourceAccountId == accountId }
             .sumOf { it.amount }
-    }
-
-    private fun getAccountTypeName(accountId: Long): String {
-        return "BANK"
     }
 
     private suspend fun updateInsights(fromAccount: Account, toAccount: Account, amount: Double) {
@@ -184,13 +180,6 @@ class FusionEngine(
         )
     }
 
-    private fun com.rudra.smartworktracker.data.entity.AccountCategory.toOldAccountType(): com.rudra.smartworktracker.data.entity.AccountType {
-        return when (this) {
-            AccountCategory.WALLET -> com.rudra.smartworktracker.data.entity.AccountType.CASH
-            AccountCategory.BANK -> com.rudra.smartworktracker.data.entity.AccountType.BANK
-            AccountCategory.MOBILE_BANKING -> com.rudra.smartworktracker.data.entity.AccountType.BALANCE
-        }
-    }
 }
 
 sealed class FusionResult {

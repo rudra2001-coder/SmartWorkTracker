@@ -29,7 +29,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.IncomeCategories
 import com.rudra.smartworktracker.data.entity.Account
 import java.text.SimpleDateFormat
@@ -65,9 +64,6 @@ fun IncomeScreen(modifier: Modifier = Modifier) {
     val incomeCategories = IncomeCategories.categories
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(incomeCategories[0]) }
-    val accountTypes = AccountType.values()
-    var accountTypeExpanded by remember { mutableStateOf(false) }
-    var selectedAccountType by remember { mutableStateOf<AccountType?>(null) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = EmeraldGreen,
@@ -249,22 +245,22 @@ fun IncomeScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         val incomeValue = incomeInput.text.toDoubleOrNull()
-                        if (incomeValue != null && incomeValue > 0) {
+                        val accountId = selectedAccount?.id
+                        if (incomeValue != null && incomeValue > 0 && accountId != null && accountId > 0) {
                             viewModel.saveIncome(
                                 amount = incomeValue,
                                 description = descriptionInput.text,
                                 category = selectedCategory,
                                 source = "Primary Job",
-                                accountType = selectedAccountType,
                                 timestamp = selectedDate?.time ?: System.currentTimeMillis(),
-                                selectedAccountId = selectedAccount?.id
+                                selectedAccountId = accountId
                             )
                             incomeInput = TextFieldValue("")
                             descriptionInput = TextFieldValue("")
                             selectedAccount = null
                             errorMessage = null
                         } else {
-                            errorMessage = "Please enter a valid positive number"
+                            errorMessage = "Please enter a valid amount and select an account"
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),

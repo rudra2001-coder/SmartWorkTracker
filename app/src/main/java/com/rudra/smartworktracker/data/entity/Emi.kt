@@ -45,7 +45,7 @@ data class Emi(
     var isSkipped: Boolean = false,
     
     val notes: String? = null,
-    val paymentAccount: AccountType = AccountType.BANK,
+    val paymentAccountId: Long = 0,
 
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),

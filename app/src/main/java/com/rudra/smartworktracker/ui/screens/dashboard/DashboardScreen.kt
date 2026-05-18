@@ -210,6 +210,7 @@ fun DashboardScreen(
         ) {
             item { Header(userName = uiState.userName) }
             item { NetBalanceHeroCard(financialSummary = uiState.financialSummary) }
+            item { AccountBalanceCard(totalBalance = uiState.financialSummary.totalBalance) }
             item { TripleMetricRow(financialSummary = uiState.financialSummary) }
             item { DailySnapshotCard(financialSummary = uiState.financialSummary) }
             item { SavingsRatioCard(financialSummary = uiState.financialSummary) }
@@ -465,6 +466,85 @@ private fun AllTimeIncomeExpenseBar(income: Double, expense: Double) {
                         ),
                         shape = RoundedCornerShape(5.dp)
                     )
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Account Balance Card — Shows total balance across all accounts
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun AccountBalanceCard(totalBalance: Double) {
+    var animatedBalance by remember { mutableDoubleStateOf(0.0) }
+    val animatedValue by animateFloatAsState(
+        targetValue = animatedBalance.toFloat(),
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        label = "account_balance_anim"
+    )
+
+    LaunchedEffect(totalBalance) {
+        delay(400)
+        animatedBalance = totalBalance
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 8.dp, shape = CardShape, clip = false),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.AccountBalance,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    "Total Account Balance",
+                    style = typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "৳${"%,.0f".format(animatedValue)}",
+                style = typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = SapphireBlue
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Combined balance from all your accounts",
+                style = typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
             )
         }
     }

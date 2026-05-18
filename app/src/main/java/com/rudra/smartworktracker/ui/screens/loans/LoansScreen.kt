@@ -95,6 +95,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanCategory
@@ -306,8 +307,8 @@ fun LoansScreen(
             AddEditLoanBottomSheet(
                 loan = null,
                 onDismiss = { viewModel.closeAddLoanDialog() },
-                onSave = { personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, source, dest ->
-                    viewModel.addLoan(personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, source, dest)
+                onSave = { personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, accountId ->
+                    viewModel.addLoan(personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, accountId)
                 }
             )
         }
@@ -316,7 +317,7 @@ fun LoansScreen(
             AddEditLoanBottomSheet(
                 loan = uiState.showEditLoanDialog,
                 onDismiss = { viewModel.closeEditLoanDialog() },
-                onSave = { personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, source, dest ->
+                onSave = { personName, contact, amount, type, category, dueDate, interest, emi, totalEmis, notes, accountId ->
                     viewModel.updateLoan(
                         uiState.showEditLoanDialog!!.copy(
                             personName = personName,
@@ -328,8 +329,7 @@ fun LoansScreen(
                             emiAmount = emi,
                             totalEmis = totalEmis,
                             notes = notes,
-                            sourceAccount = source,
-                            destinationAccount = dest
+                            accountId = accountId
                         )
                     )
                 }
@@ -745,7 +745,7 @@ fun LoanCard(
 fun AddEditLoanBottomSheet(
     loan: Loan?,
     onDismiss: () -> Unit,
-    onSave: (String, String?, Double, LoanType, LoanCategory, Long?, Double?, Double?, Int?, String?, AccountType, AccountType) -> Unit
+    onSave: (String, String?, Double, LoanType, LoanCategory, Long?, Double?, Double?, Int?, String?, Long) -> Unit
 ) {
     val isEditing = loan != null
     var personName by remember { mutableStateOf(loan?.personName ?: "") }
@@ -757,15 +757,22 @@ fun AddEditLoanBottomSheet(
     var interestRate by remember { mutableStateOf(loan?.interestRate?.toString() ?: "") }
     var emiAmount by remember { mutableStateOf(loan?.emiAmount?.toString() ?: "") }
     var totalEmis by remember { mutableStateOf(loan?.totalEmis?.toString() ?: "") }
-    var sourceAccount by remember { mutableStateOf(loan?.sourceAccount ?: AccountType.BANK) }
-    var destinationAccount by remember { mutableStateOf(loan?.destinationAccount ?: AccountType.CASH) }
+    var selectedAccountId by remember { mutableStateOf(loan?.accountId ?: 0L) }
     var selectedDueDate by remember { mutableStateOf(loan?.dueDate) }
     var showDatePicker by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val accountDao = db.accountDao()
+    var accounts by remember { mutableStateOf<List<com.rudra.smartworktracker.data.entity.Account>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        accounts = accountDao.getAllAccountsList()
+    }
+
     var loanTypeExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
-    var sourceExpanded by remember { mutableStateOf(false) }
-    var destExpanded by remember { mutableStateOf(false) }
+    var accountExpanded by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -943,59 +950,29 @@ fun AddEditLoanBottomSheet(
             Spacer(modifier = Modifier.height(12.dp))
 
             ExposedDropdownMenuBox(
-                expanded = sourceExpanded,
-                onExpandedChange = { sourceExpanded = !sourceExpanded }
+                expanded = accountExpanded,
+                onExpandedChange = { accountExpanded = !accountExpanded }
             ) {
+                val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
                 OutlinedTextField(
-                    value = sourceAccount.name,
+                    value = selectedAccountName,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Source Account") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
+                    label = { Text("Account *") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     shape = ChipShape
                 )
                 ExposedDropdownMenu(
-                    expanded = sourceExpanded,
-                    onDismissRequest = { sourceExpanded = false }
+                    expanded = accountExpanded,
+                    onDismissRequest = { accountExpanded = false }
                 ) {
-                    AccountType.entries.forEach { account ->
+                    accounts.forEach { account ->
                         DropdownMenuItem(
-                            text = { Text(account.name) },
+                            text = { Text("${account.name} (${account.balance.toInt()} BDT)") },
                             onClick = {
-                                sourceAccount = account
-                                sourceExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = destExpanded,
-                onExpandedChange = { destExpanded = !destExpanded }
-            ) {
-                OutlinedTextField(
-                    value = destinationAccount.name,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Destination Account") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    shape = ChipShape
-                )
-                ExposedDropdownMenu(
-                    expanded = destExpanded,
-                    onDismissRequest = { destExpanded = false }
-                ) {
-                    AccountType.entries.forEach { account ->
-                        DropdownMenuItem(
-                            text = { Text(account.name) },
-                            onClick = {
-                                destinationAccount = account
-                                destExpanded = false
+                                selectedAccountId = account.id
+                                accountExpanded = false
                             }
                         )
                     }
@@ -1028,7 +1005,7 @@ fun AddEditLoanBottomSheet(
                 Button(
                     onClick = {
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
-                        if (personName.isNotBlank() && amountValue > 0) {
+                        if (personName.isNotBlank() && amountValue > 0 && selectedAccountId > 0) {
                             onSave(
                                 personName,
                                 contactNumber.takeIf { it.isNotBlank() },
@@ -1040,12 +1017,11 @@ fun AddEditLoanBottomSheet(
                                 emiAmount.toDoubleOrNull(),
                                 totalEmis.toIntOrNull(),
                                 notes.takeIf { it.isNotBlank() },
-                                sourceAccount,
-                                destinationAccount
+                                selectedAccountId
                             )
                         }
                     },
-                    enabled = personName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0,
+                    enabled = personName.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0 && selectedAccountId > 0,
                     shape = ChipShape
                 ) {
                     Text(if (isEditing) "Update" else "Add Loan", fontWeight = FontWeight.SemiBold)

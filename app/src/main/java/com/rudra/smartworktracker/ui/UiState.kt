@@ -49,6 +49,7 @@ data class FinancialSummary(
     val totalMealCost: Double = 0.0,
     val expenseBreakdown: Map<String, Double> = emptyMap(),
     val totalLoan: Double = 0.0,
+    val totalBalance: Double = 0.0,
     val totalOfficeDays: Int = 0,
     val totalOffDays: Int = 0,
     val overtimeHours: Double = 0.0,

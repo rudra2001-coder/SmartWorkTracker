@@ -256,17 +256,6 @@ class AccountRepository(private val accountDao: AccountDao) {
             }
         }
     }
-
-    suspend fun findAccountByType(accountType: AccountType): Account? {
-        return when (accountType) {
-            AccountType.CASH -> accountDao.getAllAccountsList().firstOrNull { it.type == AccountCategory.WALLET }
-            AccountType.BANK -> accountDao.getAllAccountsList().firstOrNull { it.type == AccountCategory.BANK }
-            AccountType.BALANCE -> accountDao.getAllAccountsList().firstOrNull { it.type == AccountCategory.MOBILE_BANKING }
-            AccountType.SAVINGS -> accountDao.getAllAccountsList().firstOrNull { it.type == AccountCategory.BANK }
-            AccountType.LOAN -> null
-            AccountType.CREDIT_CARD -> null
-        }
-    }
 }
 
 sealed class TransferResult {

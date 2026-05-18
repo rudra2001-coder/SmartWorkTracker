@@ -16,12 +16,18 @@ interface CreditCardDao {
     @Update
     suspend fun updateCard(creditCard: CreditCard)
 
-    @Query("SELECT * FROM credit_cards ORDER BY cardName ASC")
+    @Query("SELECT * FROM credit_cards WHERE isDeleted = 0 ORDER BY cardName ASC")
     fun getAllCards(): Flow<List<CreditCard>>
 
     @Query("SELECT * FROM credit_cards WHERE id = :cardId")
     fun getCardById(cardId: Int): Flow<CreditCard?>
 
-    @Query("SELECT * FROM credit_cards")
+    @Query("SELECT * FROM credit_cards WHERE isDeleted = 0")
     fun getAllCreditCards(): Flow<List<CreditCard>>
+
+    @Query("UPDATE credit_cards SET isDeleted = 1, updatedAt = :timestamp WHERE id = :cardId")
+    suspend fun softDeleteCard(cardId: Int, timestamp: Long = System.currentTimeMillis())
+
+    @Query("DELETE FROM credit_cards WHERE id = :cardId")
+    suspend fun deleteCard(cardId: Int)
 }

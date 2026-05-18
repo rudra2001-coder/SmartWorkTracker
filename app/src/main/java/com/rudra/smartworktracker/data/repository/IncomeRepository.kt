@@ -1,11 +1,15 @@
 package com.rudra.smartworktracker.data.repository
 
+import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.dao.IncomeDao
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.IncomeByCategory
 import kotlinx.coroutines.flow.Flow
 
-class IncomeRepository(private val incomeDao: IncomeDao) {
+class IncomeRepository(
+    private val incomeDao: IncomeDao,
+    private val accountDao: AccountDao
+) {
 
     fun getIncomes(page: Int, pageSize: Int): Flow<List<Income>> {
         val offset = (page - 1) * pageSize
@@ -14,14 +18,41 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
 
     suspend fun insertIncome(income: Income) {
         incomeDao.insertIncome(income)
+        
+        if (income.accountId > 0) {
+            val account = accountDao.getAccountById(income.accountId)
+            account?.let {
+                val newBalance = it.balance + income.amount
+                accountDao.updateBalance(income.accountId, newBalance)
+            }
+        }
     }
 
     suspend fun deleteIncome(income: Income) {
         incomeDao.deleteIncome(income)
+        
+        if (income.accountId > 0) {
+            val account = accountDao.getAccountById(income.accountId)
+            account?.let {
+                val newBalance = (it.balance - income.amount).coerceAtLeast(0.0)
+                accountDao.updateBalance(income.accountId, newBalance)
+            }
+        }
     }
 
     suspend fun deleteIncomeById(incomeId: Long) {
-        incomeDao.deleteIncomeById(incomeId)
+        val income = incomeDao.getIncomeById(incomeId)
+        income?.let {
+            incomeDao.deleteIncomeById(incomeId)
+            
+            if (it.accountId > 0) {
+                val account = accountDao.getAccountById(it.accountId)
+                account?.let { acc ->
+                    val newBalance = (acc.balance - it.amount).coerceAtLeast(0.0)
+                    accountDao.updateBalance(it.accountId, newBalance)
+                }
+            }
+        }
     }
 
     fun getIncomesBetween(startTime: Long, endTime: Long): Flow<List<Income>> {

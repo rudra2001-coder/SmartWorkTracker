@@ -5,7 +5,8 @@ import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.MonthlyStats
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -16,16 +17,26 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         return workLogDao.getTodayWorkLog()
     }
 
-    fun getMonthlyStats(): Flow<MonthlyStats> = flow {
+    fun getMonthlyStats(): Flow<MonthlyStats> {
         val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
-        val officeDays = workLogDao.countByType(monthYear, WorkType.OFFICE)
-        val homeOfficeDays = workLogDao.countByType(monthYear, WorkType.HOME_OFFICE)
-        val offDays = workLogDao.countByType(monthYear, WorkType.OFF_DAY)
-        val extraWorkDays = workLogDao.countByType(monthYear, WorkType.EXTRA_WORK)
-        val overtimeDays = workLogDao.countByType(monthYear, WorkType.OVERTIME)
-        val extraHours = workLogDao.getTotalExtraHours(monthYear) ?: 0.0
-        val overtimeHours = workLogDao.getTotalExtraHours(monthYear, WorkType.OVERTIME) ?: 0.0
-        emit(
+        return combine(
+            listOf(
+                workLogDao.countByTypeFlow(monthYear, WorkType.OFFICE).map { it.toDouble() },
+                workLogDao.countByTypeFlow(monthYear, WorkType.HOME_OFFICE).map { it.toDouble() },
+                workLogDao.countByTypeFlow(monthYear, WorkType.OFF_DAY).map { it.toDouble() },
+                workLogDao.countByTypeFlow(monthYear, WorkType.EXTRA_WORK).map { it.toDouble() },
+                workLogDao.countByTypeFlow(monthYear, WorkType.OVERTIME).map { it.toDouble() },
+                workLogDao.getTotalExtraHoursFlow(monthYear),
+                workLogDao.getTotalExtraHoursFlow(monthYear, WorkType.OVERTIME)
+            )
+        ) { array ->
+            val officeDays = array[0].toInt()
+            val homeOfficeDays = array[1].toInt()
+            val offDays = array[2].toInt()
+            val extraWorkDays = array[3].toInt()
+            val overtimeDays = array[4].toInt()
+            val extraHours = array[5]
+            val overtimeHours = array[6]
             MonthlyStats(
                 officeDays = officeDays,
                 homeOfficeDays = homeOfficeDays,
@@ -33,7 +44,7 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
                 extraHours = extraHours + overtimeHours,
                 totalWorkDays = officeDays + homeOfficeDays + extraWorkDays + overtimeDays
             )
-        )
+        }
     }
 
     fun getRecentActivities(): Flow<List<WorkLog>> {

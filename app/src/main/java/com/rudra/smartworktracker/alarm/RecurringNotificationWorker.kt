@@ -62,8 +62,8 @@ class RecurringNotificationWorker(
                 database.recurringRuleDao(),
                 database.recurringTransactionDao()
             )
-            val incomeRepository = IncomeRepository(database.incomeDao())
-            val expenseRepository = ExpenseRepository(database.expenseDao())
+            val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
             val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
             
             // Get current balance for balance protection

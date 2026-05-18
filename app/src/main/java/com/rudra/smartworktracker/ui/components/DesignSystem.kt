@@ -24,15 +24,38 @@ import androidx.compose.ui.unit.sp
 // ─────────────────────────────────────────────────────────────────────────────
 
 object AppColors {
+    // Core
     val GlobalBackground = Color(0xFFF8F9FA)      // Very light gray
-    val CardBackground = Color(0xFFFFFFFF)       // Pure white
-    val PrimaryText = Color(0xFF1E1E1E)            // Nearly black
+    val CardBackground = Color(0xFFFFFFFF)        // Pure white
+    val PrimaryText = Color(0xFF1E1E1E)           // Nearly black
     val SecondaryText = Color(0xFF8E8E93)         // Mid gray
-    val IncomeGreen = Color(0xFF2ECC71)            // Income green
-    val ExpenseRed = Color(0xFFFF6B6B)            // Expense red
-    val OfficeBlue = Color(0xFF3498DB)            // Office blue
-    val HomeMint = Color(0xFF1ABC9C)              // Home mint
-    val OffPurple = Color(0xFF9B59B6)             // Off purple
+
+    // Semantic hues
+    val IncomeGreen = Color(0xFF2ECC71)           // Income / success green
+    val ExpenseRed = Color(0xFFFF6B6B)            // Expense / danger red
+    val OfficeBlue = Color(0xFF3498DB)            // Office / primary blue
+    val HomeMint = Color(0xFF1ABC9C)              // Home / mint
+    val OffPurple = Color(0xFF9B59B6)             // Off / purple
+
+    // ── Surface tints (dashboard card types) ──────────────────────────────────
+
+    /** Emerald-tinted tint (green [IncomeGreen]-variant surface). */
+    val GreenSurface = Color(0xFFE6FBF4)
+
+    /** Coral-tinted tint (red [ExpenseRed]-variant surface). */
+    val RedSurface = Color(0xFFFFEDED)
+
+    /** Blue-tinted tint (blue [OfficeBlue]-variant surface). */
+    val BlueSurface = Color(0xFFEFF6FF)
+
+    /** Amber-tinted tint (golden/amber surface). */
+    val AmberSurface = Color(0xFFFFFBEB)
+
+    /** Purple-tinted tint (off-purple surface). */
+    val PurpleSurface = Color(0xFFF5F3FF)
+
+    /** Neutral mid-tone surface (surfaceVariant). */
+    val GraySurface = Color(0xFFEFF0F2)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

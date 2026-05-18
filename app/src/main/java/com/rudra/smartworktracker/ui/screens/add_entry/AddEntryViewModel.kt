@@ -136,7 +136,7 @@ class AddEntryViewModel(
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY])
                 val savedStateHandle = extras.createSavedStateHandle()
                 val database = AppDatabase.getDatabase(application)
-                val expenseRepository = ExpenseRepository(database.expenseDao())
+                val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
                 val workLogRepository = WorkLogRepository(database.workLogDao())
                 return AddEntryViewModel(expenseRepository, workLogRepository, savedStateHandle) as T
             }

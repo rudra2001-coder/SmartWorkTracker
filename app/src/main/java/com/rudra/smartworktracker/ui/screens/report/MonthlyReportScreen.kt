@@ -23,26 +23,6 @@ import co.yml.charts.common.model.PlotType
 import co.yml.charts.ui.piechart.charts.PieChart
 import co.yml.charts.ui.piechart.models.PieChartConfig
 import co.yml.charts.ui.piechart.models.PieChartData
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.DonutLarge
-import androidx.compose.material.icons.filled.List
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.vector.ImageVector
-
-private val CardShape = RoundedCornerShape(20.dp)
-private val ChipShape = RoundedCornerShape(12.dp)
-private val PillShape = RoundedCornerShape(50.dp)
-
-private val EmeraldGreen = Color(0xFF00C896)
-private val CoralRed = Color(0xFFFF5757)
-private val SapphireBlue = Color(0xFF3B82F6)
-private val GoldenAmber = Color(0xFFF59E0B)
-private val VioletPurple = Color(0xFF8B5CF6)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
@@ -83,17 +63,16 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .shadow(6.dp, CardShape, clip = false),
-                shape = CardShape,
-                elevation = CardDefaults.cardElevation(0.dp),
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    SectionHeader(
-                        title = "Select Month",
-                        gradientColors = listOf(SapphireBlue, VioletPurple),
-                        icon = Icons.Default.DateRange
+                    Text(
+                        text = "Select Month",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -172,19 +151,18 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .shadow(6.dp, CardShape, clip = false),
-                    shape = CardShape,
-                    elevation = CardDefaults.cardElevation(0.dp)
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        SectionHeader(
-                            title = "Work Type Distribution",
-                            gradientColors = listOf(SapphireBlue, VioletPurple),
-                            icon = Icons.Default.DonutLarge
+                        Text(
+                            text = "Work Type Distribution",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -278,25 +256,25 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .shadow(6.dp, CardShape, clip = false),
-                    shape = CardShape,
-                    elevation = CardDefaults.cardElevation(0.dp)
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        SectionHeader(
-                            title = "Monthly Summary",
-                            gradientColors = listOf(SapphireBlue, VioletPurple),
-                            icon = Icons.Default.Assessment
+                        Text(
+                            text = "Monthly Summary",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Work Type Breakdown
-                        SubSectionHeader(
-                            title = "Work Type Breakdown",
-                            gradientColors = listOf(SapphireBlue, VioletPurple),
-                            icon = Icons.Default.List
+                        Text(
+                            text = "Work Type Breakdown",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -318,10 +296,11 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Totals
-                        SubSectionHeader(
-                            title = "Totals",
-                            gradientColors = listOf(SapphireBlue, VioletPurple),
-                            icon = Icons.Default.Calculate
+                        Text(
+                            text = "Totals",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -376,9 +355,8 @@ private fun QuickStatCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.shadow(6.dp, CardShape, clip = false),
-        shape = CardShape,
-        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
@@ -403,78 +381,6 @@ private fun QuickStatCard(
                 color = MaterialTheme.colorScheme.outline
             )
         }
-    }
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    gradientColors: List<Color>,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .shadow(4.dp, CardShape)
-                .background(
-                    brush = Brush.horizontalGradient(gradientColors),
-                    shape = ChipShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun SubSectionHeader(
-    title: String,
-    gradientColors: List<Color>,
-    icon: ImageVector
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .shadow(3.dp, CardShape)
-                .background(
-                    brush = Brush.horizontalGradient(gradientColors),
-                    shape = ChipShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 

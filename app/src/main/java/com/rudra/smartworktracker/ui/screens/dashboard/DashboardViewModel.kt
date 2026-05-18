@@ -30,7 +30,8 @@ class DashboardViewModel(
     private val settingsRepository: SettingsRepository,
     private val userProfileRepository: UserProfileRepository,
     private val transactionRepository: TransactionRepository,
-    private val loanRepository: LoanRepository
+    private val loanRepository: LoanRepository,
+    private val accountRepository: AccountRepository
 ) : ViewModel() {
 
     private val _uiSate = MutableStateFlow(DashboardUiState())
@@ -38,33 +39,12 @@ class DashboardViewModel(
 
     init {
         loadDashboardData()
-        loadLoanData()
-    }
-
-    private fun loadLoanData() {
-        viewModelScope.launch {
-            combine(
-                loanRepository.getTotalBorrowed(),
-                loanRepository.getTotalLent()
-            ) { borrowed, lent ->
-                Pair(borrowed ?: 0.0, lent ?: 0.0)
-            }.collect { (borrowed, lent) ->
-                _uiSate.update {
-                    it.copy(
-                        financialSummary = it.financialSummary.copy(
-                            totalLoan = borrowed + lent
-                        )
-                    )
-                }
-            }
-        }
     }
 
     private fun loadDashboardData() {
         viewModelScope.launch {
             val calendar = Calendar.getInstance()
             
-            // Monthly range
             val startTime = (calendar.clone() as Calendar).apply {
                 set(Calendar.DAY_OF_MONTH, 1)
                 set(Calendar.HOUR_OF_DAY, 0)
@@ -85,7 +65,6 @@ class DashboardViewModel(
 
             val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
 
-            // Today range
             val todayStart = (calendar.clone() as Calendar).apply {
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
@@ -126,7 +105,10 @@ class DashboardViewModel(
                 incomeRepository.getTotalIncome(),
                 expenseRepository.getTotalExpenses(),
                 transactionRepository.getExpenseByCategoryBetween(startTime, endTime),
-                transactionRepository.getIncomeByCategoryBetween(startTime, endTime)
+                transactionRepository.getIncomeByCategoryBetween(startTime, endTime),
+                accountRepository.getTotalBalance(),
+                loanRepository.getTotalBorrowed(),
+                loanRepository.getTotalLent()
             )
 
             combine(flows) { array ->
@@ -163,7 +145,11 @@ class DashboardViewModel(
                 val ftExpenseCategories = array[24] as? List<IncomeByCategory> ?: emptyList()
                 val ftIncomeCategories = array[25] as? List<IncomeByCategory> ?: emptyList()
 
-                // Merge financial_transactions expense categories (string -> ExpenseCategory)
+                val totalBalance = array[26] as? Double ?: 0.0
+                val totalBorrowed = array[27] as? Double ?: 0.0
+                val totalLent = array[28] as? Double ?: 0.0
+                val totalLoan = totalBorrowed + totalLent
+
                 val ftExpenseByCategory = ftExpenseCategories.map {
                     ExpenseByCategory(
                         category = it.category.toExpenseCategory(),
@@ -171,7 +157,6 @@ class DashboardViewModel(
                     )
                 }
 
-                // Merge financial_transactions income categories (both are string-keyed)
                 val combinedExpensesByCategory = expensesByCategory + ftExpenseByCategory
                 val combinedIncomesByCategory = incomesByCategory + ftIncomeCategories
 
@@ -203,7 +188,9 @@ class DashboardViewModel(
                         overtimeHours = overtimeHours,
                         overtimeEarnings = overtimeEarnings,
                         allTimeIncome = allTimeIncome,
-                        allTimeExpense = allTimeExpense
+                        allTimeExpense = allTimeExpense,
+                        totalBalance = totalBalance,
+                        totalLoan = totalLoan
                     ),
                     expensesByCategory = expensesByCategoryMap,
                     incomesByCategory = incomesByCategoryMap,
@@ -296,13 +283,14 @@ class DashboardViewModel(
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
                         val workLogRepository = WorkLogRepository(appDatabase.workLogDao())
-                        val expenseRepository = ExpenseRepository(appDatabase.expenseDao())
-                        val incomeRepository = IncomeRepository(appDatabase.incomeDao())
+                        val expenseRepository = ExpenseRepository(appDatabase.expenseDao(), appDatabase.accountDao())
+                        val incomeRepository = IncomeRepository(appDatabase.incomeDao(), appDatabase.accountDao())
                         val savingsRepository = SavingsRepository(appDatabase.savingsDao())
                         val settingsRepository = SettingsRepository(context)
                         val userProfileRepository = UserProfileRepository(appDatabase.userProfileDao())
                         val transactionRepository = TransactionRepository(appDatabase.financialTransactionDao())
-                        val loanRepository = LoanRepository(appDatabase.loanDao(), appDatabase.financialTransactionDao())
+                        val loanRepository = LoanRepository(appDatabase.loanDao(), appDatabase.financialTransactionDao(), appDatabase.accountDao())
+                        val accountRepository = AccountRepository(appDatabase.accountDao())
                         return DashboardViewModel(
                             workLogRepository,
                             expenseRepository,
@@ -311,7 +299,8 @@ class DashboardViewModel(
                             settingsRepository,
                             userProfileRepository,
                             transactionRepository,
-                            loanRepository
+                            loanRepository,
+                            accountRepository
                         ) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")

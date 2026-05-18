@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanCategory
 import com.rudra.smartworktracker.data.entity.LoanType
@@ -147,8 +146,7 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
         emiAmount: Double?,
         totalEmis: Int?,
         notes: String?,
-        sourceAccount: AccountType,
-        destinationAccount: AccountType
+        accountId: Long
     ) {
         viewModelScope.launch {
             val loan = Loan(
@@ -164,8 +162,7 @@ class LoanViewModel(private val loanRepository: LoanRepository) : ViewModel() {
                 emiAmount = emiAmount,
                 totalEmis = totalEmis,
                 notes = notes,
-                sourceAccount = sourceAccount,
-                destinationAccount = destinationAccount
+                accountId = accountId
             )
             loanRepository.insertLoan(loan)
             closeAddLoanDialog()

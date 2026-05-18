@@ -1,25 +1,24 @@
 package com.rudra.smartworktracker.ui.screens.income
 
-import android.content.Context
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.Account
-import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.AccountCategory
+import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.repository.AccountRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class IncomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
+    private val incomeRepository = IncomeRepository(db.incomeDao(), db.accountDao())
     private val accountRepository = AccountRepository(db.accountDao())
 
     private val _income = MutableStateFlow(0.0)
@@ -62,7 +61,7 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deleteIncome(income: Income) {
         viewModelScope.launch {
-            db.incomeDao().deleteIncome(income)
+            incomeRepository.deleteIncome(income)
         }
     }
 
@@ -71,9 +70,8 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         description: String, 
         category: String, 
         source: String, 
-        accountType: AccountType?, 
         timestamp: Long,
-        selectedAccountId: Long? = null
+        selectedAccountId: Long
     ) {
         viewModelScope.launch {
             val newIncome = Income(
@@ -81,28 +79,10 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
                 description = description,
                 category = category,
                 timestamp = timestamp,
-                source = source
+                source = source,
+                accountId = selectedAccountId
             )
-            db.incomeDao().insertIncome(newIncome)
-            
-            val targetAccountId = if (selectedAccountId != null && selectedAccountId > 0) {
-                selectedAccountId
-            } else if (accountType != null) {
-                accountRepository.findAccountByType(accountType)?.id
-            } else {
-                null
-            }
-            
-            targetAccountId?.let {
-                accountRepository.addIncomeToAccount(it, amount)
-            }
-        }
-    }
-
-    fun getAccountForType(accountType: AccountType, onResult: (Account?) -> Unit) {
-        viewModelScope.launch {
-            val account = accountRepository.findAccountByType(accountType)
-            onResult(account)
+            incomeRepository.insertIncome(newIncome)
         }
     }
 }

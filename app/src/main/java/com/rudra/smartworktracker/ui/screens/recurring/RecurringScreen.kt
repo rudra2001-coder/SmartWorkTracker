@@ -70,6 +70,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -93,6 +94,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.PreferredTime
@@ -943,11 +945,11 @@ fun AddRuleContent(
     var transactionType by remember { 
         mutableStateOf(existingRule?.transactionType ?: TransactionType.EXPENSE) 
     }
-    var sourceAccount by remember { 
-        mutableStateOf(existingRule?.sourceAccount ?: AccountType.BALANCE) 
+    var sourceAccountId by remember { 
+        mutableStateOf(existingRule?.sourceAccountId ?: 0L) 
     }
-    var destinationAccount by remember { 
-        mutableStateOf(existingRule?.destinationAccount) 
+    var destinationAccountId by remember { 
+        mutableStateOf(existingRule?.destinationAccountId) 
     }
     var frequency by remember { 
         mutableStateOf(existingRule?.frequency ?: RecurringFrequency.MONTHLY) 
@@ -986,7 +988,12 @@ fun AddRuleContent(
     val frequencies = RecurringFrequency.values()
     val priorities = RecurringPriority.values()
     val times = PreferredTime.values()
-    val accounts = AccountType.values()
+    val db = AppDatabase.getDatabase(context)
+    var accounts by remember { mutableStateOf<List<com.rudra.smartworktracker.data.entity.Account>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        accounts = db.accountDao().getAllAccountsList()
+    }
     
     Column(
         modifier = Modifier
@@ -1323,8 +1330,9 @@ fun AddRuleContent(
             expanded = sourceExpanded,
             onExpandedChange = { sourceExpanded = it }
         ) {
+            val selectedSourceName = accounts.find { it.id == sourceAccountId }?.name ?: "Select Account"
             OutlinedTextField(
-                value = sourceAccount.name,
+                value = selectedSourceName,
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
@@ -1338,9 +1346,9 @@ fun AddRuleContent(
             ) {
                 accounts.forEach { acc ->
                     DropdownMenuItem(
-                        text = { Text(acc.name) },
+                        text = { Text("${acc.name} (${acc.balance.toInt()} BDT)") },
                         onClick = {
-                            sourceAccount = acc
+                            sourceAccountId = acc.id
                             sourceExpanded = false
                         }
                     )
@@ -1360,8 +1368,9 @@ fun AddRuleContent(
                 expanded = destinationExpanded,
                 onExpandedChange = { destinationExpanded = it }
             ) {
+                val selectedDestName = accounts.find { it.id == destinationAccountId }?.name ?: "Select Account"
                 OutlinedTextField(
-                    value = destinationAccount?.name ?: "Select",
+                    value = selectedDestName,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destinationExpanded) },
@@ -1375,9 +1384,9 @@ fun AddRuleContent(
                 ) {
                     accounts.forEach { acc ->
                         DropdownMenuItem(
-                            text = { Text(acc.name) },
+                            text = { Text("${acc.name} (${acc.balance.toInt()} BDT)") },
                             onClick = {
-                                destinationAccount = acc
+                                destinationAccountId = acc.id
                                 destinationExpanded = false
                             }
                         )
@@ -1517,8 +1526,8 @@ fun AddRuleContent(
                         transactionType = transactionType,
                         amount = amountDouble,
                         category = category.ifBlank { null },
-                        sourceAccount = sourceAccount,
-                        destinationAccount = destinationAccount,
+                        sourceAccountId = sourceAccountId,
+                        destinationAccountId = if (transactionType == TransactionType.TRANSFER) destinationAccountId else null,
                         frequency = frequency,
                         selectedDaysOfWeek = if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) selectedDaysOfWeek else null,
                         priority = priority,

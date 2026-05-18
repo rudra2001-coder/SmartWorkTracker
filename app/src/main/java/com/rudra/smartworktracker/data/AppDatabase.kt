@@ -56,7 +56,7 @@ import com.rudra.smartworktracker.model.*
     views = [
         MonthlySummary::class
     ],
-    version = 9, // Added MealRateSetting entity
+    version = 10, // Account-based architecture: added accountId to Loan, CreditCard, Income, Expense, FinancialTransaction, RecurringRule, RecurringTransaction, Emi
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)

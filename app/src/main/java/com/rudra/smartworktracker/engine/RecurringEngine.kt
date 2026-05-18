@@ -270,8 +270,8 @@ class RecurringEngine(
             transactionType = rule.transactionType,
             amount = rule.amount,
             category = rule.category,
-            sourceAccount = rule.sourceAccount,
-            destinationAccount = rule.destinationAccount,
+            sourceAccountId = rule.sourceAccountId,
+            destinationAccountId = rule.destinationAccountId,
             scheduledDate = rule.nextExecutionDate,
             status = if (rule.autoExecute) RecurringTransactionStatus.PENDING else RecurringTransactionStatus.CONFIRMED
         )
@@ -287,7 +287,8 @@ class RecurringEngine(
                 description = rule.name,
                 category = rule.category ?: "Salary",
                 timestamp = System.currentTimeMillis(),
-                source = rule.sourceAccount.name,
+                source = "Account ${rule.sourceAccountId}",
+                accountId = rule.sourceAccountId,
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             
@@ -315,6 +316,7 @@ class RecurringEngine(
                 merchant = rule.name,
                 notes = rule.description,
                 timestamp = System.currentTimeMillis(),
+                accountId = rule.sourceAccountId,
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             

@@ -13,10 +13,10 @@ class FinancialStatementViewModelFactory(private val application: Application) :
         if (modelClass.isAssignableFrom(FinancialStatementViewModel::class.java)) {
             val database = AppDatabase.getDatabase(application)
             val transactionRepository = TransactionRepository(database.financialTransactionDao())
-            val incomeRepository = IncomeRepository(database.incomeDao())
-            val expenseRepository = ExpenseRepository(database.expenseDao())
+            val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
             @Suppress("UNCHECKED_CAST")
-            return FinancialStatementViewModel(transactionRepository, incomeRepository, expenseRepository) as T
+            return FinancialStatementViewModel(transactionRepository, incomeRepository, expenseRepository, database.accountDao()) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
