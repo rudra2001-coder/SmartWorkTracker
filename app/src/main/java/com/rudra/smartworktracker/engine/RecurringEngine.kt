@@ -348,11 +348,13 @@ class RecurringEngine(
                     accountId = rule.sourceAccountId
                 )
             } else {
+                val destId = rule.destinationAccountId
+                    ?: return ExecutionResult(success = false, reason = "No destination account configured for recurring savings withdrawal")
                 repo.withdrawFromSavings(
                     amount = rule.amount,
                     note = rule.name,
                     category = "Recurring Withdrawal",
-                    accountId = rule.destinationAccountId ?: 0
+                    accountId = destId
                 )
             }
             ExecutionResult(

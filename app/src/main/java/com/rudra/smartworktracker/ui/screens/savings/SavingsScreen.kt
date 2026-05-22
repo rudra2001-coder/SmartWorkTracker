@@ -440,7 +440,7 @@ fun AddTransactionDialog(
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var isWithdrawal by remember { mutableStateOf(false) }
-    var selectedAccountId by remember { mutableStateOf(0L) }
+    var selectedAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id ?: 0L) }
     var accountExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -464,10 +464,12 @@ fun AddTransactionDialog(
                     onExpandedChange = { accountExpanded = !accountExpanded }
                 ) {
                     OutlinedTextField(
-                        value = accounts.find { it.id == selectedAccountId }?.let { "${it.name} (${it.provider.displayName()})" } ?: "No account",
+                        value = if (accounts.isEmpty()) "No accounts available"
+                                else accounts.find { it.id == selectedAccountId }?.let { "${it.name} (${it.provider.displayName()}) - ৳${"%,.0f".format(it.balance)}" }
+                                    ?: "Select an account",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Account") },
+                        label = { Text("Account *") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         shape = ChipShape,
@@ -477,10 +479,6 @@ fun AddTransactionDialog(
                         expanded = accountExpanded,
                         onDismissRequest = { accountExpanded = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("No account (savings only)") },
-                            onClick = { selectedAccountId = 0; accountExpanded = false }
-                        )
                         accounts.forEach { account ->
                             DropdownMenuItem(
                                 text = { Text("${account.name} (${account.provider.displayName()}) - ৳${"%,.0f".format(account.balance)}") },
@@ -539,7 +537,7 @@ fun AddTransactionDialog(
         confirmButton = {
             TextButton(
                 onClick = { amount.toDoubleOrNull()?.let { onAdd(it, note, isWithdrawal, selectedAccountId) } },
-                enabled = amount.toDoubleOrNull() ?: 0.0 > 0
+                enabled = (amount.toDoubleOrNull() ?: 0.0) > 0 && selectedAccountId > 0
             ) { Text("Add", fontWeight = FontWeight.Bold) }
         },
         dismissButton = {

@@ -189,9 +189,13 @@ class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewM
         )
     }
 
-    fun addToSavings(amount: Double, note: String = "", accountId: Long = 0) {
+    fun addToSavings(amount: Double, note: String = "", accountId: Long) {
         if (amount <= 0) {
             _uiState.value = _uiState.value.copy(errorMessage = "Amount must be greater than 0")
+            return
+        }
+        if (accountId <= 0) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Please select an account")
             return
         }
 
@@ -206,9 +210,13 @@ class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewM
         }
     }
 
-    fun withdrawFromSavings(amount: Double, note: String = "", accountId: Long = 0) {
+    fun withdrawFromSavings(amount: Double, note: String = "", accountId: Long) {
         if (amount <= 0) {
             _uiState.value = _uiState.value.copy(errorMessage = "Amount must be greater than 0")
+            return
+        }
+        if (accountId <= 0) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Please select an account")
             return
         }
 

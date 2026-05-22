@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 
 class MonthlyReportViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
@@ -11,8 +13,10 @@ class MonthlyReportViewModelFactory(private val application: Application) : View
         if (modelClass.isAssignableFrom(MonthlyReportViewModel::class.java)) {
             val database = AppDatabase.getDatabase(application)
             val workLogRepository = WorkLogRepository(database.workLogDao())
+            val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
+            val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
             @Suppress("UNCHECKED_CAST")
-            return MonthlyReportViewModel(workLogRepository) as T
+            return MonthlyReportViewModel(workLogRepository, expenseRepository, incomeRepository, database) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

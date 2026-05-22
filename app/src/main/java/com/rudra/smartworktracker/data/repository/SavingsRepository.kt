@@ -21,30 +21,28 @@ class SavingsRepository(
 
     suspend fun getAllAccounts(): List<Account> = accountDao.getAllAccountsList()
 
-    suspend fun addToSavings(amount: Double, note: String = "", category: String = "Deposit", accountId: Long = 0) {
-        if (accountId > 0) {
-            val account = accountDao.getAccountById(accountId)
-                ?: throw IllegalStateException("Account not found")
-            if (account.balance < amount) {
-                throw IllegalStateException(
-                    "Insufficient balance in ${account.name}. " +
-                    "Current balance: ৳${"%,.0f".format(account.balance)}, " +
-                    "Required: ৳${"%,.0f".format(amount)}"
-                )
-            }
-            accountDao.updateBalance(accountId, account.balance - amount)
-
-            financialTransactionDao.insertTransaction(
-                FinancialTransaction(
-                    type = TransactionType.SAVINGS_ADD,
-                    amount = amount,
-                    sourceAccountId = accountId,
-                    destinationAccountId = 0,
-                    note = note.ifBlank { "Savings deposit" },
-                    date = System.currentTimeMillis()
-                )
+    suspend fun addToSavings(amount: Double, note: String = "", category: String = "Deposit", accountId: Long) {
+        val account = accountDao.getAccountById(accountId)
+            ?: throw IllegalStateException("Account not found for savings deposit")
+        if (account.balance < amount) {
+            throw IllegalStateException(
+                "Insufficient balance in ${account.name}. " +
+                "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                "Required: ৳${"%,.0f".format(amount)}"
             )
         }
+        accountDao.updateBalance(accountId, account.balance - amount)
+
+        financialTransactionDao.insertTransaction(
+            FinancialTransaction(
+                type = TransactionType.SAVINGS_ADD,
+                amount = amount,
+                sourceAccountId = accountId,
+                destinationAccountId = 0,
+                note = note.ifBlank { "Savings deposit" },
+                date = System.currentTimeMillis()
+            )
+        )
 
         val savings = Savings(
             amount = amount,
@@ -56,23 +54,21 @@ class SavingsRepository(
         savingsDao.insert(savings)
     }
 
-    suspend fun withdrawFromSavings(amount: Double, note: String = "", category: String = "Withdrawal", accountId: Long = 0) {
-        if (accountId > 0) {
-            val account = accountDao.getAccountById(accountId)
-                ?: throw IllegalStateException("Account not found")
-            accountDao.updateBalance(accountId, account.balance + amount)
+    suspend fun withdrawFromSavings(amount: Double, note: String = "", category: String = "Withdrawal", accountId: Long) {
+        val account = accountDao.getAccountById(accountId)
+            ?: throw IllegalStateException("Account not found for savings withdrawal")
+        accountDao.updateBalance(accountId, account.balance + amount)
 
-            financialTransactionDao.insertTransaction(
-                FinancialTransaction(
-                    type = TransactionType.SAVINGS_WITHDRAW,
-                    amount = amount,
-                    sourceAccountId = 0,
-                    destinationAccountId = accountId,
-                    note = note.ifBlank { "Savings withdrawal" },
-                    date = System.currentTimeMillis()
-                )
+        financialTransactionDao.insertTransaction(
+            FinancialTransaction(
+                type = TransactionType.SAVINGS_WITHDRAW,
+                amount = amount,
+                sourceAccountId = 0,
+                destinationAccountId = accountId,
+                note = note.ifBlank { "Savings withdrawal" },
+                date = System.currentTimeMillis()
             )
-        }
+        )
 
         val savings = Savings(
             amount = -amount,

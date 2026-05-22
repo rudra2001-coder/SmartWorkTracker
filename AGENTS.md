@@ -112,6 +112,21 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 | `LoanRepository.kt` | `markLoanAsPaid` for both BORROWED and LENT silently skipped balance updates when linked account was null → **system loss** | Both cases now throw `IllegalStateException` if account not found |
 | `LoansScreen.kt` | `RepayLoanDialog` only showed account dropdown for BORROWED — LENT users had no way to select which account receives repayment; if `loan.accountId` was 0, confirm button was permanently disabled | Removed `if (isBorrowed)` guard — dropdown now shown for both BORROWED and LENT, allowing account selection for all repayment flows |
 
+### Calculation System (ui/screens/calculation/) — Updated May 2026
+- **Old**: Single `dailyMealRate` field, calculated `rate * officeDays`. One meal, one rate.
+- **New**: Multi-meal rate system with configurable meal types, weekly rate overrides, and daily rate overrides.
+- **Entities**: `MealType` (table `meal_types`, configurable meal names with default rates), `WeeklyMealRate` (table `weekly_meal_rates`, overrides per meal type + week + year), `DailyMealRate` (table `daily_meal_rates`, overrides per meal type + date)
+- **DAOs**: `MealTypeDao`, `WeeklyMealRateDao`, `DailyMealRateDao` — all registered in `AppDatabase` (v11)
+- **Default seed data**: Breakfast (30), Lunch (80), Dinner (80), Snacks (20) — auto-seeded on first launch if table empty
+- **Rate resolution**: `Daily → Weekly → Default`. For each working day, sum rates for all meal types using the most specific override available
+- **Cost levels**: Per-meal breakdown (Weekly/Monthly/Yearly), total meal cost, **Quarterly cost** (3-month blocks), total expense with travel/other
+- **Weekly override**: Tab selector for Week 1–5, per-meal rate inputs, reset button per meal
+- **Daily override**: Calendar grid with multi-date selection, tap dates to select/deselect, single-date mode shows per-meal rate inputs for that date
+- **Quarterly projection**: `Total × 3` shown prominently in Meal Cost and Total Summary cards
+- **Monthly breakdown chart**: Updated to reflect multi-meal + travel + other per month
+- **Configurable meal types**: Add new meal types with AlertDialog, edit rates inline, delete with confirmation
+- **DB version**: 10→11 (destructive migration, tables recreated)
+
 **Still known gaps (lower priority):**
 - `AccountRepository.addIncomeToAccount` / `deductExpenseFromAccount` update balance only, no `FinancialTransaction` record
 - `ExpenseRepository.insertExpense` validates balance against current `account.balance` but doesn't account for pending transactions (acceptable for single-user app)
@@ -136,11 +151,12 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 ### Savings System (ui/screens/savings/)
 - **Savings** entity (`data/entity/Savings.kt`, table `savings`): Tracks savings deposits/withdrawals with `amount`, `note`, `category`, `timestamp`, and now `accountId` (linking to Account system). Positive `amount` = deposit, negative `amount` = withdrawal.
 - **SavingsRepository** (`data/repository/SavingsRepository.kt`): Bridges DAO to ViewModels. Key methods:
-  - `addToSavings(amount, note, category, accountId)` — deducts from account (validates balance), creates `FinancialTransaction` (type `SAVINGS_ADD`), inserts savings record
-  - `withdrawFromSavings(amount, note, category, accountId)` — adds to account balance, creates `FinancialTransaction` (type `SAVINGS_WITHDRAW`), inserts savings record
+  - `addToSavings(amount, note, category, accountId)` — **accountId is required** (no default). Deducts from account (validates balance), throws if account not found or insufficient funds, creates `FinancialTransaction` (type `SAVINGS_ADD`), inserts savings record
+  - `withdrawFromSavings(amount, note, category, accountId)` — **accountId is required** (no default). Adds to account balance, throws if account not found, creates `FinancialTransaction` (type `SAVINGS_WITHDRAW`), inserts savings record
   - `deleteTransaction(savings)` — reverses balance change (validates if reversing a withdrawal), deletes savings record
 - **FinancialTransaction** links savings ops via `TransactionType.SAVINGS_ADD` / `SAVINGS_WITHDRAW`.
 - **Upgraded (May 2026):** Previously savings had no account link — money could be deposited/withdrawn without any balance change. Now fully account-integrated.
+- **Mandatory account selection (May 2026):** `AddTransactionDialog` removed the "No account (savings only)" option. Account dropdown auto-selects the first available account. Confirm button requires both `amount > 0` and `selectedAccountId > 0`. Repository removed all `if (accountId > 0)` guards — account operations always execute. ViewModel validates `accountId > 0` and shows error if not selected. `RecurringEngine` updated to fail early if destination account is missing for withdrawals.
 - **RecurringEngine.executeSavings**: Now real implementation — creates savings + account + FinancialTransaction for both `SAVINGS_ADD` and `SAVINGS_WITHDRAW` via `SavingsRepository`.
 - **RecurringEngine.executeTransfer**: Now real implementation — uses `FusionEngine.processTransfer()` to move money between accounts with balance updates + `FinancialTransaction`.
 
@@ -156,3 +172,27 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
   - `addCardTransaction`, `transferFromCreditCard`, and initial transfer now enforce `cardLimit` via `checkCardLimit()` — throws if `currentBalance + amount > cardLimit`.
   - Initial transfer creation: was silently skipping balance update when linked account not found. Now throws `IllegalStateException`.
   - `transferFromCreditCard` was silently skipping balance update when destination account not found. Now throws `IllegalStateException`.
+
+### Monthly Report (ui/screens/report/) — Upgraded May 2026
+- **Old**: Only showed work type distribution (pie chart + counts) for a selected month
+- **New**: Full monthly insights dashboard with financial data, date range filtering, and period comparison
+- **ViewModel** (`MonthlyReportViewModel.kt`): Now combines 5 data sources (work logs, expenses, incomes, savings, accounts) via `combine` + `stateIn`. Computes work stats, income/expense/net, meal expense, savings deposits/withdrawals, expense/income by category, and previous-period comparison.
+- **UiState** (`MonthlyReportUiState`): Now includes `totalIncome`, `totalExpense`, `netAmount`, `mealExpense`, `totalSavingsDeposited`, `totalSavingsWithdrawn`, `netSavings`, `expenseByCategory`, `incomeByCategory`, `previousPeriod`, `useCustomRange`, `customStartDate`, `customEndDate`, `compareWithPrevious`.
+- **Screen** (`MonthlyReportScreen.kt`): New card-based layout with:
+  - Month selector + Year navigation (left/right arrows)
+  - Custom date range toggle with Material3 DatePickerDialog for start/end dates
+  - "Compare with previous period" toggle (Switch)
+  - 4 overview StatCards (Work Days, Income, Expense, Net) with gradient icon boxes
+  - Work Distribution pie chart (existing, using ycharts)
+  - Expense by Category pie chart (new) using `ExpenseCategory.color` for slice colors
+  - Income by Category pie chart (new) with predefined color palette
+  - Savings Activity summary card (deposited/withdrawn/net)
+  - Detailed Summary card with work breakdown + financial breakdown
+  - Comparison card (if toggled) showing side-by-side current vs previous metrics with percentage change
+- **Factory** (`MonthlyReportViewModelFactory.kt`): Now passes `ExpenseRepository`, `IncomeRepository`, and `AppDatabase` in addition to `WorkLogRepository`.
+
+### Calculation Module Bug Fixes (Applied May 22 2026)
+| File | Bug | Fix |
+|---|---|---|
+| `CalculationScreen.kt:710-714` | `SummaryRow` (a `RowScope` extension) called directly inside `Column` — 5 compilation errors: "Unresolved reference" | Wrapped each `SummaryRow` in `Row(Modifier.fillMaxWidth())` |
+| `CalculationViewModel.kt:199,280` | `sdf.parse(wl.date)` — `wl.date` is already a `Date` object, but `SimpleDateFormat.parse()` expects `String` | Replaced with `wl.date.time` (direct millis access) |
