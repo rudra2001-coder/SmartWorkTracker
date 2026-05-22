@@ -112,10 +112,9 @@ class LoanRepository(
             }
             accountRepository.updateBalance(paymentAccountId, paymentAccount.balance - amount)
         } else {
-            val loanAccount = accountRepository.getAccountById(loan.accountId)
-            if (loanAccount != null) {
-                accountRepository.updateBalance(loan.accountId, loanAccount.balance + amount)
-            }
+            val receiveAccount = accountRepository.getAccountById(paymentAccountId)
+                ?: throw IllegalStateException("Receiving account not found")
+            accountRepository.updateBalance(paymentAccountId, receiveAccount.balance + amount)
         }
 
         val newRemaining = (loan.remainingAmount - amount).coerceAtLeast(0.0)
@@ -147,20 +146,24 @@ class LoanRepository(
 
         if (loan.loanType == LoanType.BORROWED) {
             val paymentAccount = accountRepository.getAccountById(loan.accountId)
-            if (paymentAccount != null) {
-                if (paymentAccount.balance < remaining) {
-                    throw IllegalStateException(
-                        "Insufficient balance in ${paymentAccount.name} to mark as paid. " +
-                        "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}."
-                    )
-                }
-                accountRepository.updateBalance(loan.accountId, paymentAccount.balance - remaining)
+                ?: throw IllegalStateException(
+                    "Linked account not found for loan from ${loan.personName}. " +
+                    "Cannot mark as paid without a valid account."
+                )
+            if (paymentAccount.balance < remaining) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${paymentAccount.name} to mark as paid. " +
+                    "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}."
+                )
             }
+            accountRepository.updateBalance(loan.accountId, paymentAccount.balance - remaining)
         } else {
-            val loanAccount = accountRepository.getAccountById(loan.accountId)
-            if (loanAccount != null) {
-                accountRepository.updateBalance(loan.accountId, loanAccount.balance + remaining)
-            }
+            val receiveAccount = accountRepository.getAccountById(loan.accountId)
+                ?: throw IllegalStateException(
+                    "Linked account not found for loan to ${loan.personName}. " +
+                    "Cannot mark as paid without a valid account."
+                )
+            accountRepository.updateBalance(loan.accountId, receiveAccount.balance + remaining)
         }
 
         loanDao.markLoanAsPaid(loan.id)

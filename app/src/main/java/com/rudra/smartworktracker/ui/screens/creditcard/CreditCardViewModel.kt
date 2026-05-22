@@ -113,16 +113,18 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
             creditCardDao.updateCard(updatedCard)
 
             val account = accountDao.getAccountById(card.accountId)
-            if (account != null) {
-                if (account.balance < amount) {
-                    throw IllegalStateException(
-                        "Insufficient balance in ${account.name}. " +
-                        "Current balance: ৳${"%,.0f".format(account.balance)}, " +
-                        "Required: ৳${"%,.0f".format(amount)}"
-                    )
-                }
-                accountDao.updateBalance(card.accountId, account.balance - amount)
+                ?: throw IllegalStateException(
+                    "Linked account not found for card ${card.cardName}. " +
+                    "Cannot pay bill without a valid account."
+                )
+            if (account.balance < amount) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${account.name}. " +
+                    "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                    "Required: ৳${"%,.0f".format(amount)}"
+                )
             }
+            accountDao.updateBalance(card.accountId, account.balance - amount)
 
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,

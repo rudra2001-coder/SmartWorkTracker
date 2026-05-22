@@ -1432,34 +1432,32 @@ fun RepayLoanDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                if (isBorrowed) {
-                    ExposedDropdownMenuBox(
+                ExposedDropdownMenuBox(
+                    expanded = accountExpanded,
+                    onExpandedChange = { accountExpanded = !accountExpanded }
+                ) {
+                    val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
+                    OutlinedTextField(
+                        value = selectedAccountName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(if (isBorrowed) "Pay From Account *" else "Receive To Account *") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        shape = ChipShape
+                    )
+                    ExposedDropdownMenu(
                         expanded = accountExpanded,
-                        onExpandedChange = { accountExpanded = !accountExpanded }
+                        onDismissRequest = { accountExpanded = false }
                     ) {
-                        val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
-                        OutlinedTextField(
-                            value = selectedAccountName,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Pay From Account *") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            shape = ChipShape
-                        )
-                        ExposedDropdownMenu(
-                            expanded = accountExpanded,
-                            onDismissRequest = { accountExpanded = false }
-                        ) {
-                            accounts.forEach { account ->
-                                DropdownMenuItem(
-                                    text = { Text("${account.name} (৳${"%,.0f".format(account.balance)})") },
-                                    onClick = {
-                                        selectedAccountId = account.id
-                                        accountExpanded = false
-                                    }
-                                )
-                            }
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text("${account.name} (৳${"%,.0f".format(account.balance)})") },
+                                onClick = {
+                                    selectedAccountId = account.id
+                                    accountExpanded = false
+                                }
+                            )
                         }
                     }
                 }

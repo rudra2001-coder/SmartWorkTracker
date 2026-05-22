@@ -1349,11 +1349,14 @@ fun CardActionForm(
             if (action == CardAction.PAY_BILL && card.currentBalance > 0) {
                 Button(
                     onClick = {
-                        onAmountChange(String.format("%.0f", card.currentBalance))
-                        onConfirm()
+                        if (selectedAccount != null) {
+                            onAmountChange(String.format("%.0f", card.currentBalance))
+                            onConfirm()
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     shape = ChipShape,
+                    enabled = selectedAccount != null,
                     colors = ButtonDefaults.buttonColors(containerColor = GoldenAmber)
                 ) {
                     Text("Pay Full")
@@ -1372,7 +1375,7 @@ fun CardActionForm(
                     }
                 ),
                 enabled = amount.toDoubleOrNull()?.let { it > 0 } == true &&
-                    (action != CardAction.TRANSFER || selectedAccount != null)
+                    (action != CardAction.PAY_BILL && action != CardAction.TRANSFER || selectedAccount != null)
             ) {
                 Icon(
                     imageVector = when (action) {
