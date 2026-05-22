@@ -12,6 +12,7 @@ import com.rudra.smartworktracker.data.repository.ExpenseRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
@@ -23,12 +24,20 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _recentExpenses = MutableStateFlow<List<Expense>>(emptyList())
     val recentExpenses: StateFlow<List<Expense>> = _recentExpenses.asStateFlow()
     
+    private val _latest20Expenses = MutableStateFlow<List<Expense>>(emptyList())
+    val latest20Expenses: StateFlow<List<Expense>> = _latest20Expenses.asStateFlow()
+    
+    private val _totalExpense = MutableStateFlow(0.0)
+    val totalExpense: StateFlow<Double> = _totalExpense.asStateFlow()
+    
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
 
     init {
         loadRecentExpenses()
         loadAccounts()
+        loadTotalExpense()
+        loadLatest20Expenses()
     }
     
     private fun loadAccounts() {
@@ -44,6 +53,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             db.expenseDao().getLatest5Expenses().collect { expenses ->
                 _recentExpenses.value = expenses
+            }
+        }
+    }
+
+    private fun loadLatest20Expenses() {
+        viewModelScope.launch {
+            db.expenseDao().getLatestExpenses(20).collect { expenses ->
+                _latest20Expenses.value = expenses
+            }
+        }
+    }
+
+    private fun loadTotalExpense() {
+        viewModelScope.launch {
+            db.expenseDao().getTotalExpenses().collect { total ->
+                _totalExpense.value = total ?: 0.0
             }
         }
     }

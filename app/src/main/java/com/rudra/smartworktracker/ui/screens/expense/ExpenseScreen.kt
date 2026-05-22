@@ -60,6 +60,9 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     }
     var showInsufficientBalanceDialog by remember { mutableStateOf(false) }
 
+    val totalExpense by viewModel.totalExpense.collectAsState()
+    val latest20Expenses by viewModel.latest20Expenses.collectAsState()
+
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = CoralRed,
         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -99,6 +102,40 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Log Your Expense", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Text("Track and manage your spending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+                    shape = CardShape,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(56.dp).background(
+                                brush = Brush.linearGradient(listOf(CoralRed, GoldenAmber)),
+                                shape = RoundedCornerShape(14.dp)
+                            ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.MoneyOff, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Total Expenses", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "৳${"%,.0f".format(totalExpense)}",
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                color = CoralRed
+                            )
+                            Text("All time spending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -305,7 +342,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                 }
             }
 
-            if (recentExpenses.isNotEmpty()) {
+            if (latest20Expenses.isNotEmpty()) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(start = 2.dp)) {
                         Box(Modifier.size(32.dp).background(
@@ -314,7 +351,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         ), contentAlignment = Alignment.Center) {
                             Icon(Icons.AutoMirrored.Filled.List, null, tint = Color.White, modifier = Modifier.size(16.dp))
                         }
-                        Text("Recent Expenses", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Latest 20 Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
                 item {
@@ -325,44 +362,58 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column {
-                            LazyColumn(modifier = Modifier.heightIn(max = 400.dp).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                items(recentExpenses) { expense ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = ChipShape,
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                                        elevation = CardDefaults.cardElevation(0.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
-                                                Box(Modifier.size(36.dp).background(CoralRed.copy(alpha = 0.1f), ChipShape), contentAlignment = Alignment.Center) {
-                                                    Icon(Icons.Default.MoneyOff, null, tint = CoralRed, modifier = Modifier.size(18.dp))
-                                                }
-                                                Column {
-                                                    Text(expense.notes ?: "", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-                                                    Text("৳${expense.amount}", color = CoralRed, fontWeight = FontWeight.SemiBold)
-                                                }
-                                            }
-                                            IconButton(onClick = { viewModel.deleteExpense(expense) }) {
-                                                Icon(Icons.Default.Delete, "Delete Expense", tint = CoralRed.copy(alpha = 0.6f))
-                                            }
+                            val displayExpenses = latest20Expenses.take(20)
+                            displayExpenses.forEachIndexed { index, expense ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+                                        Box(Modifier.size(36.dp).background(CoralRed.copy(alpha = 0.1f), ChipShape), contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.MoneyOff, null, tint = CoralRed, modifier = Modifier.size(18.dp))
+                                        }
+                                        Column {
+                                            Text(
+                                                expense.notes?.take(30) ?: expense.category.name,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1
+                                            )
+                                            Text(
+                                                SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(expense.timestamp)),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            "৳${"%,.0f".format(expense.amount)}",
+                                            fontWeight = FontWeight.Bold,
+                                            color = CoralRed
+                                        )
+                                        Text(
+                                            expense.merchant ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                                if (index < displayExpenses.lastIndex) {
+                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 }
                             }
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Total", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Total (${displayExpenses.size} items)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                                 Text(
-                                    "৳${recentExpenses.sumOf { it.amount }}",
+                                    "৳${"%,.0f".format(displayExpenses.sumOf { it.amount })}",
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = CoralRed

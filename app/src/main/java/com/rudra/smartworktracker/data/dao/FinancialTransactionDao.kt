@@ -42,6 +42,12 @@ interface FinancialTransactionDao {
     @Query("SELECT COALESCE(category, 'Other') as category, SUM(amount) as total FROM financial_transactions WHERE type IN ('INCOME', 'LOAN_RECEIVE') AND date BETWEEN :startTime AND :endTime GROUP BY category")
     fun getIncomeByCategoryBetween(startTime: Long, endTime: Long): Flow<List<com.rudra.smartworktracker.model.IncomeByCategory>>
 
+    @Query("SELECT * FROM financial_transactions WHERE sourceAccountId = :accountId OR destinationAccountId = :accountId ORDER BY date DESC")
+    fun getTransactionsForAccount(accountId: Long): Flow<List<FinancialTransaction>>
+
+    @Query("SELECT * FROM financial_transactions WHERE sourceAccountId = :accountId OR destinationAccountId = :accountId ORDER BY date DESC")
+    suspend fun getTransactionsForAccountList(accountId: Long): List<FinancialTransaction>
+
     @Delete
     suspend fun delete(financialTransaction: FinancialTransaction)
 }

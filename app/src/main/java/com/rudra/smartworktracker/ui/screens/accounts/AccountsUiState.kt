@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.ui.screens.accounts
 
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
+import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.engine.SmartAlert
 
 data class AccountsUiState(
@@ -21,9 +22,11 @@ data class AccountsUiState(
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
     val account: Account? = null,
-    val recentTransactions: List<com.rudra.smartworktracker.data.entity.FinancialTransaction> = emptyList(),
+    val transactions: List<FinancialTransaction> = emptyList(),
     val balanceHistory: List<BalanceHistoryItem> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val totalInflow: Double = 0.0,
+    val totalOutflow: Double = 0.0
 )
 
 data class BalanceHistoryItem(
