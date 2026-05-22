@@ -14,11 +14,25 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+enum class ManualDateType { NORMAL, SPECIAL }
+
+data class DayMealBreakdown(
+    val dateLabel: String,
+    val dayName: String,
+    val workType: String,
+    val inMealDays: Boolean,
+    val isSpecial: Boolean,
+    val rate: Double,
+    val cost: Double
+)
+
 data class CalculationUiState(
     val normalMealRate: Double = 70.0,
     val specialMealRate: Double = 90.0,
     val mealDays: Set<Int> = setOf(Calendar.SUNDAY, Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY),
     val specialDates: List<Long> = emptyList(),
+    val workLogDates: List<Long> = emptyList(),
+    val officeDates: List<Long> = emptyList(),
     val selectedDate: Date = Date(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -29,6 +43,7 @@ data class CalculationUiState(
     val totalMealMonthlyCost: Double = 0.0,
     val totalMealQuarterlyCost: Double = 0.0,
     val totalMealYearlyCost: Double = 0.0,
+    val dayBreakdown: List<DayMealBreakdown> = emptyList(),
     val dailyTravelCost: Double = 150.0,
     val otherExpenses: Double = 0.0,
     val otherExpenseDescription: String = "",
@@ -40,7 +55,16 @@ data class CalculationUiState(
     val totalExpensePerQuarter: Double = 0.0,
     val totalExpensePerYear: Double = 0.0,
     val pieChartData: Map<String, Float> = emptyMap(),
-    val monthlyBreakdown: List<Pair<String, Double>> = emptyList()
+    val monthlyBreakdown: List<Pair<String, Double>> = emptyList(),
+    val manualNormalRate: Double = 70.0,
+    val manualSpecialRate: Double = 90.0,
+    val manualSelectedDates: Map<Long, ManualDateType> = emptyMap(),
+    val manualSelectedMonth: Date = Date(),
+    val manualTotal: Int = 0,
+    val manualNormal: Int = 0,
+    val manualSpecial: Int = 0,
+    val manualCost: Double = 0.0,
+    val manualCalculated: Boolean = false
 )
 
 class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
@@ -48,11 +72,17 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
     private val _state = MutableStateFlow(CalculationUiState())
     val state: StateFlow<CalculationUiState> = _state.asStateFlow()
 
+    private val dateFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
+    private val monthYearFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    private val monthLabelFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    private val monthShortFormat = SimpleDateFormat("MMM", Locale.getDefault())
+    private val yearMonthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+
     init {
-        loadData()
+        listenToDataChanges()
     }
 
-    private fun loadData() {
+    private fun listenToDataChanges() {
         _state.value = _state.value.copy(isLoading = true)
         combine(
             db.mealSettingsDao().getMealSettings(),
@@ -73,15 +103,30 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                 otherExpenseDescription = travelExp?.otherExpenseDescription ?: "",
                 isLoading = false
             )
-            refreshCalculations()
+            runFullCalculation()
         }.launchIn(viewModelScope)
     }
 
-    fun refreshCalculations() {
+    private fun runFullCalculation() {
         viewModelScope.launch {
             try {
-                fetchWorkLogData()
-                calculateMealCost()
+                val s = _state.value
+                val selectedMonthYear = monthYearFormat.format(s.selectedDate)
+                val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
+
+                val officeCount = workLogs.count { it.workType == WorkType.OFFICE }
+                val officeDateSet = workLogs.filter { it.workType == WorkType.OFFICE }
+                    .map { normalizeDate(it.date.time) }.toSet()
+                val allWorkDates = workLogs.map { normalizeDate(it.date.time) }
+
+                _state.value = _state.value.copy(
+                    officeDays = officeCount,
+                    workLogDates = allWorkDates,
+                    officeDates = officeDateSet.toList(),
+                    pieChartData = mapOf("Office" to officeCount.toFloat())
+                )
+
+                calculateMealCost(workLogs, officeDateSet)
                 calculateTotals()
             } catch (e: Exception) {
                 _state.value = _state.value.copy(errorMessage = "Calculation error: ${e.message}")
@@ -89,44 +134,51 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    private suspend fun fetchWorkLogData() {
+    private suspend fun calculateMealCost(
+        workLogs: List<com.rudra.smartworktracker.model.WorkLog>,
+        officeDateSet: Set<Long>
+    ) {
         val s = _state.value
-        val monthYearFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-        val selectedMonthYear = monthYearFormat.format(s.selectedDate)
-        val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
-        val officeDaysCount = workLogs.count { it.workType == WorkType.OFFICE }
-
-        _state.value = _state.value.copy(
-            officeDays = officeDaysCount,
-            pieChartData = mapOf("Office" to officeDaysCount.toFloat())
-        )
-    }
-
-    private suspend fun calculateMealCost() {
-        val s = _state.value
-        val monthYearFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-        val selectedMonthYear = monthYearFormat.format(s.selectedDate)
-        val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
         val specialDateSet = s.specialDates.toSet()
 
         var totalCost = 0.0
         var normalCount = 0
         var specialCount = 0
+        val breakdown = mutableListOf<DayMealBreakdown>()
 
         for (log in workLogs) {
-            if (log.workType != WorkType.OFFICE) continue
+            val normalizedDate = normalizeDate(log.date.time)
             val cal = Calendar.getInstance().apply { time = log.date }
             val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-            if (dayOfWeek !in s.mealDays) continue
+            val dayName = SimpleDateFormat("EEEE", Locale.getDefault()).format(log.date)
 
-            val normalizedDate = normalizeDate(log.date.time)
-            if (normalizedDate in specialDateSet) {
-                totalCost += s.specialMealRate
-                specialCount++
-            } else {
-                totalCost += s.normalMealRate
-                normalCount++
+            val isOffice = log.workType == WorkType.OFFICE
+            val inMealDays = dayOfWeek in s.mealDays
+            val isSpecial = normalizedDate in specialDateSet
+
+            val rate = when {
+                !isOffice || !inMealDays -> 0.0
+                isSpecial -> s.specialMealRate
+                else -> s.normalMealRate
             }
+            val cost = rate
+
+            if (cost > 0) {
+                totalCost += cost
+                if (isSpecial) specialCount++ else normalCount++
+            }
+
+            breakdown.add(
+                DayMealBreakdown(
+                    dateLabel = dateFormat.format(log.date),
+                    dayName = dayName,
+                    workType = log.workType.name,
+                    inMealDays = inMealDays,
+                    isSpecial = isSpecial,
+                    rate = rate,
+                    cost = cost
+                )
+            )
         }
 
         _state.value = _state.value.copy(
@@ -135,7 +187,8 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
             specialMeals = specialCount,
             totalMealMonthlyCost = totalCost,
             totalMealQuarterlyCost = totalCost * 3,
-            totalMealYearlyCost = totalCost * 12
+            totalMealYearlyCost = totalCost * 12,
+            dayBreakdown = breakdown
         )
     }
 
@@ -166,33 +219,33 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         val calendar = Calendar.getInstance()
         val currentYear = calendar.get(Calendar.YEAR)
         val monthlyData = mutableListOf<Pair<String, Double>>()
-        val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
-        val yearMonthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         val specialDateSet = s.specialDates.toSet()
 
         for (month in 0..11) {
             calendar.set(currentYear, month, 1)
-            val monthName = monthFormat.format(calendar.time)
-            val selectedMonthYear = yearMonthFormat.format(calendar.time)
-            val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
+            val monthName = monthShortFormat.format(calendar.time)
+            val ym = yearMonthFormat.format(calendar.time)
+            val logs = db.workLogDao().getWorkLogsByMonth(ym)
 
-            var monthlyCost = 0.0
-            for (log in workLogs) {
+            var cost = 0.0
+            var officeCount = 0
+            for (log in logs) {
                 if (log.workType != WorkType.OFFICE) continue
+                officeCount++
                 val cal = Calendar.getInstance().apply { time = log.date }
                 val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
                 if (dayOfWeek !in s.mealDays) continue
-                val normalizedDate = normalizeDate(log.date.time)
-                monthlyCost += if (normalizedDate in specialDateSet) s.specialMealRate else s.normalMealRate
+                val nd = normalizeDate(log.date.time)
+                cost += if (nd in specialDateSet) s.specialMealRate else s.normalMealRate
             }
-            monthlyCost += s.dailyTravelCost * workLogs.count { it.workType == WorkType.OFFICE } + s.otherExpenses
-            monthlyData.add(monthName to monthlyCost)
+            cost += s.dailyTravelCost * officeCount + s.otherExpenses
+            monthlyData.add(monthName to cost)
         }
 
         _state.value = _state.value.copy(monthlyBreakdown = monthlyData)
     }
 
-    // --- Meal Settings ---
+    // ── User Actions ─────────────────────────────────────────────
 
     fun saveMealSettings(normalRate: Double, specialRate: Double, mealDays: Set<Int>) {
         viewModelScope.launch {
@@ -204,12 +257,8 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                     lastUpdated = System.currentTimeMillis()
                 )
             )
-            _state.value = _state.value.copy(normalMealRate = normalRate, specialMealRate = specialRate, mealDays = mealDays)
-            refreshCalculations()
         }
     }
-
-    // --- Special Meal Dates ---
 
     fun toggleSpecialDate(dateMillis: Long) {
         viewModelScope.launch {
@@ -223,8 +272,6 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    // --- Travel & Expense ---
-
     fun saveTravelExpense(dailyTravelCost: Double, otherExpenses: Double, description: String = "") {
         viewModelScope.launch {
             db.travelExpenseDao().insert(
@@ -235,23 +282,15 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                     lastUpdated = System.currentTimeMillis()
                 )
             )
-            _state.value = _state.value.copy(
-                dailyTravelCost = dailyTravelCost,
-                otherExpenses = otherExpenses,
-                otherExpenseDescription = description
-            )
-            refreshCalculations()
         }
     }
-
-    // --- Date Navigation ---
 
     fun goToPreviousMonth() {
         val cal = Calendar.getInstance()
         cal.time = _state.value.selectedDate
         cal.add(Calendar.MONTH, -1)
         _state.value = _state.value.copy(selectedDate = cal.time)
-        refreshCalculations()
+        runFullCalculation()
     }
 
     fun goToNextMonth() {
@@ -259,11 +298,90 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         cal.time = _state.value.selectedDate
         cal.add(Calendar.MONTH, 1)
         _state.value = _state.value.copy(selectedDate = cal.time)
-        refreshCalculations()
+        runFullCalculation()
+    }
+
+    fun refresh() {
+        runFullCalculation()
     }
 
     fun clearErrorMessage() {
         _state.value = _state.value.copy(errorMessage = null)
+    }
+
+    // ── Manual Calendar Actions ──────────────────────────────────
+
+    fun toggleManualDate(dateMillis: Long, type: ManualDateType) {
+        val current = _state.value.manualSelectedDates.toMutableMap()
+        val normalized = normalizeDate(dateMillis)
+        val existing = current[normalized]
+        if (existing == type) {
+            current.remove(normalized)
+        } else {
+            current[normalized] = type
+        }
+        _state.value = _state.value.copy(
+            manualSelectedDates = current,
+            manualCalculated = false
+        )
+    }
+
+    fun clearAllManualDates() {
+        _state.value = _state.value.copy(
+            manualSelectedDates = emptyMap(),
+            manualCalculated = false
+        )
+    }
+
+    fun saveManualRates(normalRate: Double, specialRate: Double) {
+        _state.value = _state.value.copy(
+            manualNormalRate = normalRate,
+            manualSpecialRate = specialRate
+        )
+    }
+
+    fun calculateManual() {
+        val s = _state.value
+        var total = 0
+        var normal = 0
+        var special = 0
+        var cost = 0.0
+        for ((_, type) in s.manualSelectedDates) {
+            total++
+            when (type) {
+                ManualDateType.NORMAL -> { normal++; cost += s.manualNormalRate }
+                ManualDateType.SPECIAL -> { special++; cost += s.manualSpecialRate }
+            }
+        }
+        _state.value = _state.value.copy(
+            manualTotal = total,
+            manualNormal = normal,
+            manualSpecial = special,
+            manualCost = cost,
+            manualCalculated = true
+        )
+    }
+
+    fun manualGoToPreviousMonth() {
+        val cal = Calendar.getInstance()
+        cal.time = _state.value.manualSelectedMonth
+        cal.add(Calendar.MONTH, -1)
+        _state.value = _state.value.copy(
+            manualSelectedMonth = cal.time,
+            manualSelectedDates = emptyMap(),
+            manualCalculated = false
+        )
+    }
+
+    fun manualGoToNextMonth() {
+        val cal = Calendar.getInstance()
+        cal.time = _state.value.manualSelectedMonth
+        cal.add(Calendar.MONTH, 1)
+        _state.value = _state.value.copy(
+            manualSelectedMonth = cal.time,
+            manualSelectedDates = emptyMap(),
+            manualCalculated = false
+        )
     }
 
     fun getCurrentYear(): Int = Calendar.getInstance().get(Calendar.YEAR)
@@ -273,8 +391,10 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
     }
 
     companion object {
+        private val _normalizeCal = ThreadLocal<Calendar>()
+
         fun normalizeDate(date: Long): Long {
-            val cal = Calendar.getInstance()
+            val cal = _normalizeCal.get() ?: Calendar.getInstance().also { _normalizeCal.set(it) }
             cal.timeInMillis = date
             cal.set(Calendar.HOUR_OF_DAY, 0)
             cal.set(Calendar.MINUTE, 0)

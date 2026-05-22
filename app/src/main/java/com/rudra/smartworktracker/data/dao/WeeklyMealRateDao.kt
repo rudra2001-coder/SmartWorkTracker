@@ -12,6 +12,9 @@ interface WeeklyMealRateDao {
     @Query("SELECT * FROM weekly_meal_rates WHERE weekNumber = :weekNumber AND year = :year AND isDeleted = 0")
     fun getRatesForWeek(weekNumber: Int, year: Int): Flow<List<WeeklyMealRate>>
 
+    @Query("SELECT * FROM weekly_meal_rates WHERE isDeleted = 0")
+    suspend fun getAllWeeklyMealRates(): List<WeeklyMealRate>
+
     @Query("SELECT * FROM weekly_meal_rates WHERE weekNumber = :weekNumber AND year = :year AND isDeleted = 0")
     suspend fun getRatesForWeekList(weekNumber: Int, year: Int): List<WeeklyMealRate>
 

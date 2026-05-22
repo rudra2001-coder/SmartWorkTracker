@@ -44,5 +44,10 @@ data class AppBackup(
     val dailyCheckIns: List<DailyCheckIn> = emptyList(),
     val consequenceDebts: List<ConsequenceDebt> = emptyList(),
     val weeklyReports: List<WeeklyReport> = emptyList(),
-    val userHistories: List<UserHistory> = emptyList()
+    val userHistories: List<UserHistory> = emptyList(),
+    val mealTypes: List<MealType> = emptyList(),
+    val weeklyMealRates: List<WeeklyMealRate> = emptyList(),
+    val dailyMealRates: List<DailyMealRate> = emptyList(),
+    val mealSettings: List<MealSettings> = emptyList(),
+    val specialMealDates: List<SpecialMealDate> = emptyList()
 )

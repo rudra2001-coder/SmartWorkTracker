@@ -12,6 +12,9 @@ interface DailyMealRateDao {
     @Query("SELECT * FROM daily_meal_rates WHERE date = :date AND isDeleted = 0")
     fun getRatesForDate(date: Long): Flow<List<DailyMealRate>>
 
+    @Query("SELECT * FROM daily_meal_rates WHERE isDeleted = 0")
+    suspend fun getAllDailyMealRates(): List<DailyMealRate>
+
     @Query("SELECT * FROM daily_meal_rates WHERE date = :date AND isDeleted = 0")
     suspend fun getRatesForDateList(date: Long): List<DailyMealRate>
 

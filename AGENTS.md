@@ -35,7 +35,7 @@ app/
     SmartWorkTrackerApplication.kt # Actual Application: schedules backup + notifications
     alarm/                   # AlarmActivity, AlarmReceiver, AlarmScheduler, BootReceiver, RecurringNotificationWorker
     data/
-      AppDatabase.kt         # Room DB (v10, 54 entities)
+      AppDatabase.kt         # Room DB (v12, 59 entities)
       SampleData.kt          # Sample data seeding
       SharedPreferenceManager.kt # Legacy prefs
       backup/                # AppBackup, AutoBackupWorker, BackupManager
@@ -78,10 +78,20 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 - App uses manual DI only (`DatabaseModule` provides Room DB instance)
 - No Hilt, Dagger, Koin, or other DI framework
 - No Multiplatform, no Compose for Desktop/iOS
-- Backup system uses WorkManager (daily at 12:05 AM)
+- Backup system uses WorkManager (daily at 12:05 AM). Backup version: 33.
 - Theme supports light/dark mode via `SmartWorkTrackerTheme`
 - Sample data is seeded on first launch from `SampleData.kt`
 - Settings managed via `DataStore Preferences` (new) and `SharedPreferences` (legacy)
+
+### Backup System (data/backup/) — Updated May 2026
+- **AppBackup** (`AppBackup.kt`): Data class mirroring all DB tables for JSON export/import.
+  - Backs up 39+ entity lists including the 5 new calculation tables: `mealTypes`, `weeklyMealRates`, `dailyMealRates`, `mealSettings`, `specialMealDates`
+- **BackupManager** (`BackupManager.kt`): Gson-based export (to JSON) / import (from JSON) with Room transaction wrapping.
+  - Export: reads all tables via DAO suspend `getAll*()` / `first()` methods
+  - Import: clears existing data, inserts all records in a single Room transaction
+  - Version: 33 (incremented on schema changes for forward-compatibility)
+- **AutoBackupWorker** (`AutoBackupWorker.kt`): WorkManager `CoroutineWorker` triggered daily at 12:05 AM. Saves JSON to Downloads (MediaStore on API 30+). Tracks `last_auto_backup_time` in SharedPreferences.
+- **Backup ViewModel/Screen** (`ui/screens/backup/`): UI for manual export/import via SAF, toggle auto-backup, view last/next backup time.
 
 ### Financial System Integrity (Fixes Applied May 2026)
 **Goal**: Eliminate all system loss, balance mismatches, and silent data corruption paths.
@@ -112,20 +122,44 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 | `LoanRepository.kt` | `markLoanAsPaid` for both BORROWED and LENT silently skipped balance updates when linked account was null → **system loss** | Both cases now throw `IllegalStateException` if account not found |
 | `LoansScreen.kt` | `RepayLoanDialog` only showed account dropdown for BORROWED — LENT users had no way to select which account receives repayment; if `loan.accountId` was 0, confirm button was permanently disabled | Removed `if (isBorrowed)` guard — dropdown now shown for both BORROWED and LENT, allowing account selection for all repayment flows |
 
-### Calculation System (ui/screens/calculation/) — Updated May 2026
-- **Old**: Single `dailyMealRate` field, calculated `rate * officeDays`. One meal, one rate.
-- **New**: Multi-meal rate system with configurable meal types, weekly rate overrides, and daily rate overrides.
-- **Entities**: `MealType` (table `meal_types`, configurable meal names with default rates), `WeeklyMealRate` (table `weekly_meal_rates`, overrides per meal type + week + year), `DailyMealRate` (table `daily_meal_rates`, overrides per meal type + date)
-- **DAOs**: `MealTypeDao`, `WeeklyMealRateDao`, `DailyMealRateDao` — all registered in `AppDatabase` (v11)
-- **Default seed data**: Breakfast (30), Lunch (80), Dinner (80), Snacks (20) — auto-seeded on first launch if table empty
-- **Rate resolution**: `Daily → Weekly → Default`. For each working day, sum rates for all meal types using the most specific override available
-- **Cost levels**: Per-meal breakdown (Weekly/Monthly/Yearly), total meal cost, **Quarterly cost** (3-month blocks), total expense with travel/other
-- **Weekly override**: Tab selector for Week 1–5, per-meal rate inputs, reset button per meal
-- **Daily override**: Calendar grid with multi-date selection, tap dates to select/deselect, single-date mode shows per-meal rate inputs for that date
-- **Quarterly projection**: `Total × 3` shown prominently in Meal Cost and Total Summary cards
-- **Monthly breakdown chart**: Updated to reflect multi-meal + travel + other per month
-- **Configurable meal types**: Add new meal types with AlertDialog, edit rates inline, delete with confirmation
-- **DB version**: 10→11 (destructive migration, tables recreated)
+### Calculation System (ui/screens/calculation/) — Redesigned May 2026
+- **Old**: Multi-meal rate system with MealType/WeeklyMealRate/DailyMealRate tables.
+- **New**: Simple meal calculator with normal/special two-rate system + calendar-based + manual modes.
+- **Entities**: `MealSettings` (singleton row with normalMealRate, specialMealRate, mealDays as Set<Int>), `SpecialMealDate` (unique date index, auto-gen ID), `TravelAndExpense` (daily travel cost + other expenses). Old tables (`MealType`, `WeeklyMealRate`, `DailyMealRate`, `Calculation`) kept in DB but unused.
+- **DAOs**: `MealSettingsDao` (Flow-based singleton), `SpecialMealDateDao` (Flow-based, insert/toggle/delete by date), `TravelExpenseDao`
+- **DB version**: 10→12 (destructive migration, tables recreated)
+- **UI pattern**: Dashboard design tokens (`CardShape=20.dp`, `EmeraldGreen`, `CoralRed`, `SapphireBlue`, `GoldenAmber`, `VioletPurple`), animated cost counter via `Animatable+tween(800)`
+
+#### Auto-Calculated Section (Top)
+- **Month Navigator**: Prev/Next arrows, month label (MMMM yyyy)
+- **Summary Header**: Office Days, Meal Cost, Total Cost in primary container card
+- **Meal Settings Card**: Normal Rate + Special Rate inputs, Meal Weekdays (Sun–Sat chip toggles with Wkdays/Clear presets), Save button with "Saved!" feedback
+- **Special Dates Calendar**: Full calendar grid with office-day dots (from work logs), toggleable special dates (red border/background), legend, special date list
+- **Meal Summary Card**: Total/Normal/Special chip stats, cost breakdown table (type/days/rate/cost), Quarterly/Yearly projections, expandable daily breakdown (date/day/icon/rate/cost per row)
+- **Monthly Breakdown Chart**: Bar chart all 12 months
+- **Pie Chart**: Office day count (donut)
+- **Travel & Other Expenses**: Daily travel cost + monthly other expenses
+- **Total Cost Summary**: Meal + Travel + Other with Monthly/Quarterly/Yearly projections
+
+#### Manual Calendar Calculator (Bottom)
+- Independent month navigator (separate from top calendar)
+- Tap dates to mark as Normal (green) or Special (red) via mode toggle chips
+- Rate inputs (Normal Rate / Special Rate)
+- Calculate button with "Saved!" feedback
+- Result: total meals count, normal/special breakdown, animated monthly cost
+- Expandable day list showing each selected date with its rate
+- Clear button to reset all selections
+- Legend showing Normal/Special color coding
+
+#### Calculation Logic
+```
+For each work log where workType==OFFICE AND dayOfWeek in mealDays:
+  cost = specialMealRate if date in specialDates else normalMealRate
+Total = sum of all costs
+Quarterly = Total × 3, Yearly = Total × 12
+```
+- Manual mode: independent calculation using selected dates + entered rates (does not use work logs or mealDays filter)
+- Flow-based reactivity: DB inserts trigger `combine` → auto-recalculation
 
 **Still known gaps (lower priority):**
 - `AccountRepository.addIncomeToAccount` / `deductExpenseFromAccount` update balance only, no `FinancialTransaction` record

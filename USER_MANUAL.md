@@ -287,25 +287,33 @@ Analyzes your spending patterns and provides insights.
 
 **How to use:** Open the screen to see automated analysis of your expense trends with savings tips.
 
-### 4.12 Calculation (Multi-Meal Rate System)
-A comprehensive meal cost calculator with multi-meal support.
+### 4.12 Calculation (Meal Calculator)
+A simple daily meal cost calculator based on your work days. Two modes: auto-calculated from work logs and manual calendar selection.
 
 **Features:**
-- **Multiple meal types** — Breakfast, Lunch, Dinner, Snacks (configurable)
-- **Default rates** — set a base rate for each meal type
-- **Weekly overrides** — set different rates per week (Week 1–5)
-- **Daily overrides** — select specific dates and set custom rates
-- **Rate resolution** — Daily rate → Weekly rate → Default rate (most specific wins)
-- **Quarterly projection** — 3-month cost estimate
+- **Normal/Special two-rate system** — set a normal rate and a higher special rate
+- **Meal weekdays** — choose which days of the week meals apply (Sun–Sat chips)
+- **Special dates** — mark specific dates for the special rate
+- **Auto-calculation** — uses your work logs from the Calendar
+- **Manual calculation** — independent calendar for quick what-if scenarios
+- **Quarterly/Yearly projections** — cost estimates for 3 and 12 months
 
-**How to use:**
-1. Navigate to the month you want to calculate
-2. **Meal Types & Rates** — add/edit/delete meal types with default rates
-3. **Weekly Rate Override** — select a week tab, set per-meal rates for that week
-4. **Date-Specific Rates** — tap dates on the calendar to select them; set per-meal rates for selected dates
-5. View the **Meal Cost Breakdown** for per-meal weekly/monthly/yearly costs
-6. View the **Total Cost Summary** for combined meal + travel + other costs with quarterly projection
-7. The **Monthly Breakdown Chart** shows all 12 months at a glance
+#### Auto-Calculated Mode (Top Section)
+The system automatically calculates meal costs from your work logs:
+1. **Meal Settings** — set Normal Rate (default ৳70) and Special Rate (default ৳90), select meal weekdays
+2. **Special Dates Calendar** — tap dates to mark them as special (red border); office days from work logs show a green dot
+3. **Meal Summary** — shows Total/Normal/Special meal counts, cost breakdown, and daily list
+4. **Calculation logic:** For each OFFICE work day whose weekday is in meal weekdays → cost = special rate if marked, otherwise normal rate
+
+#### Manual Calculator Mode (Bottom Section)
+A standalone mini calendar for manual calculation:
+1. Select **Normal** or **Special** mode toggle
+2. Tap dates on the calendar to mark them green (Normal) or red (Special)
+3. Enter Normal Rate and Special Rate
+4. Tap **Calculate** — shows total meals, normal/special breakdown, and animated monthly cost
+5. Tap **Show selected days** to see the full list with per-date rates
+6. Tap **Clear** to reset all selections
+7. Works independently — does not use work logs or saved settings
 
 ---
 
@@ -481,15 +489,15 @@ Fine-tune the look and feel:
 - Color customization
 
 ### 8.3 Backup & Restore
-Export your entire database to a JSON file or import a previous backup.
+Export your entire database to a JSON file or import a previous backup. All 39+ tables are backed up, including accounts, expenses, income, loans, credit cards, savings, work logs, habits, health data, journals, meal settings, special dates, and more.
 
 **How to use:**
 1. Go to **Backup** from All Features or Settings
 2. **Export** — saves all data to a JSON file (manual or automatic)
 3. **Import** — select a JSON backup file to restore all data
-4. The system clears existing data and replaces it with the backup
+4. The system clears existing data and replaces it with the backup in a single transaction
 
-**Auto Backup:** The app automatically creates a backup every night at 12:05 AM.
+**Auto Backup:** The app automatically creates a backup every night at 12:05 AM. Saved to Downloads folder (uses MediaStore on Android 10+).
 
 ### 8.4 User Profile / Profile Setup
 View and edit your personal profile.

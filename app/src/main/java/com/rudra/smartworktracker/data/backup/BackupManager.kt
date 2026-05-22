@@ -22,7 +22,7 @@ class BackupManager(private val context: Context) {
     suspend fun exportToJson(outputStream: OutputStream): Boolean = withContext(Dispatchers.IO) {
         try {
             val backup = AppBackup(
-                version = 32,
+                version = 33,
                 appVersion = "1.0.0",
                 timestamp = System.currentTimeMillis(),
                 settings = db.settingsDao().getAllSettings().first(),
@@ -58,7 +58,12 @@ class BackupManager(private val context: Context) {
                 dailyCheckIns = db.checkInDao().getAllCheckIns().first(),
                 consequenceDebts = db.consequenceDebtDao().getAllDebts().first(),
                 weeklyReports = db.weeklyReportDao().getAllReports().first(),
-                userHistories = db.userHistoryDao().getUserHistory().first()?.let { listOf(it) } ?: emptyList()
+                userHistories = db.userHistoryDao().getUserHistory().first()?.let { listOf(it) } ?: emptyList(),
+                mealTypes = db.mealTypeDao().getAllMealTypesList(),
+                weeklyMealRates = db.weeklyMealRateDao().getAllWeeklyMealRates(),
+                dailyMealRates = db.dailyMealRateDao().getAllDailyMealRates(),
+                mealSettings = db.mealSettingsDao().getMealSettingsOnce()?.let { listOf(it) } ?: emptyList(),
+                specialMealDates = db.specialMealDateDao().getAllSpecialDatesList()
             )
 
             val jsonString = gson.toJson(backup)
@@ -112,6 +117,11 @@ class BackupManager(private val context: Context) {
                 backup.consequenceDebts.forEach { db.consequenceDebtDao().insertDebt(it) }
                 backup.weeklyReports.forEach { db.weeklyReportDao().insertReport(it) }
                 backup.userHistories.forEach { db.userHistoryDao().insertHistory(it) }
+                backup.mealTypes.forEach { db.mealTypeDao().insert(it) }
+                backup.weeklyMealRates.forEach { db.weeklyMealRateDao().insert(it) }
+                backup.dailyMealRates.forEach { db.dailyMealRateDao().insert(it) }
+                backup.mealSettings.forEach { db.mealSettingsDao().insert(it) }
+                backup.specialMealDates.forEach { db.specialMealDateDao().insert(it) }
             }
             Result.success(Unit)
         } catch (e: Exception) {
