@@ -1,9 +1,9 @@
 package com.rudra.smartworktracker.data.repository
 
+import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.dao.EmiDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.LoanDao
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Emi
 import com.rudra.smartworktracker.data.entity.EmiStatus
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
@@ -18,7 +18,8 @@ import java.util.Calendar
 class EmiRepository(
     private val emiDao: EmiDao,
     private val loanDao: LoanDao,
-    private val transactionDao: FinancialTransactionDao
+    private val transactionDao: FinancialTransactionDao,
+    private val accountDao: AccountDao
 ) {
     fun getActiveEmis(): Flow<List<Emi>> = emiDao.getActiveEmis()
 
@@ -76,6 +77,24 @@ class EmiRepository(
         if (loan == null) return
 
         val paymentDate = System.currentTimeMillis()
+
+        if (emi.paymentAccountId > 0) {
+            val paymentAccount = accountDao.getAccountById(emi.paymentAccountId)
+                ?: throw IllegalStateException("Payment account not found")
+            if (loan.loanType == LoanType.BORROWED) {
+                if (paymentAccount.balance < emi.totalPayable) {
+                    throw IllegalStateException(
+                        "Insufficient balance in ${paymentAccount.name}. " +
+                        "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}, " +
+                        "Required: ৳${"%,.0f".format(emi.totalPayable)}"
+                    )
+                }
+                accountDao.updateBalance(emi.paymentAccountId, paymentAccount.balance - emi.totalPayable)
+            } else {
+                accountDao.updateBalance(emi.paymentAccountId, paymentAccount.balance + emi.totalPayable)
+            }
+        }
+
         val newRemainingAmount = (loan.remainingAmount - emi.principalAmount).coerceAtLeast(0.0)
         val isLoanFullyPaid = newRemainingAmount <= 0.0
 

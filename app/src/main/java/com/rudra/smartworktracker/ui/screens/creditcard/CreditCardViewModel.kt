@@ -36,8 +36,22 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    private fun checkCardLimit(card: CreditCard, additionalAmount: Double) {
+        val newBalance = card.currentBalance + additionalAmount
+        if (newBalance > card.cardLimit) {
+            throw IllegalStateException(
+                "Transaction would exceed card limit (৳${"%,.0f".format(card.cardLimit)}). " +
+                "Current balance: ৳${"%,.0f".format(card.currentBalance)}, " +
+                "Additional: ৳${"%,.0f".format(additionalAmount)}"
+            )
+        }
+    }
+
     fun addCreditCard(card: CreditCard, transferAmount: Double, accountId: Long?) {
         viewModelScope.launch {
+            if (transferAmount > 0) {
+                checkCardLimit(card, transferAmount)
+            }
             val cardId = creditCardDao.insertCard(card)
             if (transferAmount > 0 && accountId != null && accountId > 0) {
                 val updatedCard = card.copy(
@@ -47,16 +61,15 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
                 creditCardDao.updateCard(updatedCard)
 
                 val account = accountDao.getAccountById(accountId)
-                if (account != null) {
-                    accountDao.updateBalance(accountId, account.balance + transferAmount)
-                }
+                    ?: throw IllegalStateException("Linked account not found")
+                accountDao.updateBalance(accountId, account.balance + transferAmount)
 
                 val financialTransaction = FinancialTransaction(
                     type = TransactionType.TRANSFER,
                     amount = transferAmount,
                     sourceAccountId = 0,
                     destinationAccountId = accountId,
-                    note = "Initial transfer from card ${card.cardName} to ${account?.name ?: "account"}",
+                    note = "Initial transfer from card ${card.cardName} to ${account.name}",
                     date = System.currentTimeMillis(),
                     relatedCreditCardId = cardId.toInt()
                 )
@@ -67,6 +80,7 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
 
     fun addCardTransaction(card: CreditCard, amount: Double, description: String) {
         viewModelScope.launch {
+            checkCardLimit(card, amount)
             val timestamp = System.currentTimeMillis()
             val updatedCard = card.copy(currentBalance = card.currentBalance + amount)
             creditCardDao.updateCard(updatedCard)
@@ -98,6 +112,18 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
             val updatedCard = card.copy(currentBalance = card.currentBalance - amount)
             creditCardDao.updateCard(updatedCard)
 
+            val account = accountDao.getAccountById(card.accountId)
+            if (account != null) {
+                if (account.balance < amount) {
+                    throw IllegalStateException(
+                        "Insufficient balance in ${account.name}. " +
+                        "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                        "Required: ৳${"%,.0f".format(amount)}"
+                    )
+                }
+                accountDao.updateBalance(card.accountId, account.balance - amount)
+            }
+
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,
                 amount = amount,
@@ -118,11 +144,16 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
             creditCardDao.updateCard(updatedCard)
 
             val sourceId = accountId ?: card.accountId
-
             val account = accountDao.getAccountById(sourceId)
-            if (account != null) {
-                accountDao.updateBalance(sourceId, account.balance - amount)
+                ?: throw IllegalStateException("Payment account not found")
+            if (account.balance < amount) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${account.name}. " +
+                    "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                    "Required: ৳${"%,.0f".format(amount)}"
+                )
             }
+            accountDao.updateBalance(sourceId, account.balance - amount)
 
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,
@@ -139,6 +170,7 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
 
     fun transferFromCreditCard(card: CreditCard, amount: Double, accountId: Long) {
         viewModelScope.launch {
+            checkCardLimit(card, amount)
             val timestamp = System.currentTimeMillis()
             val updatedCard = card.copy(currentBalance = card.currentBalance + amount)
             creditCardDao.updateCard(updatedCard)
@@ -152,16 +184,15 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
             creditCardTransactionDao.insertTransaction(cardTransaction)
 
             val account = accountDao.getAccountById(accountId)
-            if (account != null) {
-                accountDao.updateBalance(accountId, account.balance + amount)
-            }
+                ?: throw IllegalStateException("Destination account not found")
+            accountDao.updateBalance(accountId, account.balance + amount)
 
             val financialTransaction = FinancialTransaction(
                 type = TransactionType.TRANSFER,
                 amount = amount,
                 sourceAccountId = 0,
                 destinationAccountId = accountId,
-                note = "Transfer from ${card.cardName} to ${account?.name ?: "account"}",
+                note = "Transfer from ${card.cardName} to ${account.name}",
                 date = timestamp,
                 relatedCreditCardId = card.id
             )
@@ -173,8 +204,20 @@ class CreditCardViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             if (card.currentBalance > 0) {
                 val account = accountDao.getAccountById(card.accountId)
+                    ?: throw IllegalStateException("Linked account not found")
+                if (account.balance < card.currentBalance) {
+                    throw IllegalStateException(
+                        "Insufficient balance in ${account.name} to settle card debt. " +
+                        "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                        "Outstanding: ৳${"%,.0f".format(card.currentBalance)}"
+                    )
+                }
+                accountDao.updateBalance(card.accountId, account.balance - card.currentBalance)
+            } else if (card.currentBalance < 0) {
+                val refundAmount = -card.currentBalance
+                val account = accountDao.getAccountById(card.accountId)
                 if (account != null) {
-                    accountDao.updateBalance(card.accountId, account.balance - card.currentBalance)
+                    accountDao.updateBalance(card.accountId, account.balance + refundAmount)
                 }
             }
             creditCardDao.deleteCard(card.id)

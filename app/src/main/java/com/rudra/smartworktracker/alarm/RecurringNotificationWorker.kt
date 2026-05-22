@@ -19,6 +19,8 @@ import com.rudra.smartworktracker.data.entity.RecurringRule
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
 import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.RecurringRepository
+import com.rudra.smartworktracker.data.repository.SavingsRepository
+import com.rudra.smartworktracker.engine.FusionEngine
 import com.rudra.smartworktracker.engine.RecurringEngine
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
@@ -64,7 +66,9 @@ class RecurringNotificationWorker(
             )
             val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
             val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
-            val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
+            val savingsRepository = SavingsRepository(database.savingsDao(), database.accountDao(), database.financialTransactionDao())
+            val fusionEngine = FusionEngine(database.accountDao(), database.financialTransactionDao())
+            val engine = RecurringEngine(repository, incomeRepository, expenseRepository, savingsRepository, fusionEngine)
             
             // Get current balance for balance protection
             val currentBalance = calculateCurrentBalance(incomeRepository, expenseRepository)

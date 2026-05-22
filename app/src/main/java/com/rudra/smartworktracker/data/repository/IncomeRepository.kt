@@ -29,29 +29,25 @@ class IncomeRepository(
     }
 
     suspend fun deleteIncome(income: Income) {
-        incomeDao.deleteIncome(income)
-        
         if (income.accountId > 0) {
             val account = accountDao.getAccountById(income.accountId)
-            account?.let {
-                val newBalance = (it.balance - income.amount).coerceAtLeast(0.0)
-                accountDao.updateBalance(income.accountId, newBalance)
+            if (account != null) {
+                accountDao.updateBalance(income.accountId, account.balance - income.amount)
             }
         }
+        incomeDao.deleteIncome(income)
     }
 
     suspend fun deleteIncomeById(incomeId: Long) {
         val income = incomeDao.getIncomeById(incomeId)
         income?.let {
-            incomeDao.deleteIncomeById(incomeId)
-            
             if (it.accountId > 0) {
                 val account = accountDao.getAccountById(it.accountId)
                 account?.let { acc ->
-                    val newBalance = (acc.balance - it.amount).coerceAtLeast(0.0)
-                    accountDao.updateBalance(it.accountId, newBalance)
+                    accountDao.updateBalance(it.accountId, acc.balance - it.amount)
                 }
             }
+            incomeDao.deleteIncomeById(incomeId)
         }
     }
 

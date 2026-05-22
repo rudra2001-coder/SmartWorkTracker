@@ -31,7 +31,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.Savings
+import com.rudra.smartworktracker.data.entity.displayName
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -181,12 +183,13 @@ fun SavingsScreen() {
 
     if (showAddDialog) {
         AddTransactionDialog(
+            accounts = uiState.accounts,
             onDismiss = { showAddDialog = false },
-            onAdd = { amt: Double, nte: String, isWtd: Boolean ->
+            onAdd = { amt: Double, nte: String, isWtd: Boolean, acctId: Long ->
                 if (isWtd) {
-                    viewModel.withdrawFromSavings(amt, nte)
+                    viewModel.withdrawFromSavings(amt, nte, acctId)
                 } else {
-                    viewModel.addToSavings(amt, nte)
+                    viewModel.addToSavings(amt, nte, acctId)
                 }
                 showAddDialog = false
             }
@@ -427,14 +430,18 @@ fun SavingsHistoryItem(savings: Savings, onDelete: (Savings) -> Unit = {}) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
+    accounts: List<Account>,
     onDismiss: () -> Unit,
-    onAdd: (Double, String, Boolean) -> Unit
+    onAdd: (Double, String, Boolean, Long) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var isWithdrawal by remember { mutableStateOf(false) }
+    var selectedAccountId by remember { mutableStateOf(0L) }
+    var accountExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -451,6 +458,37 @@ fun AddTransactionDialog(
                     singleLine = true,
                     shape = ChipShape
                 )
+
+                ExposedDropdownMenuBox(
+                    expanded = accountExpanded,
+                    onExpandedChange = { accountExpanded = !accountExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = accounts.find { it.id == selectedAccountId }?.let { "${it.name} (${it.provider.displayName()})" } ?: "No account",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Account") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        shape = ChipShape,
+                        singleLine = true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = accountExpanded,
+                        onDismissRequest = { accountExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("No account (savings only)") },
+                            onClick = { selectedAccountId = 0; accountExpanded = false }
+                        )
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text("${account.name} (${account.provider.displayName()}) - ৳${"%,.0f".format(account.balance)}") },
+                                onClick = { selectedAccountId = account.id; accountExpanded = false }
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = note,
@@ -500,7 +538,7 @@ fun AddTransactionDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { amount.toDoubleOrNull()?.let { onAdd(it, note, isWithdrawal) } },
+                onClick = { amount.toDoubleOrNull()?.let { onAdd(it, note, isWithdrawal, selectedAccountId) } },
                 enabled = amount.toDoubleOrNull() ?: 0.0 > 0
             ) { Text("Add", fontWeight = FontWeight.Bold) }
         },

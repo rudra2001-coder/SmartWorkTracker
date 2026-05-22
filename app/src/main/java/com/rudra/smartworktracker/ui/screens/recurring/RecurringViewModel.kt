@@ -12,6 +12,8 @@ import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
 import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.RecurringRepository
+import com.rudra.smartworktracker.data.repository.SavingsRepository
+import com.rudra.smartworktracker.engine.FusionEngine
 import com.rudra.smartworktracker.engine.RecurringEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -307,7 +309,9 @@ class RecurringViewModelFactory(private val context: Context) : ViewModelProvide
             )
             val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
             val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
-            val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
+            val savingsRepository = SavingsRepository(database.savingsDao(), database.accountDao(), database.financialTransactionDao())
+            val fusionEngine = FusionEngine(database.accountDao(), database.financialTransactionDao())
+            val engine = RecurringEngine(repository, incomeRepository, expenseRepository, savingsRepository, fusionEngine)
             @Suppress("UNCHECKED_CAST")
             return RecurringViewModel(repository, engine, incomeRepository, expenseRepository) as T
         }

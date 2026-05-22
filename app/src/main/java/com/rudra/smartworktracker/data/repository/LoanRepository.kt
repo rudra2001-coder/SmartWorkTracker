@@ -111,11 +111,6 @@ class LoanRepository(
                 )
             }
             accountRepository.updateBalance(paymentAccountId, paymentAccount.balance - amount)
-
-            val loanAccount = accountRepository.getAccountById(loan.accountId)
-            if (loanAccount != null) {
-                accountRepository.updateBalance(loan.accountId, loanAccount.balance - amount)
-            }
         } else {
             val loanAccount = accountRepository.getAccountById(loan.accountId)
             if (loanAccount != null) {
@@ -151,16 +146,15 @@ class LoanRepository(
         val remaining = loan.remainingAmount
 
         if (loan.loanType == LoanType.BORROWED) {
-            val loanAccount = accountRepository.getAccountById(loan.accountId)
-            if (loanAccount != null) {
-                val paymentAccount = accountRepository.getAccountById(loan.accountId)
-                if (paymentAccount != null && paymentAccount.balance < remaining) {
+            val paymentAccount = accountRepository.getAccountById(loan.accountId)
+            if (paymentAccount != null) {
+                if (paymentAccount.balance < remaining) {
                     throw IllegalStateException(
                         "Insufficient balance in ${paymentAccount.name} to mark as paid. " +
                         "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}."
                     )
                 }
-                accountRepository.updateBalance(loan.accountId, loanAccount.balance - remaining)
+                accountRepository.updateBalance(loan.accountId, paymentAccount.balance - remaining)
             }
         } else {
             val loanAccount = accountRepository.getAccountById(loan.accountId)

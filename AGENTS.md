@@ -83,6 +83,40 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 - Sample data is seeded on first launch from `SampleData.kt`
 - Settings managed via `DataStore Preferences` (new) and `SharedPreferences` (legacy)
 
+### Financial System Integrity (Fixes Applied May 2026)
+**Goal**: Eliminate all system loss, balance mismatches, and silent data corruption paths.
+
+**Rules enforced:**
+- **No silent `coerceAtLeast(0.0)`** — balance changes that would overdraw an account throw `IllegalStateException` with account name + current balance context. Never silently cap.
+- **Balance update before record insert** — ExpenseRepository now validates + updates balance before inserting the expense record.
+- **Single deduction per transaction** — no double-deduction bugs (LoanRepository repays deduct from `paymentAccountId` only).
+
+**Fixes applied:**
+
+| File | Bug | Fix |
+|---|---|---|
+| `ExpenseRepository.kt` | `insertExpense` silently capped balance via `.coerceAtLeast(0.0)` — expense recorded at full amount but balance only reduced partially or to 0 → **system loss** | Validate `account.balance >= expense.amount` first, throw on insufficient funds, update balance then insert |
+| `IncomeRepository.kt` | `deleteIncome` / `deleteIncomeById` used `.coerceAtLeast(0.0)` when reversing income — if money was spent, reversal was capped → **balance corruption** | Remove `.coerceAtLeast(0.0)`, always subtract exact income amount from account |
+| `LoanRepository.kt` | `repayLoan` for BORROWED deducted amount from BOTH `paymentAccountId` AND `loan.accountId` — when same account, **money deducted twice** → **critical system loss** | Removed second deduction from `loan.accountId`; only deduct from `paymentAccountId` |
+| `AccountRepository.kt` | `deductExpenseFromAccount` silently did nothing when `newBalance < 0` — caller thinks money was deducted but balance unchanged → **silent failure** | Throw `IllegalStateException` with account name/balance context if insufficient funds |
+| `EmiRepository.kt` | `payEmi` updated loan balance + created `FinancialTransaction` but **never deducted from actual account** → **system loss** (debt cleared, money stayed in account) | Added `AccountDao`, deduct money from `emi.paymentAccountId` for BORROWED, add for LENT, with balance validation + insufficient funds throw |
+| `CreditCardViewModel.kt` | `payCreditCardBill(card, amount)` reduced card debt but **never deducted from linked account** → **system loss** | Now deducts from `card.accountId` with balance validation |
+| `CreditCardViewModel.kt` | `payCreditCardBill(card, amount, accountId)` silently skipped deduction when account not found | Now throws `IllegalStateException` |
+| `CreditCardViewModel.kt` | `deleteCreditCard` could silently create negative balances; **no handling for overpaid cards** | Now throws if insufficient funds; refunds credit to linked account when `currentBalance < 0` |
+| `CreditCardViewModel.kt` | `addCardTransaction`, `transferFromCreditCard`, initial transfer had **no card limit check** → could exceed `cardLimit` | Added `checkCardLimit()` — throws if `currentBalance + amount > cardLimit` |
+| `CreditCardViewModel.kt` | `transferFromCreditCard` / initial transfer silently skipped balance updates when account not found | Now throw `IllegalStateException` |
+
+**Still known gaps (lower priority):**
+- `AccountRepository.addIncomeToAccount` / `deductExpenseFromAccount` update balance only, no `FinancialTransaction` record
+- `ExpenseRepository.insertExpense` validates balance against current `account.balance` but doesn't account for pending transactions (acceptable for single-user app)
+
+**Caller patterns:**
+- `FusionEngine.processTransfer()` is the **single correct path** for transfers — updates both balances + creates `FinancialTransaction` record
+- Delete-with-transfer flow: calls `FusionEngine.processTransfer()` first, then `accountDao.deleteAccountById()` — never adds `FinancialTransactionDao` directly to `AccountRepository`
+- `RecurringEngine` delegates to `incomeRepository.insertIncome()` / `expenseRepository.insertExpense()` — inherits all their logic (now fixed)
+- `RecurringEngine` delegates to `savingsRepository.addToSavings()` / `withdrawFromSavings()` for recurring savings — inherits account integration + `FinancialTransaction` creation
+- `RecurringEngine.executeTransfer()` uses `FusionEngine.processTransfer()` for real money movement
+
 ### Account System (ui/screens/accounts/)
 - **Account** entity (`data/entity/Account.kt`): Fields include `id`, `name`, `type` (AccountCategory), `provider` (AccountProvider), `accountNumber`, `balance`, `maxBalance`, `hasLimit`, `dailyTransferLimit`, `isActive`, `nickname`, `linkedGoalId`, `iconColor`, `notes`
 - **AccountDao** (`data/dao/AccountDao.kt`): Standard Room DAO with `getAllAccounts()`, `getAccountById()`, `updateBalance()`, `deleteAccount()`, `deactivateAccount()`, etc.
@@ -91,4 +125,28 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 - **FinancialTransactionDao** (`data/dao/FinancialTransactionDao.kt`): Has `getTransactionsForAccount(accountId)` for account-specific transaction history
 - **Swipe gestures on AccountsScreen**: Right swipe (StartToEnd) opens **Edit** dialog, left swipe (EndToStart) opens **Delete** flow. Delete with balance > 0 shows transfer-to-another-account dialog using FusionEngine. Delete with zero balance shows direct confirmation.
 - **AccountDetailScreen**: Shows real `FinancialTransaction` data per account, inflow/outflow metrics, balance activity chart (7-day), follows Dashboard design pattern (same color tokens, card shapes, shadows, gradients).
-- **Dashboard design tokens** used across accounts: `EmeraldGreen`, `CoralRed`, `SapphireBlue`, `GoldenAmber`, `VioletPurple`, `CardShape = 20.dp`, shadows, gradient icon boxes, animated metrics.
+ - **Dashboard design tokens** used across accounts: `EmeraldGreen`, `CoralRed`, `SapphireBlue`, `GoldenAmber`, `VioletPurple`, `CardShape = 20.dp`, shadows, gradient icon boxes, animated metrics.
+
+### Savings System (ui/screens/savings/)
+- **Savings** entity (`data/entity/Savings.kt`, table `savings`): Tracks savings deposits/withdrawals with `amount`, `note`, `category`, `timestamp`, and now `accountId` (linking to Account system). Positive `amount` = deposit, negative `amount` = withdrawal.
+- **SavingsRepository** (`data/repository/SavingsRepository.kt`): Bridges DAO to ViewModels. Key methods:
+  - `addToSavings(amount, note, category, accountId)` — deducts from account (validates balance), creates `FinancialTransaction` (type `SAVINGS_ADD`), inserts savings record
+  - `withdrawFromSavings(amount, note, category, accountId)` — adds to account balance, creates `FinancialTransaction` (type `SAVINGS_WITHDRAW`), inserts savings record
+  - `deleteTransaction(savings)` — reverses balance change (validates if reversing a withdrawal), deletes savings record
+- **FinancialTransaction** links savings ops via `TransactionType.SAVINGS_ADD` / `SAVINGS_WITHDRAW`.
+- **Upgraded (May 2026):** Previously savings had no account link — money could be deposited/withdrawn without any balance change. Now fully account-integrated.
+- **RecurringEngine.executeSavings**: Now real implementation — creates savings + account + FinancialTransaction for both `SAVINGS_ADD` and `SAVINGS_WITHDRAW` via `SavingsRepository`.
+- **RecurringEngine.executeTransfer**: Now real implementation — uses `FusionEngine.processTransfer()` to move money between accounts with balance updates + `FinancialTransaction`.
+
+### Credit Card System (ui/screens/creditcard/)
+- **Dual representation**: `CreditCard` entity (`data/entity/CreditCard.kt`, table `credit_cards`) with card-specific fields (`cardLimit`, `currentBalance`, `statementDate`, `dueDate`) linked to an `Account` via `accountId`. Account entity uses `AccountProvider.CREDIT_CARD` / `AccountCategory.BANK`.
+- **CreditCardTransaction** (`data/entity/CreditCardTransaction.kt`, table `credit_card_transactions`): FK to `CreditCard.id` with CASCADE delete, stores individual card charges/payments.
+- **FinancialTransaction** links credit card ops via `relatedCreditCardId` field. Charges use `TransactionType.EXPENSE`, payments/transfers use `TransactionType.TRANSFER`.
+- **No repository layer** — `CreditCardViewModel` talks directly to DAOs (architectural inconsistency).
+- **Fixes applied (May 2026):**
+  - `payCreditCardBill(card, amount)` was reducing debt without deducting from any account → **system loss**. Now deducts from `card.accountId` with balance validation.
+  - `payCreditCardBill(card, amount, accountId)` was silently skipping deduction when account not found. Now throws if account missing or insufficient funds.
+  - `deleteCreditCard` had no balance validation — could silently create negative account balances. Now throws if insufficient funds to settle debt. Also handles overpaid cards (`currentBalance < 0`) by refunding the credit to the linked account.
+  - `addCardTransaction`, `transferFromCreditCard`, and initial transfer now enforce `cardLimit` via `checkCardLimit()` — throws if `currentBalance + amount > cardLimit`.
+  - Initial transfer creation: was silently skipping balance update when linked account not found. Now throws `IllegalStateException`.
+  - `transferFromCreditCard` was silently skipping balance update when destination account not found. Now throws `IllegalStateException`.

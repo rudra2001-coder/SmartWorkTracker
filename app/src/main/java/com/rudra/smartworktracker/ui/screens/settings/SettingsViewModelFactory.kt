@@ -20,7 +20,7 @@ class SettingsViewModelFactory(private val application: Application) : ViewModel
             val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
             val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
             val settingsRepository = SettingsRepository(application)
-            val savingsRepository = SavingsRepository(database.savingsDao())
+            val savingsRepository = SavingsRepository(database.savingsDao(), database.accountDao(), database.financialTransactionDao())
             @Suppress("UNCHECKED_CAST")
             return SettingsViewModel(
                 application,

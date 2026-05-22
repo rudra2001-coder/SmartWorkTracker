@@ -49,15 +49,19 @@ class ExpenseRepository(
     }
 
     suspend fun insertExpense(expense: Expense) {
-        expenseDao.insertExpense(expense)
-        
         if (expense.accountId > 0) {
             val account = accountDao.getAccountById(expense.accountId)
-            account?.let {
-                val newBalance = (it.balance - expense.amount).coerceAtLeast(0.0)
-                accountDao.updateBalance(expense.accountId, newBalance)
+                ?: throw IllegalStateException("Account not found")
+            if (account.balance < expense.amount) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${account.name}. " +
+                    "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                    "Required: ৳${"%,.0f".format(expense.amount)}"
+                )
             }
+            accountDao.updateBalance(expense.accountId, account.balance - expense.amount)
         }
+        expenseDao.insertExpense(expense)
     }
 
     suspend fun updateExpense(expense: Expense) {

@@ -249,12 +249,16 @@ class AccountRepository(private val accountDao: AccountDao) {
 
     suspend fun deductExpenseFromAccount(accountId: Long, amount: Double) {
         val account = accountDao.getAccountById(accountId)
-        account?.let {
-            val newBalance = it.balance - amount
-            if (newBalance >= 0) {
-                accountDao.updateBalance(accountId, newBalance)
-            }
+            ?: throw IllegalStateException("Account not found")
+        val newBalance = account.balance - amount
+        if (newBalance < 0) {
+            throw IllegalStateException(
+                "Insufficient balance in ${account.name}. " +
+                "Current balance: ৳${"%,.0f".format(account.balance)}, " +
+                "Required: ৳${"%,.0f".format(amount)}"
+            )
         }
+        accountDao.updateBalance(accountId, newBalance)
     }
 }
 
