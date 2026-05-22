@@ -54,12 +54,14 @@ import com.rudra.smartworktracker.model.*
         MealRateSetting::class,
         MealType::class,
         WeeklyMealRate::class,
-        DailyMealRate::class
+        DailyMealRate::class,
+        MealSettings::class,
+        SpecialMealDate::class
     ],
     views = [
         MonthlySummary::class
     ],
-    version = 11, // Multi-meal rate system: added MealType, WeeklyMealRate, DailyMealRate tables
+    version = 12, // Simple meal calculation: added MealSettings, SpecialMealDate tables
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -104,6 +106,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mealTypeDao(): MealTypeDao
     abstract fun weeklyMealRateDao(): WeeklyMealRateDao
     abstract fun dailyMealRateDao(): DailyMealRateDao
+    abstract fun mealSettingsDao(): MealSettingsDao
+    abstract fun specialMealDateDao(): SpecialMealDateDao
 
     companion object {
         @Volatile
