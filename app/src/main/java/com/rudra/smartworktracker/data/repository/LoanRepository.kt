@@ -2,7 +2,6 @@ package com.rudra.smartworktracker.data.repository
 
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.dao.LoanDao
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Loan
 import com.rudra.smartworktracker.data.entity.LoanType
@@ -10,7 +9,13 @@ import com.rudra.smartworktracker.data.entity.TransactionType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-class LoanRepository(private val loanDao: LoanDao, private val transactionDao: FinancialTransactionDao) {
+class LoanRepository(
+    private val loanDao: LoanDao,
+    private val transactionDao: FinancialTransactionDao,
+    private val accountRepository: AccountRepository
+) {
+
+    suspend fun getAllTransactions(): List<FinancialTransaction> = transactionDao.getAllTransactions().first()
 
     fun getAllLoans(): Flow<List<Loan>> = loanDao.getAllLoans()
 
@@ -35,18 +40,37 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
     fun getActiveLentCount(): Flow<Int> = loanDao.getActiveLoanCountByType(LoanType.LENT)
 
     suspend fun insertLoan(loan: Loan) {
+        if (loan.loanType == LoanType.LENT) {
+            val loanAccount = accountRepository.getAccountById(loan.accountId)
+                ?: throw IllegalStateException("Loan account not found")
+            if (loanAccount.balance < loan.initialAmount) {
+                throw IllegalStateException(
+                    "Loan account does not have sufficient balance. " +
+                    "Current balance: ৳${"%,.0f".format(loanAccount.balance)}. " +
+                    "Please add some money there."
+                )
+            }
+        }
+
         val loanId = loanDao.insertLoan(loan)
+
+        if (loan.loanType == LoanType.BORROWED) {
+            accountRepository.addIncomeToAccount(loan.accountId, loan.initialAmount)
+        } else {
+            accountRepository.deductExpenseFromAccount(loan.accountId, loan.initialAmount)
+        }
+
         val transactionType = if (loan.loanType == LoanType.BORROWED) {
             TransactionType.LOAN_BORROW
         } else {
             TransactionType.LOAN_LEND
         }
-        
+
         val transaction = FinancialTransaction(
             type = transactionType,
             amount = loan.initialAmount,
-            source = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
             note = buildString {
                 append("Loan ${if (loan.loanType == LoanType.BORROWED) "from" else "to"}: ${loan.personName}")
                 if (!loan.notes.isNullOrBlank()) append(" - ${loan.notes}")
@@ -68,10 +92,34 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
         transactionDao.deleteTransactionsByLoanId(loan.id)
     }
 
-    suspend fun repayLoan(loan: Loan, amount: Double) {
+    suspend fun repayLoan(loan: Loan, amount: Double, paymentAccountId: Long = loan.accountId) {
+        if (amount != loan.remainingAmount) {
+            throw IllegalStateException(
+                "You must repay the full remaining amount (৳${"%,.0f".format(loan.remainingAmount)}). " +
+                "Partial payments are not allowed."
+            )
+        }
+
+        if (loan.loanType == LoanType.BORROWED) {
+            val paymentAccount = accountRepository.getAccountById(paymentAccountId)
+                ?: throw IllegalStateException("Payment account not found")
+            if (paymentAccount.balance < amount) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${paymentAccount.name}. " +
+                    "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}. " +
+                    "Please add some more money and repay the whole amount."
+                )
+            }
+            accountRepository.updateBalance(paymentAccountId, paymentAccount.balance - amount)
+        } else {
+            val receiveAccount = accountRepository.getAccountById(paymentAccountId)
+                ?: throw IllegalStateException("Receiving account not found")
+            accountRepository.updateBalance(paymentAccountId, receiveAccount.balance + amount)
+        }
+
         val newRemaining = (loan.remainingAmount - amount).coerceAtLeast(0.0)
         val isFullyPaid = newRemaining <= 0.0
-        
+
         val updatedLoan = loan.copy(
             remainingAmount = newRemaining,
             isFullyPaid = isFullyPaid,
@@ -80,12 +128,12 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
             updatedAt = System.currentTimeMillis()
         )
         loanDao.updateLoan(updatedLoan)
-        
+
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,
             amount = amount,
-            source = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) paymentAccountId else 0,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
             note = "Payment ${if (loan.loanType == LoanType.BORROWED) "to" else "from"} ${loan.personName}",
             date = System.currentTimeMillis(),
             relatedLoanId = loan.id
@@ -93,19 +141,38 @@ class LoanRepository(private val loanDao: LoanDao, private val transactionDao: F
         transactionDao.insertTransaction(transaction)
     }
 
-    suspend fun receiveLoanRepayment(loan: Loan, amount: Double) {
-        repayLoan(loan, amount)
-    }
-
     suspend fun markLoanAsPaid(loan: Loan) {
         val remaining = loan.remainingAmount
+
+        if (loan.loanType == LoanType.BORROWED) {
+            val paymentAccount = accountRepository.getAccountById(loan.accountId)
+                ?: throw IllegalStateException(
+                    "Linked account not found for loan from ${loan.personName}. " +
+                    "Cannot mark as paid without a valid account."
+                )
+            if (paymentAccount.balance < remaining) {
+                throw IllegalStateException(
+                    "Insufficient balance in ${paymentAccount.name} to mark as paid. " +
+                    "Current balance: ৳${"%,.0f".format(paymentAccount.balance)}."
+                )
+            }
+            accountRepository.updateBalance(loan.accountId, paymentAccount.balance - remaining)
+        } else {
+            val receiveAccount = accountRepository.getAccountById(loan.accountId)
+                ?: throw IllegalStateException(
+                    "Linked account not found for loan to ${loan.personName}. " +
+                    "Cannot mark as paid without a valid account."
+                )
+            accountRepository.updateBalance(loan.accountId, receiveAccount.balance + remaining)
+        }
+
         loanDao.markLoanAsPaid(loan.id)
-        
+
         val transaction = FinancialTransaction(
             type = if (loan.loanType == LoanType.BORROWED) TransactionType.LOAN_REPAY else TransactionType.LOAN_RECEIVE,
             amount = remaining,
-            source = if (loan.loanType == LoanType.BORROWED) loan.sourceAccount else loan.destinationAccount,
-            destination = if (loan.loanType == LoanType.BORROWED) loan.destinationAccount else loan.sourceAccount,
+            sourceAccountId = if (loan.loanType == LoanType.BORROWED) loan.accountId else 0,
+            destinationAccountId = if (loan.loanType == LoanType.BORROWED) 0 else loan.accountId,
             note = "Final settlement for loan ${if (loan.loanType == LoanType.BORROWED) "from" else "to"} ${loan.personName}",
             date = System.currentTimeMillis(),
             relatedLoanId = loan.id

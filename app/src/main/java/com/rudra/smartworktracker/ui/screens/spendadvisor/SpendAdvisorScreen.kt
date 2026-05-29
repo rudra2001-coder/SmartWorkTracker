@@ -30,6 +30,10 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,7 +64,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -76,6 +83,17 @@ import com.rudra.smartworktracker.model.SpendAdvisor
 import com.rudra.smartworktracker.model.SpendingTrend
 import java.text.NumberFormat
 import java.util.Locale
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
+private val CyanLight = Color(0xFF06B6D4)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,9 +228,9 @@ private fun HistoryTab(recentAnalyses: List<com.rudra.smartworktracker.model.Exp
 
 @Composable
 private fun FinancialSummaryCard(spendAdvisor: SpendAdvisor) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = CardShape, elevation = CardDefaults.cardElevation(0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Financial Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Financial Overview", Icons.Default.AccountBalance, listOf(CoralRed, GoldenAmber))
             Spacer(modifier = Modifier.height(12.dp))
             Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) {
                 Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -251,9 +269,9 @@ private fun StatItemCard(label: String, value: String, color: Color, modifier: M
 
 @Composable
 private fun PlannedExpenseCard(plannedAmount: String, onAmountChange: (String) -> Unit, selectedCategory: ExpenseCategory, onCategoryChange: (ExpenseCategory) -> Unit, onCheck: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp), shape = CardShape) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Plan a Future Expense", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Plan a Future Expense", Icons.Default.Add, listOf(CoralRed, GoldenAmber))
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(value = plannedAmount, onValueChange = { if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) onAmountChange(it) }, modifier = Modifier.fillMaxWidth(), label = { Text("Amount (৳)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, shape = RoundedCornerShape(12.dp))
             Spacer(modifier = Modifier.height(12.dp))
@@ -281,7 +299,7 @@ private fun AdviceCard(advice: ExpenseAdvice) {
         AdviceSeverity.WARNING -> Triple(Color(0xFFFF9800).copy(alpha = 0.1f), Color(0xFFFF9800), Icons.Default.Error)
         AdviceSeverity.DANGER -> Triple(Color(0xFFE53935).copy(alpha = 0.1f), Color(0xFFE53935), Icons.Default.Error)
     }
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = backgroundColor), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = backgroundColor), shape = CardShape, elevation = CardDefaults.cardElevation(0.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(56.dp).clip(CircleShape).background(iconColor.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(32.dp))
@@ -297,9 +315,9 @@ private fun AdviceCard(advice: ExpenseAdvice) {
 
 @Composable
 private fun DetailsCard(remainingAfterExpense: Double, safeLimit: Double, warningLimit: Double, confidenceScore: Int, suggestion: String?, category: ExpenseCategory) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp), shape = CardShape) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Analysis Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Analysis Details", Icons.Default.CheckCircle, listOf(VioletPurple, CyanLight))
             Spacer(modifier = Modifier.height(12.dp))
             DetailRow("Remaining after expense", formatCurrency(remainingAfterExpense))
             DetailRow("Safe limit (30%)", formatCurrency(safeLimit))
@@ -311,7 +329,7 @@ private fun DetailsCard(remainingAfterExpense: Double, safeLimit: Double, warnin
             }
             if (suggestion != null) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1E88E5).copy(alpha = 0.1f)), shape = RoundedCornerShape(12.dp)) {
+                Card(modifier = Modifier.shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = Color(0xFF1E88E5).copy(alpha = 0.1f)), shape = ChipShape, elevation = CardDefaults.cardElevation(0.dp)) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFF1E88E5), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
@@ -325,9 +343,9 @@ private fun DetailsCard(remainingAfterExpense: Double, safeLimit: Double, warnin
 
 @Composable
 private fun SpendingTrendCard(trend: SpendingTrend) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Spending Trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Spending Trend", Icons.Default.TrendingUp, listOf(CoralRed, GoldenAmber))
             Spacer(modifier = Modifier.height(12.dp))
             val trendColor = when (trend) { SpendingTrend.INCREASING -> Color(0xFFE53935); SpendingTrend.DECREASING -> Color(0xFF43A047); SpendingTrend.STABLE -> Color(0xFF1E88E5) }
             Text(trend.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = trendColor)
@@ -337,12 +355,12 @@ private fun SpendingTrendCard(trend: SpendingTrend) {
 
 @Composable
 private fun SavingsTipsCard(tips: List<SavingsTip>) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Savings Tips", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Savings Tips", Icons.Default.Star, listOf(EmeraldGreen, SapphireBlue))
             Spacer(modifier = Modifier.height(12.dp))
             tips.forEach { tip ->
-                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), shape = RoundedCornerShape(8.dp)) {
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).shadow(6.dp, CardShape, clip = false), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), shape = ChipShape, elevation = CardDefaults.cardElevation(0.dp)) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column { Text(tip.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold); Text(tip.description, style = MaterialTheme.typography.bodySmall) }
                     }
@@ -354,9 +372,9 @@ private fun SavingsTipsCard(tips: List<SavingsTip>) {
 
 @Composable
 private fun SmartSuggestionsCard(suggestions: List<String>) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Smart Suggestions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            SectionHeader("Smart Suggestions", Icons.Default.Lightbulb, listOf(VioletPurple, CyanLight))
             Spacer(modifier = Modifier.height(12.dp))
             suggestions.forEach { suggestion ->
                 Text("• $suggestion", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 4.dp))
@@ -367,7 +385,7 @@ private fun SmartSuggestionsCard(suggestions: List<String>) {
 
 @Composable
 private fun HistoryItemCard(analysis: com.rudra.smartworktracker.model.ExpenseAnalysis) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), elevation = CardDefaults.cardElevation(0.dp)) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(analysis.advice.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -382,7 +400,7 @@ private fun HistoryItemCard(analysis: com.rudra.smartworktracker.model.ExpenseAn
 private fun BudgetGoalDialog(currentGoal: Double, onDismiss: () -> Unit, onSave: (Double) -> Unit) {
     var goalAmount by remember { mutableStateOf(currentGoal.toString()) }
     Dialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Card(modifier = Modifier.shadow(6.dp, CardShape, clip = false), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(0.dp)) {
             Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("Set Monthly Budget Goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 OutlinedTextField(value = goalAmount, onValueChange = { if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) goalAmount = it }, label = { Text("Monthly Goal (৳)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, shape = RoundedCornerShape(12.dp))
@@ -407,6 +425,22 @@ private fun formatCurrency(amount: Double): String {
     val format = NumberFormat.getNumberInstance(Locale("bn", "BD"))
     format.maximumFractionDigits = 0
     return "৳${format.format(amount.toLong())}"
+}
+
+@Composable
+private fun SectionHeader(title: String, icon: ImageVector, gradient: List<Color>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CardShape)
+            .background(Brush.horizontalGradient(gradient))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+    }
 }
 
 private fun generateSmartSuggestions(spendAdvisor: SpendAdvisor): List<String> {

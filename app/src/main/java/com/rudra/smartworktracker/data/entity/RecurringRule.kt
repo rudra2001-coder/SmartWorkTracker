@@ -29,8 +29,8 @@ data class RecurringRule(
     val category: String? = null,
     
     // Source and destination accounts
-    val sourceAccount: AccountType,
-    val destinationAccount: AccountType? = null,
+    val sourceAccountId: Long = 0,
+    val destinationAccountId: Long? = null,
     
     // Frequency: DAILY, WEEKLY, BIWEEKLY, MONTHLY, YEARLY, CUSTOM, WEEKLY_SPECIFIC_DAYS
     val frequency: RecurringFrequency,

@@ -1,6 +1,5 @@
 package com.rudra.smartworktracker.engine
 
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
@@ -12,6 +11,7 @@ import com.rudra.smartworktracker.data.entity.SyncStatus
 import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.RecurringRepository
+import com.rudra.smartworktracker.data.repository.SavingsRepository
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.first
@@ -26,6 +26,8 @@ class RecurringEngine(
     private val recurringRepository: RecurringRepository,
     private val incomeRepository: IncomeRepository,
     private val expenseRepository: com.rudra.smartworktracker.data.repository.ExpenseRepository,
+    private val savingsRepository: SavingsRepository? = null,
+    private val fusionEngine: FusionEngine? = null,
     private val transactionRepository: com.rudra.smartworktracker.data.repository.TransactionRepository? = null
 ) {
     companion object {
@@ -173,7 +175,7 @@ class RecurringEngine(
             val result = when (rule.transactionType) {
                 TransactionType.INCOME -> executeIncome(rule, transactionId)
                 TransactionType.EXPENSE -> executeExpense(rule, transactionId)
-                TransactionType.SAVINGS_ADD -> executeSavings(rule, transactionId)
+                TransactionType.SAVINGS_ADD, TransactionType.SAVINGS_WITHDRAW -> executeSavings(rule, transactionId)
                 TransactionType.TRANSFER -> executeTransfer(rule, transactionId)
                 else -> ExecutionResult(success = false, reason = "Unsupported transaction type")
             }
@@ -270,8 +272,8 @@ class RecurringEngine(
             transactionType = rule.transactionType,
             amount = rule.amount,
             category = rule.category,
-            sourceAccount = rule.sourceAccount,
-            destinationAccount = rule.destinationAccount,
+            sourceAccountId = rule.sourceAccountId,
+            destinationAccountId = rule.destinationAccountId,
             scheduledDate = rule.nextExecutionDate,
             status = if (rule.autoExecute) RecurringTransactionStatus.PENDING else RecurringTransactionStatus.CONFIRMED
         )
@@ -287,7 +289,8 @@ class RecurringEngine(
                 description = rule.name,
                 category = rule.category ?: "Salary",
                 timestamp = System.currentTimeMillis(),
-                source = rule.sourceAccount.name,
+                source = "Account ${rule.sourceAccountId}",
+                accountId = rule.sourceAccountId,
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             
@@ -315,6 +318,7 @@ class RecurringEngine(
                 merchant = rule.name,
                 notes = rule.description,
                 timestamp = System.currentTimeMillis(),
+                accountId = rule.sourceAccountId,
                 syncStatus = SyncStatus.LOCAL_ONLY
             )
             
@@ -331,19 +335,66 @@ class RecurringEngine(
     }
     
     /**
-     * Execute savings transaction
+     * Execute savings transaction - real implementation with account support
      */
     private suspend fun executeSavings(rule: RecurringRule, transactionId: Long): ExecutionResult {
-        // Similar to income, but would create a savings entry
-        return ExecutionResult(success = true, reason = "Savings executed successfully")
+        val repo = savingsRepository ?: return ExecutionResult(success = false, reason = "SavingsRepository not available")
+        return try {
+            if (rule.transactionType == TransactionType.SAVINGS_ADD) {
+                repo.addToSavings(
+                    amount = rule.amount,
+                    note = rule.name,
+                    category = "Recurring Savings",
+                    accountId = rule.sourceAccountId
+                )
+            } else {
+                val destId = rule.destinationAccountId
+                    ?: return ExecutionResult(success = false, reason = "No destination account configured for recurring savings withdrawal")
+                repo.withdrawFromSavings(
+                    amount = rule.amount,
+                    note = rule.name,
+                    category = "Recurring Withdrawal",
+                    accountId = destId
+                )
+            }
+            ExecutionResult(
+                success = true,
+                reason = "Savings ${if (rule.transactionType == TransactionType.SAVINGS_ADD) "deposit" else "withdrawal"} executed successfully"
+            )
+        } catch (e: Exception) {
+            ExecutionResult(success = false, reason = e.message)
+        }
     }
     
     /**
-     * Execute transfer transaction
+     * Execute transfer transaction - real implementation using FusionEngine
      */
     private suspend fun executeTransfer(rule: RecurringRule, transactionId: Long): ExecutionResult {
-        // Would create a financial transaction with TRANSFER type
-        return ExecutionResult(success = true, reason = "Transfer executed successfully")
+        val engine = fusionEngine ?: return ExecutionResult(success = false, reason = "FusionEngine not available")
+        if (rule.sourceAccountId <= 0 || rule.destinationAccountId == null || rule.destinationAccountId <= 0) {
+            return ExecutionResult(success = false, reason = "Transfer requires valid source and destination accounts")
+        }
+        return try {
+            val result = engine.processTransfer(
+                fromAccountId = rule.sourceAccountId,
+                toAccountId = rule.destinationAccountId,
+                amount = rule.amount,
+                note = rule.name
+            )
+            when (result) {
+                is FusionResult.Success -> ExecutionResult(
+                    success = true,
+                    reason = "Transfer executed successfully"
+                )
+                is FusionResult.Error -> ExecutionResult(
+                    success = false,
+                    reason = result.message,
+                    shouldReschedule = true
+                )
+            }
+        } catch (e: Exception) {
+            ExecutionResult(success = false, reason = e.message)
+        }
     }
     
     /**

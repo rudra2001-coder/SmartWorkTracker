@@ -24,8 +24,7 @@ data class Loan(
     val paidEmis: Int = 0,
     val notes: String? = null,
     
-    val sourceAccount: AccountType = AccountType.BANK,
-    val destinationAccount: AccountType = AccountType.CASH,
+    val accountId: Long = 0,
     
     val isActive: Boolean = true,
     val isFullyPaid: Boolean = false,

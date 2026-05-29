@@ -1,28 +1,38 @@
 package com.rudra.smartworktracker.ui.screens.income
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.entity.Account
+import com.rudra.smartworktracker.data.entity.AccountCategory
+import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.Income
+import com.rudra.smartworktracker.data.repository.AccountRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
+class IncomeViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val db = AppDatabase.getDatabase(application)
+    private val incomeRepository = IncomeRepository(db.incomeDao(), db.accountDao())
+    private val accountRepository = AccountRepository(db.accountDao())
 
     private val _income = MutableStateFlow(0.0)
     val income: StateFlow<Double> = _income.asStateFlow()
     private val _recentIncomes = MutableStateFlow<List<Income>>(emptyList())
     val recentIncomes: StateFlow<List<Income>> = _recentIncomes.asStateFlow()
+    
+    private val _accounts = MutableStateFlow<List<Account>>(emptyList())
+    val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
 
     init {
         loadTotalIncome()
         loadRecentIncomes()
+        loadAccounts()
     }
 
     private fun loadTotalIncome() {
@@ -39,26 +49,40 @@ class IncomeViewModel(private val db: AppDatabase) : ViewModel() {
             }
         }
     }
-
-    fun deleteIncome(income: Income) {
+    
+    private fun loadAccounts() {
         viewModelScope.launch {
-            db.incomeDao().deleteIncome(income)
+            accountRepository.initializeDefaultAccounts()
+            accountRepository.getAllAccounts().collect { accountList ->
+                _accounts.value = accountList
+            }
         }
     }
 
-    fun saveIncome(amount: Double, description: String, category: String, source: String, accountType: AccountType, timestamp: Long) {
+    fun deleteIncome(income: Income) {
+        viewModelScope.launch {
+            incomeRepository.deleteIncome(income)
+        }
+    }
+
+    fun saveIncome(
+        amount: Double, 
+        description: String, 
+        category: String, 
+        source: String, 
+        timestamp: Long,
+        selectedAccountId: Long
+    ) {
         viewModelScope.launch {
             val newIncome = Income(
                 amount = amount,
                 description = description,
                 category = category,
                 timestamp = timestamp,
-                source = source
+                source = source,
+                accountId = selectedAccountId
             )
-            db.incomeDao().insertIncome(newIncome)
+            incomeRepository.insertIncome(newIncome)
         }
     }
 }
-
-
-

@@ -37,11 +37,17 @@ interface WorkLogDao {
     @Query("SELECT COUNT(*) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
     suspend fun countByType(monthYear: String, workType: WorkType): Int
 
+    @Query("SELECT COUNT(*) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
+    fun countByTypeFlow(monthYear: String, workType: WorkType): Flow<Int>
+
     @Query("SELECT * FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear")
     suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog>
 
     @Query("SELECT SUM((strftime('%s', endTime) - strftime('%s', startTime)) / 3600.0) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
     suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double?
+
+    @Query("SELECT COALESCE(SUM((strftime('%s', endTime) - strftime('%s', startTime)) / 3600.0), 0) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
+    fun getTotalExtraHoursFlow(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Flow<Double>
 
     @Query("SELECT * FROM work_logs WHERE isOvertime = 1 ORDER BY date DESC")
     fun getOvertimeLogs(): Flow<List<WorkLog>>

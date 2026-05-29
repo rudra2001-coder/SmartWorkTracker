@@ -1,10 +1,8 @@
 package com.rudra.smartworktracker.ui.screens.savings
 
-import android.app.Application
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.Savings
 import com.rudra.smartworktracker.data.repository.SavingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +38,8 @@ data class EnhancedSavingsUiState(
     val selectedTimeRange: TimeRange = TimeRange.ALL,
     val searchQuery: String = "",
     val sortOrder: SortOrder = SortOrder.DESCENDING,
-    val stats: SavingsStats = SavingsStats()
+    val stats: SavingsStats = SavingsStats(),
+    val accounts: List<Account> = emptyList()
 )
 
 class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewModel() {
@@ -50,6 +49,16 @@ class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewM
 
     init {
         loadSavingsData()
+        loadAccounts()
+    }
+
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            try {
+                val accounts = savingsRepository.getAllAccounts()
+                _uiState.value = _uiState.value.copy(accounts = accounts)
+            } catch (_: Exception) { }
+        }
     }
 
     private fun loadSavingsData() {
@@ -180,15 +189,19 @@ class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewM
         )
     }
 
-    fun addToSavings(amount: Double, note: String = "") {
+    fun addToSavings(amount: Double, note: String = "", accountId: Long) {
         if (amount <= 0) {
             _uiState.value = _uiState.value.copy(errorMessage = "Amount must be greater than 0")
+            return
+        }
+        if (accountId <= 0) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Please select an account")
             return
         }
 
         viewModelScope.launch {
             try {
-                savingsRepository.addToSavings(amount, note)
+                savingsRepository.addToSavings(amount, note, accountId = accountId)
                 _uiState.value = _uiState.value.copy(successMessage = "Successfully added ৳$amount")
                 clearMessages()
             } catch (e: Exception) {
@@ -197,20 +210,19 @@ class SavingsViewModel(private val savingsRepository: SavingsRepository) : ViewM
         }
     }
 
-    fun withdrawFromSavings(amount: Double, note: String = "") {
+    fun withdrawFromSavings(amount: Double, note: String = "", accountId: Long) {
         if (amount <= 0) {
             _uiState.value = _uiState.value.copy(errorMessage = "Amount must be greater than 0")
             return
         }
-
-        if (amount > _uiState.value.savings) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Insufficient savings balance")
+        if (accountId <= 0) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Please select an account")
             return
         }
 
         viewModelScope.launch {
             try {
-                savingsRepository.withdrawFromSavings(amount, note)
+                savingsRepository.withdrawFromSavings(amount, note, accountId = accountId)
                 _uiState.value = _uiState.value.copy(successMessage = "Successfully withdrew ৳$amount")
                 clearMessages()
             } catch (e: Exception) {

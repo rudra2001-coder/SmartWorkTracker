@@ -51,6 +51,16 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.*
 
+private val CardShape = RoundedCornerShape(20.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CalendarScreen(
@@ -150,7 +160,8 @@ fun CalendarScreen(
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                                )
+                                ),
+                                shape = ChipShape
                             )
                         } else {
                             IconButton(onClick = { showSearchBar = true }) {
@@ -244,15 +255,12 @@ fun CalendarScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
         ) {
             item {
-                QuickStatsCard(
-                    stats = uiState.monthlyStats,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                QuickStatsCard(stats = uiState.monthlyStats)
             }
 
             item {
@@ -260,8 +268,7 @@ fun CalendarScreen(
                     currentMonth = currentMonth,
                     onMonthChange = { currentMonth = it },
                     onQuickMonthSelect = { viewModel.onQuickMonthSelect(it) },
-                    isMultiSelectMode = uiState.isMultiSelectMode,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    isMultiSelectMode = uiState.isMultiSelectMode
                 )
             }
 
@@ -270,8 +277,7 @@ fun CalendarScreen(
                     ActiveFiltersRow(
                         filters = uiState.activeFilters,
                         onRemoveFilter = viewModel::removeFilter,
-                        onClearAll = viewModel::clearFilters,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        onClearAll = viewModel::clearFilters
                     )
                 }
             }
@@ -285,15 +291,21 @@ fun CalendarScreen(
                     isMultiSelectMode = uiState.isMultiSelectMode,
                     onDateSelected = viewModel::onDateSelected,
                     onLongPress = viewModel::onDateLongPress,
-                    onSelectAll = { viewModel.selectAllDatesInMonth(currentMonth) },
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    onSelectAll = { viewModel.selectAllDatesInMonth(currentMonth) }
                 )
             }
 
             item {
-                WorkTypeLegend(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                WorkTypeLegend()
+            }
+
+            if (uiState.selectedWorkLog == null && !uiState.isMultiSelectMode) {
+                item {
+                    QuickAddCard(
+                        date = uiState.selectedDate,
+                        onQuickAdd = { workType -> viewModel.quickAddWorkLog(uiState.selectedDate, workType) }
+                    )
+                }
             }
 
             if (uiState.selectedWorkLog != null && !uiState.isMultiSelectMode) {
@@ -309,8 +321,7 @@ fun CalendarScreen(
                             onDelete = viewModel::deleteWorkLog,
                             onCopy = viewModel::copyWorkLog,
                             onShare = viewModel::shareWorkLog,
-                            onSaveAsTemplate = viewModel::saveAsTemplate,
-                            modifier = Modifier.padding(16.dp)
+                            onSaveAsTemplate = viewModel::saveAsTemplate
                         )
                     }
                 }
@@ -319,8 +330,7 @@ fun CalendarScreen(
             item {
                 MonthSummaryCard(
                     yearMonth = currentMonth,
-                    workLogs = uiState.filteredWorkLogs,
-                    modifier = Modifier.padding(16.dp)
+                    workLogs = uiState.filteredWorkLogs
                 )
             }
 
@@ -420,66 +430,87 @@ fun QuickStatsCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem(
-                value = stats.officeDays.toString(),
-                label = "Office",
-                color = Color(0xFF2196F3),
-                modifier = Modifier.weight(1f)
-            )
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.BarChart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Text("Quick Stats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
 
-            VerticalDivider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            StatItem(
-                value = stats.homeDays.toString(),
-                label = "Home",
-                color = Color(0xFFFF9800),
-                modifier = Modifier.weight(1f)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatItem(
+                    value = stats.officeDays.toString(),
+                    label = "Office",
+                    color = SapphireBlue,
+                    modifier = Modifier.weight(1f)
+                )
 
-            VerticalDivider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .width(1.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
 
-            StatItem(
-                value = stats.offDays.toString(),
-                label = "Off",
-                color = Color(0xFF4CAF50),
-                modifier = Modifier.weight(1f)
-            )
+                StatItem(
+                    value = stats.homeDays.toString(),
+                    label = "Home",
+                    color = EmeraldGreen,
+                    modifier = Modifier.weight(1f)
+                )
 
-            VerticalDivider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .width(1.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
 
-            StatItem(
-                value = stats.totalHours,
-                label = "Hours",
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
+                StatItem(
+                    value = stats.offDays.toString(),
+                    label = "Off",
+                    color = VioletPurple,
+                    modifier = Modifier.weight(1f)
+                )
+
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .width(1.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
+
+                StatItem(
+                    value = stats.totalHours,
+                    label = "Hours",
+                    color = GoldenAmber,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -520,17 +551,36 @@ fun MonthNavigationCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(20.dp)),
+            .shadow(6.dp, CardShape, clip = false),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(20.dp)
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(GoldenAmber, CoralRed)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Text("Month", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -589,7 +639,7 @@ fun MonthNavigationCard(
                 QuickMonthNavigation(
                     currentMonth = currentMonth,
                     onMonthChange = onQuickMonthSelect,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
         }
@@ -608,8 +658,7 @@ fun QuickMonthNavigation(
 
     LazyRow(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(months) { month ->
@@ -648,11 +697,14 @@ fun ActiveFiltersRow(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(4.dp, ChipShape, clip = false),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -708,27 +760,36 @@ fun CalendarCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(24.dp)),
+            .shadow(6.dp, CardShape, clip = false),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = if (isMultiSelectMode)
-                        "Select multiple dates"
-                        else "Tap date to view details",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                brush = Brush.linearGradient(listOf(SapphireBlue, EmeraldGreen)),
+                                shape = RoundedCornerShape(10.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                    Text("Calendar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
 
                 AnimatedVisibility(visible = isMultiSelectMode) {
                     SelectionInfo(
@@ -737,6 +798,17 @@ fun CalendarCard(
                     )
                 }
             }
+
+            if (!isMultiSelectMode) {
+                Text(
+                    text = "Tap date to view details",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 2.dp, top = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             DaysOfWeekHeader()
 
@@ -821,7 +893,7 @@ fun CalendarGrid(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = 360.dp)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -947,11 +1019,14 @@ fun WorkTypeLegend(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(4.dp, ChipShape, clip = false),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -1009,23 +1084,41 @@ fun MonthSummaryCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = "${yearMonth.format(DateTimeFormatter.ofPattern("MMMM"))} Summary",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Assessment, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Text(
+                    "${yearMonth.format(DateTimeFormatter.ofPattern("MMMM"))} Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             val workTypeCounts = workLogs.groupBy { it.workType }
                 .mapValues { it.value.size }
@@ -1102,11 +1195,12 @@ fun WorkLogDetails(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(20.dp)),
-        shape = RoundedCornerShape(20.dp),
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -1114,18 +1208,34 @@ fun WorkLogDetails(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column {
-                    Text(
-                        "Work Entry Details",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        workLog.formattedDate,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                brush = Brush.linearGradient(listOf(VioletPurple, SapphireBlue)),
+                                shape = RoundedCornerShape(10.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Description, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                    Column {
+                        Text(
+                            "Work Entry Details",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            workLog.formattedDate,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Row {
                     IconButton(
@@ -1179,11 +1289,14 @@ fun WorkLogDetails(
             Spacer(modifier = Modifier.height(16.dp))
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(4.dp, ChipShape, clip = false),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = ChipShape,
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -1274,7 +1387,7 @@ fun WorkLogDetails(
                 OutlinedButton(
                     onClick = { onShare(workLog) },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = ChipShape
                 ) {
                     Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1284,7 +1397,7 @@ fun WorkLogDetails(
                 OutlinedButton(
                     onClick = { onSaveAsTemplate(workLog) },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = ChipShape
                 ) {
                     Icon(Icons.Default.Bookmark, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1301,7 +1414,7 @@ fun WorkTypeChip(workType: WorkType) {
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(ChipShape)
             .background(color)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -1374,11 +1487,120 @@ fun FilterDialog(
 
 fun getWorkTypeColor(workType: WorkType): Color {
     return when (workType) {
-        WorkType.OFFICE -> Color(0xFF2196F3)
+        WorkType.OFFICE -> SapphireBlue
         WorkType.HOME_OFFICE -> Color(0xFFFF9800)
         WorkType.OFF_DAY -> Color(0xFF4CAF50)
-        WorkType.EXTRA_WORK -> Color(0xFF9C27B0)
-        WorkType.OVERTIME -> Color(0xFFF44336)
+        WorkType.EXTRA_WORK -> VioletPurple
+        WorkType.OVERTIME -> CoralRed
+    }
+}
+
+@Composable
+fun QuickAddCard(
+    date: LocalDate,
+    onQuickAdd: (WorkType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(GoldenAmber, CoralRed)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Text(
+                    "Quick Add — ${date.format(DateTimeFormatter.ofPattern("dd MMM"))}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                "No entry for this date. Add one:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                WorkType.entries.forEach { workType ->
+                    val color = getWorkTypeColor(workType)
+                    Surface(
+                        onClick = { onQuickAdd(workType) },
+                        modifier = Modifier.weight(1f),
+                        shape = ChipShape,
+                        color = color,
+                        tonalElevation = 0.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                when (workType) {
+                                    WorkType.OFFICE -> Icons.Default.Business
+                                    WorkType.HOME_OFFICE -> Icons.Default.Home
+                                    WorkType.OFF_DAY -> Icons.Default.BeachAccess
+                                    WorkType.EXTRA_WORK -> Icons.Default.TrendingUp
+                                    WorkType.OVERTIME -> Icons.Default.BusinessCenter
+                                },
+                                null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                when (workType) {
+                                    WorkType.OFFICE -> "Office"
+                                    WorkType.HOME_OFFICE -> "Home"
+                                    WorkType.OFF_DAY -> "Off"
+                                    WorkType.EXTRA_WORK -> "Extra"
+                                    WorkType.OVERTIME -> "OT"
+                                },
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "Defaults: 09:00 – 17:00",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
     }
 }
 

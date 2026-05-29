@@ -24,11 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +41,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
@@ -60,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -74,6 +71,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.rudra.smartworktracker.ui.navigation.NavigationItem
 
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50)
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
+
 data class FeatureSection(val title: String, val items: List<NavigationItem>)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -87,12 +93,14 @@ fun AllFunsionScreen(navController: NavController) {
 
     val quickAccessFeatures = remember {
         listOf(
-            NavigationItem.Team,
+            NavigationItem.Accounts,
+            NavigationItem.Transfer,
             NavigationItem.AddEntry,
             NavigationItem.WorkTimer,
             NavigationItem.Focus,
             NavigationItem.Calendar,
-            NavigationItem.Analytics
+            NavigationItem.Analytics,
+            NavigationItem.Team
         )
     }
     val featureSections = remember {
@@ -115,14 +123,15 @@ fun AllFunsionScreen(navController: NavController) {
             ),
             FeatureSection(
                 "Financials", listOf(
-                    NavigationItem.FinancialStatement,
+                    NavigationItem.Accounts,
+                    NavigationItem.Transfer,
                     NavigationItem.Income,
                     NavigationItem.Expense,
                     NavigationItem.Savings,
                     NavigationItem.Loans,
                     NavigationItem.EMI,
                     NavigationItem.CreditCard,
-                    NavigationItem.Transfer,
+                    NavigationItem.FinancialStatement,
                     NavigationItem.Reports,
                     NavigationItem.MonthlyReport,
                     NavigationItem.Calculation,
@@ -146,7 +155,7 @@ fun AllFunsionScreen(navController: NavController) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
+                title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("App Features", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                         Text("All tools in one place", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -163,30 +172,27 @@ fun AllFunsionScreen(navController: NavController) {
             )
         }
     ) { paddingValues ->
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item {
                 SearchBar(
                     value = searchText,
-                    onValueChange = { searchText = it },
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    onValueChange = { searchText = it }
                 )
             }
 
             if (searchText.isBlank()) {
                 if (recentFeatures.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        SectionHeader("Recently Used", isSticky = false)
+                    item {
+                        SectionHeader("Recently Used")
                     }
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             contentPadding = PaddingValues(vertical = 8.dp)
@@ -210,51 +216,76 @@ fun AllFunsionScreen(navController: NavController) {
                 }
 
                 featureSections.forEach { section ->
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                    item {
                         SectionHeader(section.title)
                     }
-                    items(section.items, key = { it.route }) { feature ->
-                        var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) { visible = true }
-                        FeatureCard(
-                            feature = feature,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.onFeatureClicked(feature)
-                                navController.navigate(feature.route)
-                            },
-                            isVisible = visible
-                        )
+                    section.items.chunked(2).forEach { rowItems ->
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                rowItems.forEach { feature ->
+                                    var visible by remember { mutableStateOf(false) }
+                                    LaunchedEffect(Unit) { visible = true }
+                                    FeatureCard(
+                                        feature = feature,
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.onFeatureClicked(feature)
+                                            navController.navigate(feature.route)
+                                        },
+                                        isVisible = visible,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (rowItems.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             } else {
                 val searchResults = allFeatures.filter {
                     it.title.contains(searchText, ignoreCase = true) ||
-                            it.description?.contains(searchText, ignoreCase = true) == true
+                        it.description?.contains(searchText, ignoreCase = true) == true
                 }
-                if(searchResults.isNotEmpty()){
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                if (searchResults.isNotEmpty()) {
+                    item {
                         SectionHeader("Search Results")
                     }
-                    items(searchResults, key = { it.route }) { feature ->
-                        var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) { visible = true }
-                        FeatureCard(
-                            feature = feature,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.onFeatureClicked(feature)
-                                navController.navigate(feature.route)
-                            },
-                            isVisible = visible
-                        )
+                    searchResults.chunked(2).forEach { rowItems ->
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                rowItems.forEach { feature ->
+                                    var visible by remember { mutableStateOf(false) }
+                                    LaunchedEffect(Unit) { visible = true }
+                                    FeatureCard(
+                                        feature = feature,
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.onFeatureClicked(feature)
+                                            navController.navigate(feature.route)
+                                        },
+                                        isVisible = visible,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (rowItems.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             }
-            
-            // Add some bottom spacing
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Spacer(modifier = Modifier.height(32.dp))
+
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
@@ -268,7 +299,7 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit, modifier: Modifier
         modifier = modifier.fillMaxWidth(),
         placeholder = { Text("Search features...", style = MaterialTheme.typography.bodyMedium) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon", tint = MaterialTheme.colorScheme.primary) },
-        shape = RoundedCornerShape(16.dp),
+        shape = ChipShape,
         singleLine = true,
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = MaterialTheme.colorScheme.primary,
@@ -280,7 +311,7 @@ fun SearchBar(value: String, onValueChange: (String) -> Unit, modifier: Modifier
 }
 
 @Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier, isSticky: Boolean = false) {
+fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -289,11 +320,23 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, isSticky: Boolea
     ) {
         Box(
             modifier = Modifier
-                .size(4.dp, 24.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Spacer(Modifier.width(8.dp))
+                .size(36.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(SapphireBlue, VioletPurple)
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.8f))
+            )
+        }
+        Spacer(Modifier.width(12.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
@@ -305,11 +348,11 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, isSticky: Boolea
 
 private fun getFeatureColor(feature: NavigationItem): Color {
     return when (feature.route) {
-        NavigationItem.Income.route, NavigationItem.Savings.route, NavigationItem.AddEntry.route, NavigationItem.Health.route -> Color(0xFF43A047) // Green
-        NavigationItem.Expense.route, NavigationItem.Loans.route, NavigationItem.EMI.route, NavigationItem.CreditCard.route -> Color(0xFFE53935) // Red
-        NavigationItem.WorkTimer.route, NavigationItem.Focus.route, NavigationItem.Analytics.route, NavigationItem.Calendar.route, NavigationItem.Reports.route, NavigationItem.MonthlyReport.route, NavigationItem.FinancialStatement.route, NavigationItem.Transfer.route -> Color(0xFF1E88E5) // Blue
-        NavigationItem.Habit.route, NavigationItem.Journal.route, NavigationItem.MindfulBreak.route, NavigationItem.Wisdom.route, NavigationItem.Achievements.route -> Color(0xFF8E24AA) // Purple
-        NavigationItem.Settings.route, NavigationItem.Backup.route, NavigationItem.UserProfile.route, NavigationItem.Team.route, NavigationItem.Overtime.route, NavigationItem.Scheduler.route -> Color(0xFF546E7A) // Blue Grey
+        NavigationItem.Income.route, NavigationItem.Savings.route, NavigationItem.AddEntry.route, NavigationItem.Health.route -> Color(0xFF43A047)
+        NavigationItem.Expense.route, NavigationItem.Loans.route, NavigationItem.EMI.route, NavigationItem.CreditCard.route -> Color(0xFFE53935)
+        NavigationItem.WorkTimer.route, NavigationItem.Focus.route, NavigationItem.Analytics.route, NavigationItem.Calendar.route, NavigationItem.Reports.route, NavigationItem.MonthlyReport.route, NavigationItem.FinancialStatement.route, NavigationItem.Transfer.route -> Color(0xFF1E88E5)
+        NavigationItem.Habit.route, NavigationItem.Journal.route, NavigationItem.MindfulBreak.route, NavigationItem.Wisdom.route, NavigationItem.Achievements.route -> Color(0xFF8E24AA)
+        NavigationItem.Settings.route, NavigationItem.Backup.route, NavigationItem.UserProfile.route, NavigationItem.Team.route, NavigationItem.Overtime.route, NavigationItem.Scheduler.route -> Color(0xFF546E7A)
         else -> Color(0xFF3949AB)
     }
 }
@@ -339,18 +382,20 @@ fun FeatureCard(
     )
 
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isPressed) featureColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isPressed) featureColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
         ),
+        elevation = CardDefaults.cardElevation(0.dp),
         modifier = modifier
             .height(150.dp)
+            .shadow(6.dp, CardShape, clip = false)
             .scale(cardScale * entryScale)
             .alpha(alpha)
             .border(
                 width = 1.dp,
                 color = if (isPressed) featureColor.copy(alpha = 0.5f) else Color.Transparent,
-                shape = RoundedCornerShape(24.dp)
+                shape = CardShape
             )
             .clickable(
                 interactionSource = interactionSource,
@@ -368,7 +413,7 @@ fun FeatureCard(
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(

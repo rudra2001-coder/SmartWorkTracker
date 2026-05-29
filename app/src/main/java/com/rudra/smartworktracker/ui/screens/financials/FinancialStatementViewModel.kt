@@ -2,13 +2,14 @@ package com.rudra.smartworktracker.ui.screens.financials
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudra.smartworktracker.data.dao.AccountDao
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.repository.TransactionRepository
 import com.rudra.smartworktracker.data.repository.IncomeRepository
 import com.rudra.smartworktracker.data.repository.ExpenseRepository
-import com.rudra.smartworktracker.model.Expense
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -62,8 +63,24 @@ enum class EntryType {
 class FinancialStatementViewModel(
     private val transactionRepository: TransactionRepository,
     private val incomeRepository: IncomeRepository,
-    private val expenseRepository: ExpenseRepository
+    private val expenseRepository: ExpenseRepository,
+    private val accountDao: AccountDao
 ) : ViewModel() {
+
+    private var accountsCache: List<Account> = emptyList()
+
+    init {
+        viewModelScope.launch {
+            accountDao.getAllAccounts().collect { accounts ->
+                accountsCache = accounts
+            }
+        }
+    }
+
+    private fun getAccountNameById(accountId: Long?): String {
+        if (accountId == null || accountId <= 0) return Accounts.CASH
+        return accountsCache.find { it.id == accountId }?.name ?: Accounts.CASH
+    }
 
     private val _uiState = MutableStateFlow(FinancialsUiState())
     val uiState: StateFlow<FinancialsUiState> = _uiState.asStateFlow()
@@ -186,7 +203,7 @@ class FinancialStatementViewModel(
                         category = ft.category ?: "Other",
                         date = ft.date,
                         entryType = EntryType.DEBIT,
-                        debitAccount = ft.source.name.ifEmpty { Accounts.CASH },
+                        debitAccount = getAccountNameById(ft.sourceAccountId),
                         creditAccount = null
                     ))
                     // CREDIT: Revenue recognized (Income account)
@@ -231,7 +248,7 @@ class FinancialStatementViewModel(
                         date = ft.date,
                         entryType = EntryType.CREDIT,
                         debitAccount = null,
-                        creditAccount = ft.source.name.ifEmpty { Accounts.CASH }
+                        creditAccount = getAccountNameById(ft.sourceAccountId)
                     ))
                 }
                 TransactionType.TRANSFER -> {
@@ -246,7 +263,7 @@ class FinancialStatementViewModel(
                         category = ft.category ?: Accounts.TRANSFER,
                         date = ft.date,
                         entryType = EntryType.DEBIT,
-                        debitAccount = ft.destination?.name ?: Accounts.CASH,
+                        debitAccount = getAccountNameById(ft.destinationAccountId),
                         creditAccount = null
                     ))
                     // CREDIT: Money sent (source account)
@@ -261,7 +278,7 @@ class FinancialStatementViewModel(
                         date = ft.date,
                         entryType = EntryType.CREDIT,
                         debitAccount = null,
-                        creditAccount = ft.source.name.ifEmpty { Accounts.CASH }
+                        creditAccount = getAccountNameById(ft.sourceAccountId)
                     ))
                 }
                 else -> {
@@ -276,8 +293,8 @@ class FinancialStatementViewModel(
                         category = ft.category ?: "Other",
                         date = ft.date,
                         entryType = EntryType.DEBIT,
-                        debitAccount = ft.source.name.ifEmpty { Accounts.CASH },
-                        creditAccount = ft.destination?.name
+                        debitAccount = getAccountNameById(ft.sourceAccountId),
+                        creditAccount = getAccountNameById(ft.destinationAccountId)
                     ))
                 }
             }
@@ -394,15 +411,8 @@ class FinancialStatementViewModel(
                         }
                     }
                     TransactionSource.EXPENSE -> {
-                        // Expense.id is String (UUID), but DAO expects Long - use delete by full object
-                        // Create a minimal Expense object with just the ID for deletion
                         val id = transaction.originalId
-                        val expenseToDelete = com.rudra.smartworktracker.model.Expense(
-                            id = id.toString(),
-                            amount = 0.0,
-                            timestamp = 0
-                        )
-                        expenseRepository.deleteExpense(expenseToDelete)
+                        expenseRepository.deleteExpenseById(id.toString())
                     }
                 }
                 _snackbarMessage.value = "Transaction deleted successfully"

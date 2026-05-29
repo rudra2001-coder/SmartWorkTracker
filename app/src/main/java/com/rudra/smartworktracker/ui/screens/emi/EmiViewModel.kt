@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
-import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Emi
 import com.rudra.smartworktracker.data.entity.EmiStatus
 import com.rudra.smartworktracker.data.entity.Loan
@@ -168,7 +167,7 @@ class EmiViewModel(private val emiRepository: EmiRepository) : ViewModel() {
         interestAmount: Double,
         dueDateOfMonth: Int,
         notes: String?,
-        paymentAccount: AccountType
+        paymentAccountId: Long
     ) {
         viewModelScope.launch {
             val calendar = Calendar.getInstance()
@@ -185,7 +184,7 @@ class EmiViewModel(private val emiRepository: EmiRepository) : ViewModel() {
                 dueDateOfMonth = dueDateOfMonth,
                 nextDueDate = calendar.timeInMillis,
                 notes = notes,
-                paymentAccount = paymentAccount
+                paymentAccountId = paymentAccountId
             )
             emiRepository.insertEmi(emi)
             closeAddEmiDialog()

@@ -17,4 +17,7 @@ interface CreditCardTransactionDao {
 
     @Query("SELECT * FROM credit_card_transactions")
     fun getAllTransactions(): Flow<List<CreditCardTransaction>>
+
+    @Query("DELETE FROM credit_card_transactions WHERE cardId = :cardId")
+    suspend fun deleteTransactionsByCardId(cardId: Int)
 }

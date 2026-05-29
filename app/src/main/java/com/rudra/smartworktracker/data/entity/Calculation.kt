@@ -7,9 +7,13 @@ import java.util.UUID
 @Entity(tableName = "calculations")
 data class Calculation(
     @PrimaryKey
-    val id: String = UUID.randomUUID().toString(),
-    val dailyMealRate: Double = 60.0,
+    val id: String = "1",
+    val dailyMealRate: Double = 0.0,
     val overtimeRate: Double = 0.0,
+    val useAutoMealCalculation: Boolean = true,
+    val recurringMealDays: String = "", // Comma separated days (1-7)
+    val recurringMealCount: Int = 1,
+    val recurringMealCost: Double = 60.0,
 
     // Audit fields - Rule 1.2
     override val createdAt: Long = System.currentTimeMillis(),

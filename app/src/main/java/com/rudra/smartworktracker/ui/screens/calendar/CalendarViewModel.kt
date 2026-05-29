@@ -207,7 +207,9 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                     date = existingWorkLog.date,
                     workType = workType,
                     startTime = existingWorkLog.startTime,
-                    endTime = existingWorkLog.endTime
+                    endTime = existingWorkLog.endTime,
+                    isOvertime = workType == WorkType.OVERTIME,
+                    overtimeRate = if (workType == WorkType.OVERTIME) 1.5 else null
                 )
                 repository.updateWorkLog(updatedWorkLog)
             } else {
@@ -215,11 +217,17 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                     date = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
                     workType = workType,
                     startTime = "09:00",
-                    endTime = "17:00"
+                    endTime = "17:00",
+                    isOvertime = workType == WorkType.OVERTIME,
+                    overtimeRate = if (workType == WorkType.OVERTIME) 1.5 else null
                 )
                 repository.insertWorkLog(workLog)
             }
         }
+    }
+
+    fun quickAddWorkLog(date: LocalDate, workType: WorkType) {
+        updateWorkLog(date, workType, isMultiSelect = false)
     }
 
     fun deleteWorkLog(id: Long) {

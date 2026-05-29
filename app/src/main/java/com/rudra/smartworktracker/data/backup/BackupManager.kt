@@ -22,7 +22,7 @@ class BackupManager(private val context: Context) {
     suspend fun exportToJson(outputStream: OutputStream): Boolean = withContext(Dispatchers.IO) {
         try {
             val backup = AppBackup(
-                version = 31,
+                version = 33,
                 appVersion = "1.0.0",
                 timestamp = System.currentTimeMillis(),
                 settings = db.settingsDao().getAllSettings().first(),
@@ -48,7 +48,22 @@ class BackupManager(private val context: Context) {
                 savings = db.savingsDao().getAllSavings().first(),
                 schedules = db.scheduleDao().getAllSchedules().first(),
                 meals = db.mealDao().getAllMeals().first(),
-                travelExpenses = db.travelExpenseDao().getTravelExpense().first()?.let { listOf(it) } ?: emptyList()
+                travelExpenses = db.travelExpenseDao().getTravelExpense().first()?.let { listOf(it) } ?: emptyList(),
+                accounts = db.accountDao().getAllAccounts().first(),
+                mealRateSettings = db.mealRateSettingDao().getAllMealRateSettings().first(),
+                recurringRules = db.recurringRuleDao().getAllRules().first(),
+                recurringTransactions = db.recurringTransactionDao().getAllTransactions().first(),
+                realityEntries = db.realityTrackerDao().getAllEntries().first(),
+                decisions = db.decisionDao().getAllDecisions().first(),
+                dailyCheckIns = db.checkInDao().getAllCheckIns().first(),
+                consequenceDebts = db.consequenceDebtDao().getAllDebts().first(),
+                weeklyReports = db.weeklyReportDao().getAllReports().first(),
+                userHistories = db.userHistoryDao().getUserHistory().first()?.let { listOf(it) } ?: emptyList(),
+                mealTypes = db.mealTypeDao().getAllMealTypesList(),
+                weeklyMealRates = db.weeklyMealRateDao().getAllWeeklyMealRates(),
+                dailyMealRates = db.dailyMealRateDao().getAllDailyMealRates(),
+                mealSettings = db.mealSettingsDao().getMealSettingsOnce()?.let { listOf(it) } ?: emptyList(),
+                specialMealDates = db.specialMealDateDao().getAllSpecialDatesList()
             )
 
             val jsonString = gson.toJson(backup)
@@ -92,6 +107,21 @@ class BackupManager(private val context: Context) {
                 backup.schedules.forEach { db.scheduleDao().insertSchedule(it) }
                 backup.meals.forEach { db.mealDao().insertMeal(it) }
                 backup.travelExpenses.forEach { db.travelExpenseDao().insert(it) }
+                backup.accounts.forEach { db.accountDao().insertAccount(it) }
+                backup.mealRateSettings.forEach { db.mealRateSettingDao().insert(it) }
+                backup.recurringRules.forEach { db.recurringRuleDao().insertRule(it) }
+                backup.recurringTransactions.forEach { db.recurringTransactionDao().insertTransaction(it) }
+                backup.realityEntries.forEach { db.realityTrackerDao().insertEntry(it) }
+                backup.decisions.forEach { db.decisionDao().insertDecision(it) }
+                backup.dailyCheckIns.forEach { db.checkInDao().insertCheckIn(it) }
+                backup.consequenceDebts.forEach { db.consequenceDebtDao().insertDebt(it) }
+                backup.weeklyReports.forEach { db.weeklyReportDao().insertReport(it) }
+                backup.userHistories.forEach { db.userHistoryDao().insertHistory(it) }
+                backup.mealTypes.forEach { db.mealTypeDao().insert(it) }
+                backup.weeklyMealRates.forEach { db.weeklyMealRateDao().insert(it) }
+                backup.dailyMealRates.forEach { db.dailyMealRateDao().insert(it) }
+                backup.mealSettings.forEach { db.mealSettingsDao().insert(it) }
+                backup.specialMealDates.forEach { db.specialMealDateDao().insert(it) }
             }
             Result.success(Unit)
         } catch (e: Exception) {

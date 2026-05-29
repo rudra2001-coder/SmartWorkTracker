@@ -65,6 +65,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -74,6 +75,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -81,7 +84,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.Emi
 import com.rudra.smartworktracker.data.entity.EmiStatus
 import com.rudra.smartworktracker.data.entity.Loan
@@ -90,6 +94,16 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,7 +160,9 @@ fun EmiScreen(
             )
             
             TabRow(
-                selectedTabIndex = EmiTab.entries.indexOf(uiState.selectedTab)
+                selectedTabIndex = EmiTab.entries.indexOf(uiState.selectedTab),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 EmiTab.entries.forEach { tab ->
                     Tab(
@@ -246,12 +262,13 @@ fun StatisticsCard(stats: EmiStatistics) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(20.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -263,11 +280,30 @@ fun StatisticsCard(stats: EmiStatistics) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "EMI Overview",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(PillShape)
+                            .background(
+                                Brush.horizontalGradient(listOf(CoralRed, GoldenAmber))
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Payment,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "EMI Overview",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (stats.overdueCount > 0) {
                         Icon(
@@ -391,8 +427,9 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -451,8 +488,11 @@ fun EmiCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -464,24 +504,16 @@ fun EmiCard(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape)
+                            .clip(PillShape)
                             .background(
-                                when (emi.status) {
-                                    EmiStatus.PAID -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                    EmiStatus.OVERDUE -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                }
+                                Brush.horizontalGradient(listOf(SapphireBlue, VioletPurple))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Person,
                             contentDescription = null,
-                            tint = when (emi.status) {
-                                EmiStatus.PAID -> Color(0xFF4CAF50)
-                                EmiStatus.OVERDUE -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.primary
-                            }
+                            tint = Color.White
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -650,8 +682,10 @@ fun StatusChip(status: EmiStatus) {
     }
 
     Card(
+        modifier = Modifier.shadow(6.dp, ChipShape, clip = false),
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.2f)),
-        shape = RoundedCornerShape(16.dp)
+        shape = ChipShape,
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Text(
             text,
@@ -668,7 +702,7 @@ fun StatusChip(status: EmiStatus) {
 fun AddEmiBottomSheet(
     loans: List<Loan>,
     onDismiss: () -> Unit,
-    onSave: (Int, Double, Double, Double, Int, String?, AccountType) -> Unit
+    onSave: (Int, Double, Double, Double, Int, String?, Long) -> Unit
 ) {
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
     var amount by remember { mutableStateOf("") }
@@ -676,7 +710,18 @@ fun AddEmiBottomSheet(
     var interestAmount by remember { mutableStateOf("") }
     var dueDay by remember { mutableStateOf("5") }
     var notes by remember { mutableStateOf("") }
-    var paymentAccount by remember { mutableStateOf(AccountType.BANK) }
+    var selectedPaymentAccountId by remember { mutableStateOf(0L) }
+    
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    var accounts by remember { mutableStateOf<List<Account>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        accounts = db.accountDao().getAllAccountsList()
+        if (accounts.isNotEmpty()) {
+            selectedPaymentAccountId = accounts.first().id
+        }
+    }
     
     var isLoansExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
@@ -701,9 +746,12 @@ fun AddEmiBottomSheet(
             
             if (loans.isEmpty()) {
                 Card(
+                    modifier = Modifier.shadow(6.dp, CardShape, clip = false),
+                    shape = CardShape,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -822,8 +870,9 @@ fun AddEmiBottomSheet(
                 expanded = accountExpanded,
                 onExpandedChange = { accountExpanded = !accountExpanded }
             ) {
+                val selectedAccountName = accounts.find { it.id == selectedPaymentAccountId }?.name ?: "Select Account"
                 OutlinedTextField(
-                    value = paymentAccount.name,
+                    value = selectedAccountName,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Payment Account") },
@@ -836,11 +885,11 @@ fun AddEmiBottomSheet(
                     expanded = accountExpanded,
                     onDismissRequest = { accountExpanded = false }
                 ) {
-                    AccountType.entries.forEach { account ->
+                    accounts.forEach { account ->
                         DropdownMenuItem(
-                            text = { Text(account.name) },
+                            text = { Text("${account.name} (${account.balance.toInt()} BDT)") },
                             onClick = {
-                                paymentAccount = account
+                                selectedPaymentAccountId = account.id
                                 accountExpanded = false
                             }
                         )
@@ -877,7 +926,7 @@ fun AddEmiBottomSheet(
                         val interest = interestAmount.toDoubleOrNull() ?: 0.0
                         val day = dueDay.toIntOrNull() ?: 5
                         
-                        if (loanId > 0 && emiAmountVal > 0 && day in 1..31) {
+                        if (loanId > 0 && emiAmountVal > 0 && day in 1..31 && selectedPaymentAccountId > 0) {
                             onSave(
                                 loanId,
                                 emiAmountVal,
@@ -885,13 +934,14 @@ fun AddEmiBottomSheet(
                                 interest,
                                 day,
                                 notes.takeIf { it.isNotBlank() },
-                                paymentAccount
+                                selectedPaymentAccountId
                             )
                         }
                     },
                     enabled = selectedLoan != null && 
                               (amount.toDoubleOrNull() ?: 0.0) > 0 && 
-                              (dueDay.toIntOrNull() ?: 0) in 1..31
+                              (dueDay.toIntOrNull() ?: 0) in 1..31 &&
+                              selectedPaymentAccountId > 0
                 ) {
                     Text("Add EMI")
                 }

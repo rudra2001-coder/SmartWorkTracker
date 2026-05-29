@@ -80,6 +80,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkType
+import com.rudra.smartworktracker.ui.components.AppColors
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -102,8 +103,8 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
 
     val gradientBackground = Brush.verticalGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.surface
+            AppColors.BlueSurface,
+            AppColors.CardBackground
         )
     )
 
@@ -172,7 +173,7 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        color = AppColors.GraySurface,
                         shadowElevation = 4.dp
                     ) {
                         SingleChoiceSegmentedButtonRow(
@@ -184,15 +185,15 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                                     selected = uiState.selectedCategory == category,
                                     onClick = { viewModel.onCategoryChange(category) },
                                     colors = SegmentedButtonDefaults.colors(
-                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                        activeContainerColor = AppColors.OfficeBlue,
                                         inactiveContainerColor = Color.Transparent
                                     )
                                 ) {
                                     Text(
                                         category.name,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = if (uiState.selectedCategory == category) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (uiState.selectedCategory == category) AppColors.CardBackground
+                                        else AppColors.SecondaryText
                                     )
                                 }
                             }
@@ -205,7 +206,7 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = AppColors.CardBackground,
                         shadowElevation = 8.dp
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -213,7 +214,7 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                                 "Filters",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = AppColors.PrimaryText
                             )
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -539,8 +540,8 @@ fun CustomDateRangeDialog(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (selectedTab == 0)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surface
+                                AppColors.BlueSurface
+                            else AppColors.CardBackground
                         )
                     ) {
                         Column(
@@ -571,8 +572,8 @@ fun CustomDateRangeDialog(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (selectedTab == 1)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surface
+                                AppColors.BlueSurface
+                            else AppColors.CardBackground
                         )
                     ) {
                         Column(
@@ -602,7 +603,7 @@ fun CustomDateRangeDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    color = AppColors.GraySurface.copy(alpha = 0.5f)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -789,7 +790,7 @@ fun SummaryCard(
                 clip = true
             ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = AppColors.CardBackground
         ),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -858,13 +859,13 @@ fun BarChart(income: Double, expense: Double) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+    colors = CardDefaults.cardColors(
+        containerColor = AppColors.GraySurface
+    ),
+    shape = RoundedCornerShape(12.dp),
+    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+) {
+    Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 "Income vs Expense",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -990,7 +991,7 @@ fun PremiumWorkLogItem(workLog: com.rudra.smartworktracker.model.WorkLog) {
             .fillMaxWidth()
             .shadow(4.dp, shape = RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = AppColors.CardBackground
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -1007,13 +1008,13 @@ fun PremiumWorkLogItem(workLog: com.rudra.smartworktracker.model.WorkLog) {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(AppColors.BlueSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Work,
                         contentDescription = "Work",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = AppColors.OfficeBlue,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1036,7 +1037,7 @@ fun PremiumWorkLogItem(workLog: com.rudra.smartworktracker.model.WorkLog) {
                 "$durationInHours hrs",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = AppColors.OfficeBlue
             )
         }
     }
@@ -1049,7 +1050,7 @@ fun PremiumIncomeItem(income: com.rudra.smartworktracker.data.entity.Income) {
             .fillMaxWidth()
             .shadow(4.dp, shape = RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = AppColors.CardBackground
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -1066,13 +1067,13 @@ fun PremiumIncomeItem(income: com.rudra.smartworktracker.data.entity.Income) {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFe8f5e8)),
+                        .background(AppColors.GreenSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.TrendingUp,
                         contentDescription = "Income",
-                        tint = Color(0xFF2e7d32),
+                        tint = AppColors.IncomeGreen,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1082,12 +1083,12 @@ fun PremiumIncomeItem(income: com.rudra.smartworktracker.data.entity.Income) {
                         "Income",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = AppColors.PrimaryText
                     )
                     Text(
                         income.category,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = AppColors.SecondaryText
                     )
                 }
             }
@@ -1095,7 +1096,7 @@ fun PremiumIncomeItem(income: com.rudra.smartworktracker.data.entity.Income) {
                 "৳${income.amount}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2e7d32)
+                color = AppColors.IncomeGreen
             )
         }
     }
@@ -1106,12 +1107,11 @@ fun PremiumExpenseItem(expense: com.rudra.smartworktracker.model.Expense) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, shape = RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = AppColors.RedSurface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -1125,13 +1125,13 @@ fun PremiumExpenseItem(expense: com.rudra.smartworktracker.model.Expense) {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFffebee)),
+                        .background(AppColors.RedSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Wallet,
                         contentDescription = "Expense",
-                        tint = Color(0xFFc62828),
+                        tint = AppColors.ExpenseRed,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1141,12 +1141,12 @@ fun PremiumExpenseItem(expense: com.rudra.smartworktracker.model.Expense) {
                         "Expense",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = AppColors.PrimaryText
                     )
                     Text(
                         expense.category.name,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = AppColors.SecondaryText
                     )
                 }
             }
@@ -1154,7 +1154,7 @@ fun PremiumExpenseItem(expense: com.rudra.smartworktracker.model.Expense) {
                 "৳${expense.amount}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFc62828)
+                color = AppColors.ExpenseRed
             )
         }
     }
