@@ -41,6 +41,7 @@ enum class ExpenseCategory(val displayName: String) {
     GIFTS("Gifts"),
     TRAVEL("Travel"),
     SUBSCRIPTIONS("Subscriptions"),
+    TRANSFER_FEE("Transfer Fee"),
     OTHER("Other");
 
     val color: Color
@@ -56,6 +57,7 @@ enum class ExpenseCategory(val displayName: String) {
             GIFTS -> Color(0xFFE91E63)
             TRAVEL -> Color(0xFF00BCD4)
             SUBSCRIPTIONS -> Color(0xFF9C27B0)
+            TRANSFER_FEE -> Color(0xFFFF6B35)
             OTHER -> Color(0xFF9E9E9E)
         }
 }

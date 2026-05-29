@@ -1,11 +1,14 @@
 package com.rudra.smartworktracker.engine
 
 import com.rudra.smartworktracker.data.dao.AccountDao
+import com.rudra.smartworktracker.data.dao.ExpenseDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.TransactionType
+import com.rudra.smartworktracker.model.Expense
+import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -13,13 +16,16 @@ import java.util.*
 
 class FusionEngine(
     private val accountDao: AccountDao,
-    private val financialTransactionDao: FinancialTransactionDao
+    private val financialTransactionDao: FinancialTransactionDao,
+    private val expenseDao: ExpenseDao? = null
 ) {
     suspend fun processTransfer(
         fromAccountId: Long,
         toAccountId: Long,
         amount: Double,
-        note: String?
+        note: String?,
+        transferFee: Double = 0.0,
+        cashOutFee: Double = 0.0
     ): FusionResult {
         val fromAccount = accountDao.getAccountById(fromAccountId)
             ?: return FusionResult.Error("Source account not found")
@@ -27,20 +33,26 @@ class FusionEngine(
         val toAccount = accountDao.getAccountById(toAccountId)
             ?: return FusionResult.Error("Destination account not found")
 
-        if (fromAccount.balance < amount) {
-            return FusionResult.Error("Insufficient balance in ${fromAccount.name}")
+        val totalFee = transferFee + cashOutFee
+        val totalDeduction = amount + totalFee
+
+        if (fromAccount.balance < totalDeduction) {
+            val needed = if (totalFee > 0) {
+                " (Amount: ৳${amount.toInt()} + Fees: ৳${totalFee.toInt()})"
+            } else ""
+            return FusionResult.Error("Insufficient balance in ${fromAccount.name}$needed")
         }
 
         val effectiveLimit = fromAccount.getEffectiveLimit()
         if (effectiveLimit != null) {
             val todayTotal = getTodayTransferTotal(fromAccountId)
-            if (todayTotal + amount > effectiveLimit) {
+            if (todayTotal + totalDeduction > effectiveLimit) {
                 return FusionResult.Error("Daily limit exceeded (${effectiveLimit.toInt()} BDT)")
             }
         }
 
         val timestamp = System.currentTimeMillis()
-        accountDao.updateBalance(fromAccountId, fromAccount.balance - amount, timestamp)
+        accountDao.updateBalance(fromAccountId, fromAccount.balance - totalDeduction, timestamp)
         accountDao.updateBalance(toAccountId, toAccount.balance + amount, timestamp)
 
         val transaction = FinancialTransaction(
@@ -53,14 +65,47 @@ class FusionEngine(
         )
         financialTransactionDao.insertTransaction(transaction)
 
+        if (transferFee > 0) {
+            val feeNote = "Transfer fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}"
+            recordFee(fromAccountId, transferFee, feeNote, timestamp)
+        }
+
+        if (cashOutFee > 0) {
+            val feeNote = "Cash out fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}"
+            recordFee(fromAccountId, cashOutFee, feeNote, timestamp)
+        }
+
         updateInsights(fromAccount, toAccount, amount)
         checkGoalProgress(toAccount, amount)
 
         return FusionResult.Success(
-            fromAccount = fromAccount.copy(balance = fromAccount.balance - amount),
+            fromAccount = fromAccount.copy(balance = fromAccount.balance - totalDeduction),
             toAccount = toAccount.copy(balance = toAccount.balance + amount),
-            transaction = transaction
+            transaction = transaction,
+            totalFee = totalFee
         )
+    }
+
+    private suspend fun recordFee(accountId: Long, amount: Double, note: String, timestamp: Long) {
+        val expenseDao = expenseDao ?: return
+        val expense = Expense(
+            amount = amount,
+            category = ExpenseCategory.TRANSFER_FEE,
+            accountId = accountId,
+            notes = note,
+            timestamp = timestamp
+        )
+        expenseDao.insertExpense(expense)
+
+        val feeTransaction = FinancialTransaction(
+            type = TransactionType.EXPENSE,
+            amount = amount,
+            sourceAccountId = accountId,
+            note = note,
+            date = timestamp,
+            category = ExpenseCategory.TRANSFER_FEE.name
+        )
+        financialTransactionDao.insertTransaction(feeTransaction)
     }
 
     suspend fun getTodayTransferTotal(accountId: Long): Double {
@@ -186,7 +231,8 @@ sealed class FusionResult {
     data class Success(
         val fromAccount: Account,
         val toAccount: Account,
-        val transaction: FinancialTransaction
+        val transaction: FinancialTransaction,
+        val totalFee: Double = 0.0
     ) : FusionResult()
     
     data class Error(val message: String) : FusionResult()

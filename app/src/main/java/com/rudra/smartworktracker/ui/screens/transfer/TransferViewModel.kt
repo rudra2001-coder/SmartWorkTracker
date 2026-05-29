@@ -15,7 +15,7 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
 
     private val db = AppDatabase.getDatabase(application)
     private val accountRepository = AccountRepository(db.accountDao())
-    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao())
+    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao(), db.expenseDao())
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
@@ -39,15 +39,25 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun makeTransfer(fromAccount: Account, toAccount: Account, amount: Double, notes: String?) {
-        viewModelScope.launch {
-            _transferState.value = TransferState.Loading
+    fun makeTransfer(
+        fromAccount: Account,
+        toAccount: Account,
+        amount: Double,
+        notes: String?,
+        transferFee: Double = 0.0,
+        cashOutFee: Double = 0.0
+    ) {
+        if (_transferState.value is TransferState.Loading) return
+        _transferState.value = TransferState.Loading
 
+        viewModelScope.launch {
             val result = fusionEngine.processTransfer(
                 fromAccountId = fromAccount.id,
                 toAccountId = toAccount.id,
                 amount = amount,
-                note = notes
+                note = notes,
+                transferFee = transferFee,
+                cashOutFee = cashOutFee
             )
 
             when (result) {
@@ -55,7 +65,8 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
                     _transferState.value = TransferState.Success(
                         fromAccount = result.fromAccount,
                         toAccount = result.toAccount,
-                        amount = amount
+                        amount = amount,
+                        totalFee = result.totalFee
                     )
                     _error.value = null
                 }
@@ -72,7 +83,13 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
         _error.value = null
     }
 
-    fun validateTransfer(fromAccount: Account?, toAccount: Account?, amountStr: String): ValidationResult {
+    fun validateTransfer(
+        fromAccount: Account?,
+        toAccount: Account?,
+        amountStr: String,
+        transferFeeStr: String = "",
+        cashOutFeeStr: String = ""
+    ): ValidationResult {
         if (fromAccount == null) {
             return ValidationResult.Error("Please select source account")
         }
@@ -87,8 +104,16 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
         if (amount == null || amount <= 0) {
             return ValidationResult.Error("Please enter a valid amount")
         }
-        if (amount > fromAccount.balance) {
-            return ValidationResult.Error("Insufficient balance (Available: ৳ ${fromAccount.balance.toInt()})")
+
+        val transferFee = transferFeeStr.toDoubleOrNull() ?: 0.0
+        val cashOutFee = cashOutFeeStr.toDoubleOrNull() ?: 0.0
+        val totalDeduction = amount + transferFee + cashOutFee
+
+        if (totalDeduction > fromAccount.balance) {
+            val needed = if (transferFee > 0 || cashOutFee > 0) {
+                " (Amount: ৳${amount.toInt()} + Fees: ৳${(transferFee + cashOutFee).toInt()})"
+            } else ""
+            return ValidationResult.Error("Insufficient balance (Available: ৳ ${fromAccount.balance.toInt()})$needed")
         }
 
         return ValidationResult.Valid
@@ -101,7 +126,8 @@ sealed class TransferState {
     data class Success(
         val fromAccount: Account,
         val toAccount: Account,
-        val amount: Double
+        val amount: Double,
+        val totalFee: Double = 0.0
     ) : TransferState()
     data class Error(val message: String) : TransferState()
 }

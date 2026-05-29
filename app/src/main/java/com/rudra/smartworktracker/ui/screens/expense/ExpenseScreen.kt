@@ -195,6 +195,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                                                     ExpenseCategory.GIFTS -> Icons.Default.CardGiftcard
                                                     ExpenseCategory.TRAVEL -> Icons.Default.Flight
                                                     ExpenseCategory.SUBSCRIPTIONS -> Icons.Default.Subscriptions
+                                                    ExpenseCategory.TRANSFER_FEE -> Icons.Default.Payment
                                                     ExpenseCategory.OTHER -> Icons.AutoMirrored.Filled.List
                                                 }
                                                 Icon(icon, contentDescription = category.name, tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))

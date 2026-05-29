@@ -1917,5 +1917,6 @@ val ExpenseCategory.color: Color
         GIFTS -> Color(0xFFF59E0B)
         TRAVEL -> Color(0xFF0EA5E9)
         SUBSCRIPTIONS -> Color(0xFF7C3AED)
+        TRANSFER_FEE -> Color(0xFFFF6B35)
         OTHER -> Color(0xFF64748B)
     }

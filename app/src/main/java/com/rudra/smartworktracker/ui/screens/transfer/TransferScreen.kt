@@ -62,12 +62,15 @@ fun TransferScreen() {
     }
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var transferFee by remember { mutableStateOf("") }
+    var cashOutFee by remember { mutableStateOf("") }
+    var showFees by remember { mutableStateOf(false) }
 
     var showFromSelector by remember { mutableStateOf(false) }
     var showToSelector by remember { mutableStateOf(false) }
     var showConfirmation by remember { mutableStateOf(false) }
 
-    val validationResult = viewModel.validateTransfer(fromAccount, toAccount, amount)
+    val validationResult = viewModel.validateTransfer(fromAccount, toAccount, amount, transferFee, cashOutFee)
 
     LaunchedEffect(transferState) {
         if (transferState is TransferState.Success) {
@@ -161,15 +164,69 @@ fun TransferScreen() {
             }
 
             item {
+                val feeAmount = (transferFee.toDoubleOrNull() ?: 0.0) + (cashOutFee.toDoubleOrNull() ?: 0.0)
+                val totalAmount = (amount.toDoubleOrNull() ?: 0.0) + feeAmount
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Fee: ৳ 0 (within app)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(ChipShape)
+                            .clickable { showFees = !showFees }
+                            .background(
+                                brush = Brush.horizontalGradient(listOf(GoldenAmber, CoralRed)),
+                                shape = ChipShape
+                            )
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = if (showFees) "▼ Fees & Charges" else "▶ Fees & Charges",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (feeAmount > 0) {
+                            Text(
+                                text = "৳ ${String.format(Locale.getDefault(), "%,.0f", feeAmount)}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
+                    if (showFees) {
+                        OutlinedTextField(
+                            value = transferFee,
+                            onValueChange = {
+                                if (it.isEmpty() || it.all { c -> c.isDigit() || c == '.' }) {
+                                    transferFee = it
+                                }
+                            },
+                            label = { Text("Transfer Fee (Optional)") },
+                            prefix = { Text("৳ ") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = cashOutFee,
+                            onValueChange = {
+                                if (it.isEmpty() || it.all { c -> c.isDigit() || c == '.' }) {
+                                    cashOutFee = it
+                                }
+                            },
+                            label = { Text("Cash Out Fee (Optional)") },
+                            prefix = { Text("৳ ") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Total: ৳ ${amount.ifEmpty { "0" }}",
+                        text = "Total: ৳ ${String.format(Locale.getDefault(), "%,.0f", totalAmount)}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -206,14 +263,22 @@ fun TransferScreen() {
             item {
                 Button(
                     onClick = { 
-                        if (validationResult is ValidationResult.Valid) {
-                            viewModel.makeTransfer(fromAccount!!, toAccount!!, amount.toDouble(), notes.ifEmpty { null })
+                        if (validationResult is ValidationResult.Valid && transferState !is TransferState.Loading) {
+                            viewModel.makeTransfer(
+                                fromAccount = fromAccount!!,
+                                toAccount = toAccount!!,
+                                amount = amount.toDouble(),
+                                notes = notes.ifEmpty { null },
+                                transferFee = transferFee.toDoubleOrNull() ?: 0.0,
+                                cashOutFee = cashOutFee.toDoubleOrNull() ?: 0.0
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = fromAccount != null && toAccount != null && amount.isNotBlank() && 
                              fromAccount?.id != toAccount?.id && amount.toDoubleOrNull() != null &&
-                             (amount.toDoubleOrNull() ?: 0.0) > 0
+                             (amount.toDoubleOrNull() ?: 0.0) > 0 &&
+                             transferState !is TransferState.Loading
                 ) {
                     Icon(Icons.Default.SwapHoriz, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -256,12 +321,16 @@ fun TransferScreen() {
                 amount = state.amount,
                 fromAccount = state.fromAccount,
                 toAccount = state.toAccount,
+                totalFee = state.totalFee,
                 onDismiss = {
                     showConfirmation = false
                     fromAccount = null
                     toAccount = null
                     amount = ""
                     notes = ""
+                    transferFee = ""
+                    cashOutFee = ""
+                    showFees = false
                     viewModel.resetState()
                 }
             )
@@ -473,6 +542,7 @@ fun TransferSuccessDialog(
     amount: Double,
     fromAccount: Account,
     toAccount: Account,
+    totalFee: Double = 0.0,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -487,13 +557,20 @@ fun TransferSuccessDialog(
                     text = "৳ ${String.format(Locale.getDefault(), "%,.0f", amount)} moved from ${fromAccount.nickname ?: fromAccount.name} → ${toAccount.nickname ?: toAccount.name}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (totalFee > 0) {
+                    Text(
+                        text = "Fees charged: ৳ ${String.format(Locale.getDefault(), "%,.0f", totalFee)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoralRed
+                    )
+                }
                 HorizontalDivider()
                 Text(
                     text = "New balances:",
                     style = MaterialTheme.typography.titleSmall
                 )
                 Text(
-                    text = "• ${fromAccount.nickname ?: fromAccount.name}: ৳ ${String.format(Locale.getDefault(), "%,.0f", fromAccount.balance)} (was ${String.format(Locale.getDefault(), "%,.0f", fromAccount.balance + amount)})",
+                    text = "• ${fromAccount.nickname ?: fromAccount.name}: ৳ ${String.format(Locale.getDefault(), "%,.0f", fromAccount.balance)} (was ${String.format(Locale.getDefault(), "%,.0f", fromAccount.balance + amount + totalFee)})",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
