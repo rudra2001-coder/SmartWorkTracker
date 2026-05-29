@@ -225,6 +225,24 @@ Quarterly = Total × 3, Yearly = Total × 12
   - Comparison card (if toggled) showing side-by-side current vs previous metrics with percentage change
 - **Factory** (`MonthlyReportViewModelFactory.kt`): Now passes `ExpenseRepository`, `IncomeRepository`, and `AppDatabase` in addition to `WorkLogRepository`.
 
+### Analytics Screen (ui/screens/analytics/) — Upgraded May 2026
+- **Goal**: Align Analytics screen UI with Dashboard design language for visual consistency
+- **Design tokens replaced**: Old 6-color palette (`AccentBlue`, `AccentGreen`, `AccentAmber`, `AccentRed`, `AccentPurple`, `AccentCyan`) → Dashboard's 5-color system (`EmeraldGreen`, `CoralRed`, `SapphireBlue`, `GoldenAmber`, `VioletPurple`) + surface tints (`GreenSurface`, `RedSurface`, `BlueSurface`, `AmberSurface`, `PurpleSurface`)
+- **Card styling**: All 11 cards updated to use `CardShape = RoundedCornerShape(20.dp)`, `Modifier.shadow(8.dp, CardShape)` elevation, `CardDefaults.cardElevation(0.dp)`, and gradient icon boxes (`Brush.linearGradient`) as card headers
+- **Components upgraded**:
+  - **DashboardHeader**: Added shadow to back button, pill-style score badge with `GoldenAmber` tint
+  - **KPI Strip**: Redesigned with `GlassMetricCard` style — colored surface backgrounds, shadow, rounded icon containers
+  - **BalanceRingCard**: Added gradient icon box header (`SapphireBlue→VioletPurple`)
+  - **FinancialOverviewCard**: Added gradient icon box header (`EmeraldGreen→SapphireBlue`), updated divider/surface styling
+  - **MonthlyBarChartCard**: Added gradient icon box header (`SapphireBlue→EmeraldGreen`), **new income/expense value rows** below the bar chart — first row shows green income values for all 6 months, second row shows red expense values, giving an at-a-glance trend overview without tapping individual bars
+  - **ProductivityRingCard / HabitStreakCard**: Updated shadow and color tokens
+  - **WellnessGrid**: Updated cards with shadow and new colors
+  - **FocusTimelineCard**: Added gradient icon box header (`SapphireBlue→VioletPurple`), updated split bar colors
+  - **WeeklyPulseChart**: Added gradient icon box header (`SapphireBlue→VioletPurple`), updated bar colors
+  - **AchievementsRow**: Replaced custom Box borders with `Card` + shadow
+- **Cleanup**: Removed duplicate `SummaryItem` data class, removed leftover old FocusTimelineCard code block, removed `BorderStroke` import
+- **Files**: `AnalyticsScreen.kt` (all UI changes), `AnalyticsViewModel.kt` (unchanged), `AnalyticsViewModelFactory.kt` (unchanged)
+
 ### Calculation Module Bug Fixes (Applied May 22 2026)
 | File | Bug | Fix |
 |---|---|---|
