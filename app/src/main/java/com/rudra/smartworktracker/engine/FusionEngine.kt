@@ -1,14 +1,11 @@
 package com.rudra.smartworktracker.engine
 
 import com.rudra.smartworktracker.data.dao.AccountDao
-import com.rudra.smartworktracker.data.dao.ExpenseDao
 import com.rudra.smartworktracker.data.dao.FinancialTransactionDao
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.TransactionType
-import com.rudra.smartworktracker.model.Expense
-import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -16,8 +13,7 @@ import java.util.*
 
 class FusionEngine(
     private val accountDao: AccountDao,
-    private val financialTransactionDao: FinancialTransactionDao,
-    private val expenseDao: ExpenseDao? = null
+    private val financialTransactionDao: FinancialTransactionDao
 ) {
     suspend fun processTransfer(
         fromAccountId: Long,
@@ -52,7 +48,9 @@ class FusionEngine(
         }
 
         val timestamp = System.currentTimeMillis()
-        accountDao.updateBalance(fromAccountId, fromAccount.balance - totalDeduction, timestamp)
+
+        // Deduct only the transfer amount (fees deducted separately below)
+        accountDao.updateBalance(fromAccountId, fromAccount.balance - amount, timestamp)
         accountDao.updateBalance(toAccountId, toAccount.balance + amount, timestamp)
 
         val transaction = FinancialTransaction(
@@ -66,13 +64,11 @@ class FusionEngine(
         financialTransactionDao.insertTransaction(transaction)
 
         if (transferFee > 0) {
-            val feeNote = "Transfer fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}"
-            recordFee(fromAccountId, transferFee, feeNote, timestamp)
+            recordFee(fromAccountId, transferFee, "Transfer fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}", timestamp)
         }
 
         if (cashOutFee > 0) {
-            val feeNote = "Cash out fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}"
-            recordFee(fromAccountId, cashOutFee, feeNote, timestamp)
+            recordFee(fromAccountId, cashOutFee, "Cash out fee for: ${note ?: "Transfer from ${fromAccount.name} to ${toAccount.name}"}", timestamp)
         }
 
         updateInsights(fromAccount, toAccount, amount)
@@ -86,26 +82,21 @@ class FusionEngine(
         )
     }
 
-    private suspend fun recordFee(accountId: Long, amount: Double, note: String, timestamp: Long) {
-        val expenseDao = expenseDao ?: return
-        val expense = Expense(
-            amount = amount,
-            category = ExpenseCategory.TRANSFER_FEE,
-            accountId = accountId,
-            notes = note,
-            timestamp = timestamp
+    private suspend fun recordFee(accountId: Long, feeAmount: Double, note: String, timestamp: Long) {
+        val account = accountDao.getAccountById(accountId)
+        if (account != null) {
+            accountDao.updateBalance(accountId, account.balance - feeAmount, timestamp)
+        }
+        financialTransactionDao.insertTransaction(
+            FinancialTransaction(
+                type = TransactionType.EXPENSE,
+                amount = feeAmount,
+                sourceAccountId = accountId,
+                note = note,
+                date = timestamp,
+                category = "TRANSFER_FEE"
+            )
         )
-        expenseDao.insertExpense(expense)
-
-        val feeTransaction = FinancialTransaction(
-            type = TransactionType.EXPENSE,
-            amount = amount,
-            sourceAccountId = accountId,
-            note = note,
-            date = timestamp,
-            category = ExpenseCategory.TRANSFER_FEE.name
-        )
-        financialTransactionDao.insertTransaction(feeTransaction)
     }
 
     suspend fun getTodayTransferTotal(accountId: Long): Double {

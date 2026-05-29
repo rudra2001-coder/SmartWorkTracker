@@ -15,7 +15,7 @@ class TransferViewModel(application: Application) : AndroidViewModel(application
 
     private val db = AppDatabase.getDatabase(application)
     private val accountRepository = AccountRepository(db.accountDao())
-    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao(), db.expenseDao())
+    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao())
 
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
