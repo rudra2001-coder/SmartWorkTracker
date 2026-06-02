@@ -314,3 +314,22 @@ All existing public signatures preserved:
 | `WorkLogRepository.kt:19-24` | Repository passed no timezone context to `getTodayWorkLog` query | Computes local `startOfDay`/`endOfDay` via `java.time.LocalDate` + `ZoneId.systemDefault()` |
 | `data/entity/WorkLog.kt` | Empty (0 bytes) duplicate file — actual entity is `model/WorkLog.kt` | Deleted |
 | `data/local/DateConverter.kt` | Empty (0 bytes), unused — `TypeConverters.kt` + `Converters.kt` handle all type conversions | Deleted |
+
+### Dashboard Monthly Stats — Timezone Fix (Applied June 2026)
+**Goal**: Fix Dashboard monthly work summary showing wrong counts due to UTC-based SQL date filtering.
+
+**Root cause**: Work log dates are stored as UTC epoch millis (`LocalDate.atStartOfDay(zone).toInstant()`). For Bangladesh (UTC+6), **June 1** local = **May 31** 18:00 UTC. DAO queries used `strftime('%Y-%m', date/1000, 'unixepoch')` which operates in **UTC**, shifting ALL dates one month back in the Dashboard. The Calendar avoided this by filtering `LocalDate` in-app.
+
+**Fix**: Replaced all `strftime`-based month/year queries in `WorkLogDao.kt` with millisecond range queries (`WHERE date >= :start AND date <= :end`) computed in local timezone.
+
+| File | Bug | Fix |
+|---|---|---|
+| `WorkLogDao.kt:40-41` | `countByTypeFlow` used UTC `strftime('%Y-%m', date/1000, 'unixepoch')` — mismatched local dates by timezone offset | Replaced with `countByTypeInRange(startOfMonth, endOfMonth, workType)` using local-time millis bounds |
+| `WorkLogDao.kt:62-73` | `getTotalExtraHoursFlow` same UTC strftime issue | Replaced with `getTotalExtraHoursInRange(startOfMonth, endOfMonth, workType)` using local-time millis bounds |
+| `WorkLogDao.kt:75-76` | `getOvertimeLogsByMonth` same UTC strftime issue | Added `getOvertimeLogsInRange(startOfMonth, endOfMonth)` half-open range variant |
+| `WorkLogDao.kt:84-88` | `getOvertimeLogsByYear` same UTC strftime issue for year queries | Added `getOvertimeLogsInYearRange(startOfYear, endOfYear)` half-open range variant |
+| `WorkLogDao.kt:43-44` | `getWorkLogsByMonth` same UTC strftime issue | Added `getWorkLogsInRange(startOfMonth, endOfMonth)` half-open range variant |
+| `WorkLogRepository.kt:23-53` | `getMonthlyStats()` captured `monthYear` from UTC `Calendar.getInstance()` — dates shifted to wrong month | Now computes `startOfMonth`/`endOfMonth` via `LocalDate.now().withDayOfMonth(1).atStartOfDay(zone)` and passes to range-based DAO methods |
+| `DashboardViewModel.kt:66,95` | `loadDashboardData()` computed `monthYear` for `getOvertimeLogsByMonth` using UTC-based `SimpleDateFormat` | Removed `monthYear`, passes existing local-time `startTime`/`endTime` to `getOvertimeLogsInRange` |
+| `OvertimeViewModel.kt:40-51` | `loadOvertimeData()` used UTC-based `monthYear`/`year` from `SimpleDateFormat` | Now computes `startOfMonth`/`endOfMonth` and `startOfYear`/`endOfYear` via `LocalDate` local-timezone; uses `getOvertimeLogsInRange`/`getOvertimeLogsInYearRange` |
+| `CalculationViewModel.kt:114-115,227-228` | `runFullCalculation`/`fetchMonthlyBreakdown` used UTC `monthYearFormat` with `getWorkLogsByMonth` | Replaced with `getWorkLogsInRange` using local-time millis bounds from Calendar instance |
