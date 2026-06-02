@@ -88,11 +88,17 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -372,7 +378,7 @@ fun NetBalanceHeroCard(
         animatedBalance = financialSummary.netSavings
     }
 
-    var showColorMenu by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
     var showAccountMenu by remember { mutableStateOf(false) }
 
     val selectedAccountName = remember(heroAccountId, accounts) {
@@ -404,7 +410,24 @@ fun NetBalanceHeroCard(
                     }
                     DropdownMenu(expanded = showAccountMenu, onDismissRequest = { showAccountMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("All-Time Net Balance") },
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Icon(Icons.Outlined.ShowChart, contentDescription = null, modifier = Modifier.size(16.dp), tint = SapphireBlue)
+                                        Text("All-Time Net Balance", fontWeight = if (heroAccountId == 0L) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                    Text(
+                                        "৳${"%,.0f".format(financialSummary.allTimeIncome - financialSummary.allTimeExpense)}",
+                                        style = typography.labelSmall,
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            },
                             onClick = {
                                 onAccountSelected(0L)
                                 showAccountMenu = false
@@ -412,7 +435,31 @@ fun NetBalanceHeroCard(
                         )
                         accounts.forEach { account ->
                             DropdownMenuItem(
-                                text = { Text(account.name) },
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(
+                                                        if (account.balance > 0) EmeraldGreen else CoralRed,
+                                                        CircleShape
+                                                    )
+                                            )
+                                            Text(account.name, fontWeight = if (heroAccountId == account.id) FontWeight.Bold else FontWeight.Normal)
+                                        }
+                                        Text(
+                                            "৳${"%,.0f".format(account.balance)}",
+                                            style = typography.labelSmall,
+                                            color = colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                },
                                 onClick = {
                                     onAccountSelected(account.id)
                                     showAccountMenu = false
@@ -423,36 +470,8 @@ fun NetBalanceHeroCard(
                 }
                 
                 Box {
-                    IconButton(onClick = { showColorMenu = true }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Outlined.ColorLens, contentDescription = "Change Color", tint = SlateGray, modifier = Modifier.size(18.dp))
-                    }
-                    DropdownMenu(expanded = showColorMenu, onDismissRequest = { showColorMenu = false }) {
-                        val colors = listOf(
-                            "#FFFFFF" to "White",
-                            "#E6FBF4" to "Emerald",
-                            "#FFEDED" to "Rose",
-                            "#EFF6FF" to "Blue",
-                            "#FFFBEB" to "Amber",
-                            "#F5F3FF" to "Violet",
-                            "#F1F5F9" to "Slate",
-                            "#E0F2FE" to "Sky",
-                            "#F0FDF4" to "Green",
-                            "#FFF1F2" to "Pink"
-                        )
-                        colors.forEach { (hex, name) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Box(modifier = Modifier.size(16.dp).background(Color(android.graphics.Color.parseColor(hex)), CircleShape).border(1.dp, Color.Gray, CircleShape))
-                                        Text(name)
-                                    }
-                                },
-                                onClick = {
-                                    onColorSelected(hex)
-                                    showColorMenu = false
-                                }
-                            )
-                        }
+                    IconButton(onClick = { showColorPicker = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.ColorLens, contentDescription = "Customize Color", tint = SlateGray, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -522,6 +541,16 @@ fun NetBalanceHeroCard(
             )
         }
     }
+
+    if (showColorPicker) {
+        HeroColorPickerDialog(
+            currentColor = heroColor,
+            onColorSelected = { hex ->
+                onColorSelected(hex)
+            },
+            onDismiss = { showColorPicker = false }
+        )
+    }
 }
 
 @Composable
@@ -570,6 +599,220 @@ private fun AllTimeIncomeExpenseBar(income: Double, expense: Double) {
                     )
             )
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero Color Picker Dialog (upgraded from preset dropdown to full custom picker)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun HeroColorPickerDialog(
+    currentColor: String,
+    onColorSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val presetColors = listOf(
+        "#FFFFFF" to "White", "#E6FBF4" to "Emerald", "#FFEDED" to "Rose",
+        "#EFF6FF" to "Blue", "#FFFBEB" to "Amber", "#F5F3FF" to "Violet",
+        "#F1F5F9" to "Slate", "#E0F2FE" to "Sky", "#F0FDF4" to "Green",
+        "#FFF1F2" to "Pink", "#FEF2F2" to "Light Red", "#FDF2F8" to "Magenta",
+        "#ECFDF5" to "Mint", "#FEF9C3" to "Yellow", "#F3E8FF" to "Lavender",
+        "#ECFEFF" to "Cyan"
+    )
+
+    val initArgb = remember {
+        try { android.graphics.Color.parseColor(currentColor) } catch (_: Exception) { android.graphics.Color.WHITE }
+    }
+    val initHsv = remember {
+        FloatArray(3).also { android.graphics.Color.colorToHSV(initArgb, it) }
+    }
+
+    var hue by remember { mutableFloatStateOf(initHsv[0]) }
+    var saturation by remember { mutableFloatStateOf(initHsv[1]) }
+    var brightness by remember { mutableFloatStateOf(initHsv[2]) }
+    var selectedHex by remember { mutableStateOf(currentColor) }
+    var isCustom by remember { mutableStateOf(false) }
+    var hexInput by remember { mutableStateOf(currentColor.removePrefix("#")) }
+
+    val previewArgb = remember(hue, saturation, brightness) {
+        android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, brightness))
+    }
+    val previewColor = remember(previewArgb) { Color(previewArgb) }
+    val previewHex = remember(previewArgb) {
+        String.format("#%06X", 0xFFFFFF and previewArgb)
+    }
+
+    LaunchedEffect(previewHex) {
+        if (isCustom) {
+            hexInput = previewHex.removePrefix("#")
+            selectedHex = previewHex
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Palette, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(22.dp))
+                Text("Customize Hero Color", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Preset colors
+                Text("Preset Colors", style = typography.labelLarge, fontWeight = FontWeight.SemiBold)
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    presetColors.chunked(4).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { (hex, name) ->
+                                val isSel = hex.equals(selectedHex, ignoreCase = true)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(android.graphics.Color.parseColor(hex)))
+                                            .then(
+                                                if (isSel) Modifier.border(2.dp, SapphireBlue, RoundedCornerShape(8.dp))
+                                                else Modifier.border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                            )
+                                            .clickable {
+                                                selectedHex = hex
+                                                hexInput = hex.removePrefix("#")
+                                                isCustom = false
+                                                val c = android.graphics.Color.parseColor(hex)
+                                                val h = FloatArray(3)
+                                                android.graphics.Color.colorToHSV(c, h)
+                                                hue = h[0]; saturation = h[1]; brightness = h[2]
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSel) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = if (hex == "#FFFFFF") SapphireBlue else Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        name,
+                                        style = typography.labelSmall.copy(fontSize = 9.sp),
+                                        color = colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                // Custom color section
+                Text("Custom Color", style = typography.labelLarge, fontWeight = FontWeight.SemiBold)
+
+                val thumbColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, brightness)))
+
+                ColorSlider("Hue", hue, { hue = it; isCustom = true }, 0f..360f, thumbColor) { "${it.toInt()}°" }
+                ColorSlider("Saturation", saturation, { saturation = it; isCustom = true }, 0f..1f, thumbColor) { "${(it * 100).toInt()}%" }
+                ColorSlider("Brightness", brightness, { brightness = it; isCustom = true }, 0f..1f, thumbColor) { "${(it * 100).toInt()}%" }
+
+                // Hex input
+                OutlinedTextField(
+                    value = "#$hexInput",
+                    onValueChange = { v ->
+                        val clean = v.replace("#", "").take(6).filter { it.isDigit() || it.uppercase() in "ABCDEF" }
+                        hexInput = clean
+                        if (clean.length == 6) {
+                            try {
+                                val c = android.graphics.Color.parseColor("#$clean")
+                                val h = FloatArray(3)
+                                android.graphics.Color.colorToHSV(c, h)
+                                hue = h[0]; saturation = h[1]; brightness = h[2]
+                                selectedHex = "#$clean"
+                                isCustom = true
+                            } catch (_: Exception) {}
+                        }
+                    },
+                    label = { Text("Hex Code") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = SapphireBlue,
+                        cursorColor = SapphireBlue
+                    ),
+                    supportingText = { Text("Enter a 6-digit hex (e.g. FF5733)", style = typography.labelSmall) }
+                )
+
+                // Preview
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(previewColor)
+                        .border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (selectedHex == "#FFFFFF") "Current: White" else selectedHex.uppercase(),
+                        color = if (brightness < 0.5f) Color.White else Color.Black,
+                        style = typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onColorSelected(selectedHex); onDismiss() }) {
+                Text("Apply", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+private fun ColorSlider(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    thumbColor: Color,
+    formatValue: (Float) -> String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = typography.labelSmall, color = colorScheme.onSurfaceVariant)
+            Text(formatValue(value), style = typography.labelSmall, color = colorScheme.onSurfaceVariant)
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            colors = SliderDefaults.colors(
+                thumbColor = thumbColor,
+                activeTrackColor = thumbColor,
+                inactiveTrackColor = thumbColor.copy(alpha = 0.2f)
+            )
+        )
     }
 }
 
