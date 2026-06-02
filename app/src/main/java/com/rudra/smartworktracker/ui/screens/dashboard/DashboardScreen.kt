@@ -137,6 +137,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.Account
+import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
@@ -232,7 +234,7 @@ fun DashboardScreen(
                     onAccountSelected = { viewModel.updateHeroAccountId(it) }
                 )
             }
-            item { AccountBalanceCard(totalBalance = uiState.financialSummary.totalBalance) }
+            item { AccountBalanceCard(accounts = uiState.accounts, totalBalance = uiState.financialSummary.totalBalance) }
             item { TripleMetricRow(financialSummary = uiState.financialSummary) }
             item { DailySnapshotCard(financialSummary = uiState.financialSummary) }
             item { SavingsRatioCard(financialSummary = uiState.financialSummary) }
@@ -817,21 +819,28 @@ private fun ColorSlider(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Account Balance Card — Shows total balance across all accounts
+// Account Balance Card — Shows individual accounts with balance > 0 + total
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun AccountBalanceCard(totalBalance: Double) {
-    var animatedBalance by remember { mutableDoubleStateOf(0.0) }
-    val animatedValue by animateFloatAsState(
-        targetValue = animatedBalance.toFloat(),
+fun AccountBalanceCard(
+    accounts: List<Account>,
+    totalBalance: Double
+) {
+    val activeAccounts = remember(accounts) {
+        accounts.filter { it.balance > 0 }
+    }
+
+    var animatedTotal by remember { mutableDoubleStateOf(0.0) }
+    val animatedTotalValue by animateFloatAsState(
+        targetValue = animatedTotal.toFloat(),
         animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-        label = "account_balance_anim"
+        label = "account_total_anim"
     )
 
     LaunchedEffect(totalBalance) {
         delay(400)
-        animatedBalance = totalBalance
+        animatedTotal = totalBalance
     }
 
     Card(
@@ -847,6 +856,7 @@ fun AccountBalanceCard(totalBalance: Double) {
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
+            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -877,12 +887,56 @@ fun AccountBalanceCard(totalBalance: Double) {
 
             Spacer(Modifier.height(16.dp))
 
-            Text(
-                text = "৳${"%,.0f".format(animatedValue)}",
-                style = typography.displaySmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = SapphireBlue
-            )
+            if (activeAccounts.isEmpty()) {
+                // Fallback — big number when no individual accounts exist
+                Text(
+                    text = "৳${"%,.0f".format(animatedTotalValue)}",
+                    style = typography.displaySmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = SapphireBlue
+                )
+            } else {
+                // Individual account rows
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    activeAccounts.forEach { account ->
+                        val color = when (account.type) {
+                            AccountCategory.WALLET -> EmeraldGreen
+                            AccountCategory.BANK -> SapphireBlue
+                            AccountCategory.MOBILE_BANKING -> VioletPurple
+                        }
+                        AccountBalanceRow(
+                            name = account.name,
+                            balance = account.balance,
+                            color = color,
+                            totalBalance = totalBalance
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+                Spacer(Modifier.height(12.dp))
+
+                // Total row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Total",
+                        style = typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = "৳${"%,.0f".format(animatedTotalValue)}",
+                        style = typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = SapphireBlue
+                    )
+                }
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -890,6 +944,80 @@ fun AccountBalanceCard(totalBalance: Double) {
                 text = "Combined balance from all your accounts",
                 style = typography.bodySmall,
                 color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountBalanceRow(
+    name: String,
+    balance: Double,
+    color: Color,
+    totalBalance: Double
+) {
+    var animatedBal by remember { mutableDoubleStateOf(0.0) }
+    val animatedBalValue by animateFloatAsState(
+        targetValue = animatedBal.toFloat(),
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        label = "account_row_anim"
+    )
+
+    LaunchedEffect(balance) {
+        delay(500)
+        animatedBal = balance
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(color, CircleShape)
+                )
+                Text(
+                    text = name,
+                    style = typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+            }
+            Text(
+                text = "৳${"%,.0f".format(animatedBalValue)}",
+                style = typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+
+        // Proportional progress bar
+        val proportion = if (totalBalance > 0) (balance / totalBalance).toFloat().coerceIn(0f, 1f) else 0f
+        val animatedProportion = remember { Animatable(0f) }
+        LaunchedEffect(proportion) {
+            delay(600)
+            animatedProportion.animateTo(proportion, tween(800, easing = FastOutSlowInEasing))
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color.copy(alpha = 0.12f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProportion.value)
+                    .height(4.dp)
+                    .background(color, RoundedCornerShape(2.dp))
             )
         }
     }
