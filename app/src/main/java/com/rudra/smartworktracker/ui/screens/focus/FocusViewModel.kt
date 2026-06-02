@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.R
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.engine.InAppNotificationManager
 import com.rudra.smartworktracker.model.FocusSession
 import com.rudra.smartworktracker.model.FocusType
 import kotlinx.coroutines.Job
@@ -42,6 +43,11 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
 
         startTimer(duration)
         sendStartNotification(type, duration)
+        InAppNotificationManager.getInstance(getApplication()).showFocus(
+            title = "Focus Session Started",
+            message = "${type.displayName} - ${duration / 60} minutes",
+            actionRoute = "focus"
+        )
     }
 
     fun pauseResumeTimer() {
@@ -120,6 +126,11 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
             focusSessionDao.insertFocusSession(focusSession)
 
             sendCompletionNotification(state.type)
+            InAppNotificationManager.getInstance(getApplication()).showFocus(
+                title = "Focus Session Completed!",
+                message = "Great job! Score: $focusScore - ${state.type.displayName}",
+                actionRoute = "focus"
+            )
             _timerState.value = TimerState.Completed(state.type, focusScore)
         }
     }

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import com.rudra.smartworktracker.engine.InAppNotificationManager
 
 class DutyNotificationManager(private val context: Context) {
     private val channelId = "team_duty_ops"
@@ -31,6 +32,11 @@ class DutyNotificationManager(private val context: Context) {
     }
 
     fun sendSwapRequestNotification(requesterName: String, date: String) {
+        InAppNotificationManager.getInstance(context).showTeam(
+            title = "New Duty Swap Request",
+            message = "$requesterName wants to swap their duty on $date",
+            actionRoute = "team"
+        )
         if (checkPermission()) {
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -50,6 +56,11 @@ class DutyNotificationManager(private val context: Context) {
     }
 
     fun sendSwapApprovalNotification(date: String) {
+        InAppNotificationManager.getInstance(context).showTeam(
+            title = "Duty Swap Approved",
+            message = "The duty swap for $date has been finalized.",
+            actionRoute = "team"
+        )
         if (checkPermission()) {
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)

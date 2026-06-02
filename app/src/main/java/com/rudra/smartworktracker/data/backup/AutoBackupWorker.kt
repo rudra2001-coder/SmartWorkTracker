@@ -7,6 +7,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.rudra.smartworktracker.engine.InAppNotificationManager
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -30,15 +31,26 @@ class AutoBackupWorker(
             }
 
             if (success) {
-                // Store last backup time in SharedPreferences
                 val prefs = applicationContext.getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putLong("last_auto_backup_time", System.currentTimeMillis()).apply()
+                InAppNotificationManager.getInstance(applicationContext).showBackup(
+                    "Auto Backup Successful",
+                    "Data backed up successfully to $fileName"
+                )
                 Result.success()
             } else {
+                InAppNotificationManager.getInstance(applicationContext).showBackup(
+                    "Auto Backup Failed",
+                    "Failed to create backup file"
+                )
                 Result.retry()
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            InAppNotificationManager.getInstance(applicationContext).showBackup(
+                "Auto Backup Error",
+                "Backup failed: ${e.localizedMessage ?: "Unknown error"}"
+            )
             Result.failure()
         }
     }

@@ -314,3 +314,110 @@ All existing public signatures preserved:
 | `WorkLogRepository.kt:19-24` | Repository passed no timezone context to `getTodayWorkLog` query | Computes local `startOfDay`/`endOfDay` via `java.time.LocalDate` + `ZoneId.systemDefault()` |
 | `data/entity/WorkLog.kt` | Empty (0 bytes) duplicate file — actual entity is `model/WorkLog.kt` | Deleted |
 | `data/local/DateConverter.kt` | Empty (0 bytes), unused — `TypeConverters.kt` + `Converters.kt` handle all type conversions | Deleted |
+
+### Dashboard Monthly Stats — Timezone Fix (Applied June 2026)
+**Goal**: Fix Dashboard monthly work summary showing wrong counts due to UTC-based SQL date filtering.
+
+**Root cause**: Work log dates are stored as UTC epoch millis (`LocalDate.atStartOfDay(zone).toInstant()`). For Bangladesh (UTC+6), **June 1** local = **May 31** 18:00 UTC. DAO queries used `strftime('%Y-%m', date/1000, 'unixepoch')` which operates in **UTC**, shifting ALL dates one month back in the Dashboard. The Calendar avoided this by filtering `LocalDate` in-app.
+
+**Fix**: Replaced all `strftime`-based month/year queries in `WorkLogDao.kt` with millisecond range queries (`WHERE date >= :start AND date <= :end`) computed in local timezone.
+
+| File | Bug | Fix |
+|---|---|---|
+| `WorkLogDao.kt:40-41` | `countByTypeFlow` used UTC `strftime('%Y-%m', date/1000, 'unixepoch')` — mismatched local dates by timezone offset | Replaced with `countByTypeInRange(startOfMonth, endOfMonth, workType)` using local-time millis bounds |
+| `WorkLogDao.kt:62-73` | `getTotalExtraHoursFlow` same UTC strftime issue | Replaced with `getTotalExtraHoursInRange(startOfMonth, endOfMonth, workType)` using local-time millis bounds |
+| `WorkLogDao.kt:75-76` | `getOvertimeLogsByMonth` same UTC strftime issue | Added `getOvertimeLogsInRange(startOfMonth, endOfMonth)` half-open range variant |
+| `WorkLogDao.kt:84-88` | `getOvertimeLogsByYear` same UTC strftime issue for year queries | Added `getOvertimeLogsInYearRange(startOfYear, endOfYear)` half-open range variant |
+| `WorkLogDao.kt:43-44` | `getWorkLogsByMonth` same UTC strftime issue | Added `getWorkLogsInRange(startOfMonth, endOfMonth)` half-open range variant |
+| `WorkLogRepository.kt:23-53` | `getMonthlyStats()` captured `monthYear` from UTC `Calendar.getInstance()` — dates shifted to wrong month | Now computes `startOfMonth`/`endOfMonth` via `LocalDate.now().withDayOfMonth(1).atStartOfDay(zone)` and passes to range-based DAO methods |
+| `DashboardViewModel.kt:66,95` | `loadDashboardData()` computed `monthYear` for `getOvertimeLogsByMonth` using UTC-based `SimpleDateFormat` | Removed `monthYear`, passes existing local-time `startTime`/`endTime` to `getOvertimeLogsInRange` |
+| `OvertimeViewModel.kt:40-51` | `loadOvertimeData()` used UTC-based `monthYear`/`year` from `SimpleDateFormat` | Now computes `startOfMonth`/`endOfMonth` and `startOfYear`/`endOfYear` via `LocalDate` local-timezone; uses `getOvertimeLogsInRange`/`getOvertimeLogsInYearRange` |
+| `CalculationViewModel.kt:114-115,227-228` | `runFullCalculation`/`fetchMonthlyBreakdown` used UTC `monthYearFormat` with `getWorkLogsByMonth` | Replaced with `getWorkLogsInRange` using local-time millis bounds from Calendar instance |
+
+### Recurring System — Upgraded June 2026
+**Goal**: Upgrade the recurring transaction system with accurate account-based balance checking, richer features, and Dashboard-themed UI.
+
+#### Entity Changes (`RecurringRule.kt`)
+- Added fields: `maxExecutions`, `executedCount`, `totalExecutedAmount`, `lastExecutedDate`, `isPaused`, `skipIfHoliday`, `weekdayAdjustment`, `tags`, `notes`
+- Added `WeekdayAdjustment` enum (NONE, PREVIOUS_WEEKDAY, NEXT_WEEKDAY, SKIP)
+
+#### DAO Changes
+- `RecurringRuleDao`: New queries for paused rules (`getPausedRules`), execution stats, max-reached rules (`getMaxExecutionReachedRules`), past-end-date rules (`getPastEndDateRules`), filtered counts, search by tags
+- `RecurringTransactionDao`: New queries for skip/failure status filtering, aggregated stats
+
+#### Engine Rewrite (`RecurringEngine.kt`)
+- Now takes `AccountDao` directly — balance lookups are always real-time from the database
+- Validates balances before expense/transfer/savings executions
+- Enforces `maxExecutions` and `endDate` auto-deactivation
+- Handles weekend/weekday adjustment
+- Full `detectPatterns()` and `calculateTotalMonthlyImpact()` implementations
+
+#### Three-State Rule Lifecycle
+- `isActive=true + isPaused=false` (running)
+- `isActive=true + isPaused=true` (paused)
+- `isActive=false` (deactivated)
+
+#### Screen Rewrite (`RecurringScreen.kt`)
+- Dashboard design tokens: gradient header, stat cards, filter chips
+- Enhanced rule cards with progress bars (`executedCount/maxExecutions`) and pause badges
+- Form sections: tags, notes, maxExecutions, weekdayAdjustment, endDate picker
+- Manual execution dialog with result feedback
+- History tab with animated progress bars
+
+#### Worker Upgrade (`RecurringNotificationWorker.kt`)
+- Big-text notifications with failure reasons inline
+- Amounts in ৳ format
+
+### In-App Notification Module — Created June 2026
+**Goal**: Centralized in-app notification system capturing events from recurring, backup, alarm, focus, and team systems.
+
+#### New Entity (`InAppNotification.kt`)
+- `id` (Long, auto-generate), `title`, `message`, `type` (NotificationType enum), `source`, `referenceId`, `actionRoute`, `isRead`, `timestamp`
+- `NotificationType` enum: RECURRING, BACKUP, ALARM, FOCUS, TEAM, EXPENSE, INCOME, TRANSFER, SYSTEM
+- Indexed columns on `isRead` and `type` for fast queries
+
+#### New DAO (`InAppNotificationDao.kt`)
+- Standard CRUD: `insert()`, `getNotifications()`, `getUnreadCount()`, `markAsRead()`, `markAllAsRead()`, `deleteById()`, `deleteRead()`, `deleteAll()`
+- Optional filters by type via nullable parameter
+
+#### New Repository (`NotificationRepository.kt`)
+- Bridges DAO to ViewModels with Flow-based reactivity
+
+#### Singleton Manager (`InAppNotificationManager.kt`)
+- Thread-safe double-check locking singleton, accessible from any `Context` without DI
+- Methods: `logNotification(title, message, type, source, referenceId, actionRoute)`
+- Uses `applicationContext` for safety across component types
+
+#### Integration Points
+- `RecurringNotificationWorker` — logs on successful/batched execution, failure, and upcoming transactions
+- `AutoBackupWorker` — logs on success, failure, and error
+- `AlarmReceiver` — logs when alarm triggers
+- `FocusViewModel` — logs on session start and completion
+- `DutyNotificationManager` — logs on swap request and approval
+
+#### UI (`NotificationScreen.kt`)
+- Gradient header (VioletPurple) with unread count badge
+- TopAppBar actions: Mark All Read, Delete All (with confirmation dialog)
+- Type filter chips (All + per-type) with pill-style cards
+- Notification cards with:
+  - Colored type icon in a circular background (`animateColorAsState` for read/unread states)
+  - Title, message (2-line max), relative time, source tag
+  - Blue dot indicator for unread
+  - Delete button per card
+  - Tap to mark as read
+- Empty state with icon when no notifications match
+- Uses Dashboard design tokens: EmeraldGreen, CoralRed, SapphireBlue, GoldenAmber, VioletPurple
+
+#### ViewModel (`NotificationViewModel.kt`)
+- State: notifications list, selectedFilter, unreadCount, totalCount
+- Actions: markAsRead, markAllAsRead, deleteById, deleteAll, setFilter
+- Factory pattern with manual DI via NotificationViewModelFactory
+
+#### Navigation
+- `NavigationItem.Notifications` in the sealed class with `Icons.Default.Notifications`
+- Entry in drawer navigation list
+- Composable route "notifications" in NavHost graph
+
+#### Database
+- DB version bumped to 14 with destructive migration
+- `AppDatabase` registers `InAppNotification` entity and `InAppNotificationDao`

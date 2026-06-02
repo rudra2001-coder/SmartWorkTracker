@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
@@ -114,6 +115,7 @@ import com.rudra.smartworktracker.ui.screens.transfer.TransferScreen
 import com.rudra.smartworktracker.ui.screens.wisdom.WisdomScreen
 import com.rudra.smartworktracker.ui.screens.spendadvisor.SpendAdvisorScreen
 import com.rudra.smartworktracker.ui.screens.recurring.RecurringScreen
+import com.rudra.smartworktracker.ui.screens.notification.NotificationScreen
 import com.rudra.smartworktracker.ui.screens.realitytracker.RealityTrackerScreen
 import com.rudra.smartworktracker.ui.screens.futureimpact.FutureImpactScreen
 import com.rudra.smartworktracker.ui.screens.accounts.AccountsScreen
@@ -162,6 +164,7 @@ fun MainApp() {
         NavigationItem.Transfer,
         NavigationItem.Accounts,
         NavigationItem.Recurring,
+        NavigationItem.Notifications,
         NavigationItem.Backup,
         NavigationItem.Settings,
         NavigationItem.Team,
@@ -597,6 +600,17 @@ popExitTransition = { defaultPopExitTransition() }
                     )
                 }
                 composable(
+                    route = NavigationItem.Notifications.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    NotificationScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(
                     route = NavigationItem.RealityTracker.route,
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
@@ -941,6 +955,13 @@ sealed class NavigationItem(
         title = "Recurring",
         icon = Icons.Default.Repeat,
         description = "Automate your transactions"
+    )
+
+    object Notifications : NavigationItem(
+        route = "notifications",
+        title = "Notifications",
+        icon = Icons.Default.Notifications,
+        description = "View in-app notifications"
     )
 
     object RealityTracker : NavigationItem(

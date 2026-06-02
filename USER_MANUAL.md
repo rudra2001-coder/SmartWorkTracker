@@ -499,7 +499,25 @@ Export your entire database to a JSON file or import a previous backup. All 39+ 
 
 **Auto Backup:** The app automatically creates a backup every night at 12:05 AM. Saved to Downloads folder (uses MediaStore on Android 10+).
 
-### 8.4 User Profile / Profile Setup
+### 8.4 Notifications
+View all in-app notifications from a single screen. The notification center captures events from:
+- **Recurring Transactions** — successful/batched executions, failures, upcoming transactions
+- **Auto Backup** — backup success, failure, or error
+- **Alarms** — when a scheduled alarm triggers
+- **Focus Sessions** — session start and completion
+- **Team** — duty swap requests and approvals
+
+**How to use:**
+1. Open the navigation drawer and tap **Notifications**
+2. Use filter chips at the top to filter by type (All, Recurring, Backup, Alarm, Focus, Team, etc.)
+3. Tap a notification card to **mark it as read**
+4. Tap the **Mark All Read** icon to clear all unread badges
+5. Tap the **Delete All** icon to clear all notifications (with confirmation)
+6. Each card shows the title, message, timestamp, and source tag
+
+**Visual indicators:** Unread notifications have a blue dot and light blue background. Read notifications fade to plain white. Each type has a distinct color icon (e.g., Violet for Recurring, Green for Backup, Red for Alarm).
+
+### 8.5 User Profile / Profile Setup
 View and edit your personal profile.
 
 **Fields:** Name, email, phone, bio, skills, experience, monthly salary, savings
@@ -516,9 +534,9 @@ These run automatically — no user action needed:
 Every day at 12:05 AM, the app exports your entire database to a JSON file in the Downloads folder. On Android 10+, it uses MediaStore for compatibility.
 
 ### Recurring Transaction Processing (Every Hour)
-Every hour, the system checks for due recurring rules and executes them automatically. You'll receive notifications for:
+Every hour, the system checks for due recurring rules and executes them automatically. You'll receive notifications (both system and in-app) for:
 - Successful transactions
-- Failed transactions (insufficient funds, etc.)
+- Failed transactions (insufficient funds, etc., with failure reason)
 - Upcoming transactions
 
 ### Alarm Execution
