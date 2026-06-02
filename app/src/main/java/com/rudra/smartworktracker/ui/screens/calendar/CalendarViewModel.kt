@@ -32,6 +32,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     private val _activeFilters = MutableStateFlow<List<WorkType>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
     private val _monthlyStats = MutableStateFlow(MonthlyStats())
+    private val _currentMonth = MutableStateFlow(YearMonth.now())
 
     val uiState: StateFlow<CalendarUiState> = combine(
         _selectedDate,
@@ -41,7 +42,8 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         _multiSelectedDates,
         _activeFilters,
         _searchQuery,
-        _monthlyStats
+        _monthlyStats,
+        _currentMonth
     ) { values ->
         val selectedDate = values[0] as LocalDate
         val workLogs = values[1] as List<WorkLogUi>
@@ -53,6 +55,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         val activeFilters = values[5] as List<WorkType>
         val searchQuery = values[6] as String
         val monthlyStats = values[7] as MonthlyStats
+        val currentMonth = values[8] as YearMonth
 
         val filteredWorkLogs = workLogs.filter { workLog ->
             val matchesFilter = activeFilters.isEmpty() ||
@@ -71,7 +74,8 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
             multiSelectedDates = multiSelectedDates,
             activeFilters = activeFilters,
             searchQuery = searchQuery,
-            monthlyStats = monthlyStats
+            monthlyStats = monthlyStats,
+            currentMonth = currentMonth
         )
     }.stateIn(
         scope = viewModelScope,
@@ -82,6 +86,15 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     init {
         loadWorkLogs()
         observeSelectedDate()
+    }
+
+    fun onMonthChanged(yearMonth: YearMonth) {
+        _currentMonth.value = yearMonth
+        updateMonthlyStats()
+    }
+
+    fun navigateMonth(delta: Int) {
+        onMonthChanged(_currentMonth.value.plusMonths(delta.toLong()))
     }
 
     fun onDateSelected(date: LocalDate) {
@@ -106,7 +119,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     }
 
     fun onQuickMonthSelect(yearMonth: YearMonth) {
-        updateMonthlyStats(yearMonth)
+        onMonthChanged(yearMonth)
     }
 
     fun toggleMultiSelectMode() {
@@ -236,8 +249,9 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
         }
     }
 
-    private fun updateMonthlyStats(yearMonth: YearMonth) {
+    private fun updateMonthlyStats() {
         viewModelScope.launch {
+            val yearMonth = _currentMonth.value
             val monthWorkLogs = _workLogs.value.filter { workLog ->
                 val date = workLog.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
                 YearMonth.from(date) == yearMonth
@@ -299,7 +313,7 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
                 _selectedWorkLog.value = _workLogs.value.find {
                     it.date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate() == _selectedDate.value
                 }
-                updateMonthlyStats(YearMonth.from(_selectedDate.value))
+                updateMonthlyStats()
             }
         }
     }
@@ -353,5 +367,6 @@ data class CalendarUiState(
     val multiSelectedDates: List<LocalDate> = emptyList(),
     val activeFilters: List<WorkType> = emptyList(),
     val searchQuery: String = "",
-    val monthlyStats: MonthlyStats = MonthlyStats()
+    val monthlyStats: MonthlyStats = MonthlyStats(),
+    val currentMonth: YearMonth = YearMonth.now()
 )

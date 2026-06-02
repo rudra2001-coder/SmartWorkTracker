@@ -8,13 +8,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 class WorkLogRepository(private val workLogDao: WorkLogDao) {
 
     fun getTodayWorkLog(): Flow<WorkLog?> {
-        return workLogDao.getTodayWorkLog()
+        val today = LocalDate.now()
+        val startOfDay = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        val endOfDay = Date.from(today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        return workLogDao.getTodayWorkLog(startOfDay, endOfDay)
     }
 
     fun getMonthlyStats(): Flow<MonthlyStats> {

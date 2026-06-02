@@ -300,3 +300,17 @@ All existing public signatures preserved:
 |---|---|---|
 | `CalculationScreen.kt:710-714` | `SummaryRow` (a `RowScope` extension) called directly inside `Column` — 5 compilation errors: "Unresolved reference" | Wrapped each `SummaryRow` in `Row(Modifier.fillMaxWidth())` |
 | `CalculationViewModel.kt:199,280` | `sdf.parse(wl.date)` — `wl.date` is already a `Date` object, but `SimpleDateFormat.parse()` expects `String` | Replaced with `wl.date.time` (direct millis access) |
+
+### Calendar Module — Data Accuracy Fixes (Applied June 2026)
+**Goal**: Ensure calendar always shows accurate work log data regardless of month navigation, filtering, or timezone.
+
+| File | Bug | Fix |
+|---|---|---|
+| `CalendarViewModel.kt` | Monthly stats never updated when navigating months via prev/next arrows — `currentMonth` was local `remember` state in the composable, ViewModel had no visibility | Added `_currentMonth` StateFlow + `onMonthChanged()` + `navigateMonth()` in ViewModel; `updateMonthlyStats()` now reads `_currentMonth.value`; `currentMonth` exposed via `CalendarUiState` |
+| `CalendarScreen.kt` | `MonthSummaryCard` used `filteredWorkLogs` — with active filters, summary showed partial/inaccurate counts | Changed to `uiState.workLogs` (unfiltered) |
+| `CalendarScreen.kt` | `currentMonth` managed as local `remember` state — out of sync with ViewModel | Removed local state, all components read `uiState.currentMonth` |
+| `WorkLogDao.kt:46-57` | `getTotalExtraHours` SQL used `strftime('%s', endTime)` on `"HH:MM"` strings — SQLite can't parse time-only as datetime, always returned NULL/0 | Prepend dummy date `'2000-01-01 '` + append `':00'` for valid datetime parsing; added `IS NOT NULL` guards |
+| `WorkLogDao.kt:87-88` | `getTodayWorkLog` compared UTC dates via `date(date/1000,'unixepoch') = date('now')` — timezone mismatch near midnight could miss entries | Changed to `WHERE date >= :startOfDay AND date < :endOfDay` accepting local-date millis boundaries |
+| `WorkLogRepository.kt:19-24` | Repository passed no timezone context to `getTodayWorkLog` query | Computes local `startOfDay`/`endOfDay` via `java.time.LocalDate` + `ZoneId.systemDefault()` |
+| `data/entity/WorkLog.kt` | Empty (0 bytes) duplicate file — actual entity is `model/WorkLog.kt` | Deleted |
+| `data/local/DateConverter.kt` | Empty (0 bytes), unused — `TypeConverters.kt` + `Converters.kt` handle all type conversions | Deleted |

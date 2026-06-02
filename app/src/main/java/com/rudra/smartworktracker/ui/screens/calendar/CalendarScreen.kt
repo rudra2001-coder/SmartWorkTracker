@@ -72,7 +72,6 @@ fun CalendarScreen(
     val uiState by viewModel.uiState.collectAsState()
     val shareWorkLog by viewModel.shareWorkLog.collectAsState()
     val templateWorkLog by viewModel.templateWorkLog.collectAsState()
-    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
     val scrollState = rememberScrollState()
 
@@ -265,8 +264,8 @@ fun CalendarScreen(
 
             item {
                 MonthNavigationCard(
-                    currentMonth = currentMonth,
-                    onMonthChange = { currentMonth = it },
+                    currentMonth = uiState.currentMonth,
+                    onMonthChange = { viewModel.onMonthChanged(it) },
                     onQuickMonthSelect = { viewModel.onQuickMonthSelect(it) },
                     isMultiSelectMode = uiState.isMultiSelectMode
                 )
@@ -284,14 +283,14 @@ fun CalendarScreen(
 
             item {
                 CalendarCard(
-                    currentMonth = currentMonth,
+                    currentMonth = uiState.currentMonth,
                     workLogs = uiState.filteredWorkLogs,
                     selectedDate = uiState.selectedDate,
                     multiSelectedDates = uiState.multiSelectedDates,
                     isMultiSelectMode = uiState.isMultiSelectMode,
                     onDateSelected = viewModel::onDateSelected,
                     onLongPress = viewModel::onDateLongPress,
-                    onSelectAll = { viewModel.selectAllDatesInMonth(currentMonth) }
+                    onSelectAll = { viewModel.selectAllDatesInMonth(uiState.currentMonth) }
                 )
             }
 
@@ -329,8 +328,8 @@ fun CalendarScreen(
 
             item {
                 MonthSummaryCard(
-                    yearMonth = currentMonth,
-                    workLogs = uiState.filteredWorkLogs
+                    yearMonth = uiState.currentMonth,
+                    workLogs = uiState.workLogs
                 )
             }
 
@@ -1120,7 +1119,13 @@ fun MonthSummaryCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val workTypeCounts = workLogs.groupBy { it.workType }
+            val monthWorkLogs = workLogs.filter { workLog ->
+                workLog.date.toInstant()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate()
+                    .let { java.time.YearMonth.from(it) == yearMonth }
+            }
+            val workTypeCounts = monthWorkLogs.groupBy { it.workType }
                 .mapValues { it.value.size }
 
             workTypeCounts.forEach { (workType, count) ->
