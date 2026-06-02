@@ -111,8 +111,16 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         viewModelScope.launch {
             try {
                 val s = _state.value
-                val selectedMonthYear = monthYearFormat.format(s.selectedDate)
-                val workLogs = db.workLogDao().getWorkLogsByMonth(selectedMonthYear)
+                val cal = Calendar.getInstance().apply { time = s.selectedDate }
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val monthStart = cal.timeInMillis
+                cal.add(Calendar.MONTH, 1)
+                val monthEnd = cal.timeInMillis
+                val workLogs = db.workLogDao().getWorkLogsInRange(monthStart, monthEnd)
 
                 val officeCount = workLogs.count { it.workType == WorkType.OFFICE }
                 val officeDateSet = workLogs.filter { it.workType == WorkType.OFFICE }
@@ -222,10 +230,13 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
         val specialDateSet = s.specialDates.toSet()
 
         for (month in 0..11) {
-            calendar.set(currentYear, month, 1)
+            calendar.set(currentYear, month, 1, 0, 0, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
             val monthName = monthShortFormat.format(calendar.time)
-            val ym = yearMonthFormat.format(calendar.time)
-            val logs = db.workLogDao().getWorkLogsByMonth(ym)
+            val monthStart = calendar.timeInMillis
+            calendar.add(Calendar.MONTH, 1)
+            val monthEnd = calendar.timeInMillis
+            val logs = db.workLogDao().getWorkLogsInRange(monthStart, monthEnd)
 
             var cost = 0.0
             var officeCount = 0

@@ -7,12 +7,9 @@ import com.rudra.smartworktracker.ui.MonthlyStats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 
 class WorkLogRepository(private val workLogDao: WorkLogDao) {
 
@@ -24,16 +21,18 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
     }
 
     fun getMonthlyStats(): Flow<MonthlyStats> {
-        val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
+        val now = LocalDate.now()
+        val startOfMonth = Date.from(now.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        val endOfMonth = Date.from(now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
         return combine(
             listOf(
-                workLogDao.countByTypeFlow(monthYear, WorkType.OFFICE).map { it.toDouble() },
-                workLogDao.countByTypeFlow(monthYear, WorkType.HOME_OFFICE).map { it.toDouble() },
-                workLogDao.countByTypeFlow(monthYear, WorkType.OFF_DAY).map { it.toDouble() },
-                workLogDao.countByTypeFlow(monthYear, WorkType.EXTRA_WORK).map { it.toDouble() },
-                workLogDao.countByTypeFlow(monthYear, WorkType.OVERTIME).map { it.toDouble() },
-                workLogDao.getTotalExtraHoursFlow(monthYear),
-                workLogDao.getTotalExtraHoursFlow(monthYear, WorkType.OVERTIME)
+                workLogDao.countByTypeInRange(startOfMonth, endOfMonth, WorkType.OFFICE).map { it.toDouble() },
+                workLogDao.countByTypeInRange(startOfMonth, endOfMonth, WorkType.HOME_OFFICE).map { it.toDouble() },
+                workLogDao.countByTypeInRange(startOfMonth, endOfMonth, WorkType.OFF_DAY).map { it.toDouble() },
+                workLogDao.countByTypeInRange(startOfMonth, endOfMonth, WorkType.EXTRA_WORK).map { it.toDouble() },
+                workLogDao.countByTypeInRange(startOfMonth, endOfMonth, WorkType.OVERTIME).map { it.toDouble() },
+                workLogDao.getTotalExtraHoursInRange(startOfMonth, endOfMonth),
+                workLogDao.getTotalExtraHoursInRange(startOfMonth, endOfMonth, WorkType.OVERTIME)
             )
         ) { array ->
             val officeDays = array[0].toInt()
@@ -61,8 +60,20 @@ class WorkLogRepository(private val workLogDao: WorkLogDao) {
         return workLogDao.getOvertimeLogs()
     }
 
+    suspend fun getWorkLogsInRange(startOfMonth: Long, endOfMonth: Long): List<WorkLog> {
+        return workLogDao.getWorkLogsInRange(startOfMonth, endOfMonth)
+    }
+
+    fun getOvertimeLogsInRange(startOfMonth: Long, endOfMonth: Long): Flow<List<WorkLog>> {
+        return workLogDao.getOvertimeLogsInRange(startOfMonth, endOfMonth)
+    }
+
     fun getOvertimeLogsByMonth(monthYear: String): Flow<List<WorkLog>> {
         return workLogDao.getOvertimeLogsByMonth(monthYear)
+    }
+
+    fun getOvertimeLogsInYearRange(startOfYear: Long, endOfYear: Long): Flow<List<WorkLog>> {
+        return workLogDao.getOvertimeLogsInYearRange(startOfYear, endOfYear)
     }
 
     fun getOvertimeLogsByYear(year: String): Flow<List<WorkLog>> {

@@ -14,6 +14,8 @@ import com.rudra.smartworktracker.utils.DateTimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.*
 
 class OvertimeViewModel(application: Application) : AndroidViewModel(application) {
@@ -38,15 +40,17 @@ class OvertimeViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadOvertimeData() {
-        val calendar = Calendar.getInstance()
-        val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(calendar.time)
-        val year = SimpleDateFormat("yyyy", Locale.getDefault()).format(calendar.time)
+        val now = LocalDate.now()
+        val startOfMonth = Date.from(now.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        val endOfMonth = Date.from(now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        val startOfYear = Date.from(now.withDayOfYear(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+        val endOfYear = Date.from(now.plusYears(1).withDayOfYear(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).time
 
         viewModelScope.launch {
-            workLogRepository.getOvertimeLogsByMonth(monthYear).collect { _monthlyOvertimeLogs.value = it }
+            workLogRepository.getOvertimeLogsInRange(startOfMonth, endOfMonth).collect { _monthlyOvertimeLogs.value = it }
         }
         viewModelScope.launch {
-            workLogRepository.getOvertimeLogsByYear(year).collect { _yearlyOvertimeLogs.value = it }
+            workLogRepository.getOvertimeLogsInYearRange(startOfYear, endOfYear).collect { _yearlyOvertimeLogs.value = it }
         }
     }
 

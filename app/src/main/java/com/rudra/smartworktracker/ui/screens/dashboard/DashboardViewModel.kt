@@ -63,8 +63,6 @@ class DashboardViewModel(
                 set(Calendar.MILLISECOND, 999)
             }.timeInMillis
 
-            val monthYear = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Calendar.getInstance().time)
-
             val todayStart = (calendar.clone() as Calendar).apply {
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
@@ -92,7 +90,7 @@ class DashboardViewModel(
                 workLogRepository.getMonthlyStats(),
                 incomeRepository.getIncomes(1, 50),
                 expenseRepository.getExpenses(1, 50),
-                workLogRepository.getOvertimeLogsByMonth(monthYear),
+                workLogRepository.getOvertimeLogsInRange(startTime, endTime),
                 userProfileRepository.userProfile,
                 transactionRepository.getTotalIncome(),
                 transactionRepository.getTotalExpenses(),

@@ -1496,12 +1496,11 @@ fun MonthlyStatsCard(stats: MonthlyStats) {
 
 @Composable
 fun WorkAttendanceRingCard(stats: MonthlyStats) {
-    val totalDays = (stats.officeDays + stats.homeOfficeDays + stats.offDays + stats.extraHours.toInt()).coerceAtLeast(1)
+    val totalDays = (stats.officeDays + stats.homeOfficeDays + stats.offDays).coerceAtLeast(1)
     val segments = listOf(
         Triple("Office", stats.officeDays.toFloat(), SapphireBlue),
         Triple("Home", stats.homeOfficeDays.toFloat(), EmeraldGreen),
-        Triple("Off", stats.offDays.toFloat(), VioletPurple),
-        Triple("Extra", stats.extraHours.toInt().toFloat(), GoldenAmber)
+        Triple("Off", stats.offDays.toFloat(), VioletPurple)
     ).filter { it.second > 0 }
 
     val animatedSweeps = segments.map { (_, value, _) ->
