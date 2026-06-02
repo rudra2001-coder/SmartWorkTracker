@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Account
@@ -46,6 +47,31 @@ private val VioletPurple = Color(0xFF8B5CF6)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
+    val recentExpenses by viewModel.recentExpenses.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+    val totalExpense by viewModel.totalExpense.collectAsState()
+    val latest20Expenses by viewModel.latest20Expenses.collectAsState()
+
+    ExpenseContent(
+        recentExpenses = recentExpenses,
+        accounts = accounts,
+        totalExpense = totalExpense,
+        latest20Expenses = latest20Expenses,
+        onSaveExpense = { amount, category, merchant, notes, timestamp, accountId ->
+            viewModel.saveExpense(amount, "BDT", category, merchant, notes, timestamp, accountId)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExpenseContent(
+    recentExpenses: List<com.rudra.smartworktracker.model.Expense>,
+    accounts: List<Account>,
+    totalExpense: Double,
+    latest20Expenses: List<com.rudra.smartworktracker.model.Expense>,
+    onSaveExpense: (Double, ExpenseCategory, String?, String?, Long, Long) -> Unit
+) {
     var amount by remember { mutableStateOf("") }
     var merchant by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -53,15 +79,10 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val recentExpenses by viewModel.recentExpenses.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
     var selectedAccount by remember(accounts) {
         mutableStateOf(accounts.find { it.name == "Cash" } ?: accounts.firstOrNull())
     }
     var showInsufficientBalanceDialog by remember { mutableStateOf(false) }
-
-    val totalExpense by viewModel.totalExpense.collectAsState()
-    val latest20Expenses by viewModel.latest20Expenses.collectAsState()
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = CoralRed,
@@ -106,39 +127,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                 }
             }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
-                    shape = CardShape,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(56.dp).background(
-                                brush = Brush.linearGradient(listOf(CoralRed, GoldenAmber)),
-                                shape = RoundedCornerShape(14.dp)
-                            ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.MoneyOff, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Total Expenses", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                "৳${"%,.0f".format(totalExpense)}",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = CoralRed
-                            )
-                            Text("All time spending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
+
 
             item {
                 Card(
@@ -310,14 +299,13 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                         val expenseAmount = amount.toDouble()
                         val account = selectedAccount!!
                         if (account.balance >= expenseAmount) {
-                            viewModel.saveExpense(
-                                amount = expenseAmount,
-                                currency = "BDT",
-                                category = selectedCategory,
-                                merchant = merchant.ifBlank { null },
-                                notes = notes.ifBlank { null },
-                                timestamp = selectedDate?.time ?: System.currentTimeMillis(),
-                                selectedAccountId = accountId
+                            onSaveExpense(
+                                expenseAmount,
+                                selectedCategory,
+                                merchant.ifBlank { null },
+                                notes.ifBlank { null },
+                                selectedDate?.time ?: System.currentTimeMillis(),
+                                accountId
                             )
                             amount = ""
                             merchant = ""
@@ -466,6 +454,25 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
             }
         ) {
             DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ExpenseScreenPreview() {
+    MaterialTheme {
+        Surface {
+            ExpenseContent(
+                recentExpenses = emptyList(),
+                accounts = listOf(
+                    Account(id = 1, name = "Cash", balance = 5000.0, type = com.rudra.smartworktracker.data.entity.AccountCategory.WALLET, provider = com.rudra.smartworktracker.data.entity.AccountProvider.CASH, accountNumber = ""),
+                    Account(id = 2, name = "Bank", balance = 15000.0, type = com.rudra.smartworktracker.data.entity.AccountCategory.BANK, provider = com.rudra.smartworktracker.data.entity.AccountProvider.BANK, accountNumber = "")
+                ),
+                totalExpense = 2500.0,
+                latest20Expenses = emptyList(),
+                onSaveExpense = { _, _, _, _, _, _ -> }
+            )
         }
     }
 }

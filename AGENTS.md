@@ -182,6 +182,19 @@ Quarterly = Total × 3, Yearly = Total × 12
 - **AccountDetailScreen**: Shows real `FinancialTransaction` data per account, inflow/outflow metrics, balance activity chart (7-day), follows Dashboard design pattern (same color tokens, card shapes, shadows, gradients).
  - **Dashboard design tokens** used across accounts: `EmeraldGreen`, `CoralRed`, `SapphireBlue`, `GoldenAmber`, `VioletPurple`, `CardShape = 20.dp`, shadows, gradient icon boxes, animated metrics.
 
+### Transfer System (ui/screens/transfer/) — Updated May 2026
+- **Screen** (`TransferScreen.kt`): Card-based layout with FROM/TO account selectors, amount input, expandable **Fees & Charges** section, notes field, and confirm button.
+- **ViewModel** (`TransferViewModel.kt`): Uses `FusionEngine.processTransfer()` for execution. Double-click guard via `_transferState.value = TransferState.Loading` set **before** coroutine launch.
+- **FusionEngine** (`engine/FusionEngine.kt`): `processTransfer()` now accepts optional `transferFee` and `cashOutFee` parameters (default `0.0`).
+  - Deducts only `amount` from fromAccount for the transfer itself
+  - Each fee > 0 is deducted separately via `recordFee()` which reads the **post-transfer** balance and calls `accountDao.updateBalance()` — avoids double-counting
+  - Creates `FinancialTransaction` (type `TRANSFER`) for the transfer amount
+  - Creates `FinancialTransaction` (type `EXPENSE`, category `TRANSFER_FEE`) for each fee
+  - Validates `fromAccount.balance >= amount + transferFee + cashOutFee` before processing
+- **UI (Fees & Charges)**: Collapsible section toggled via "▶ Fees & Charges" chip. Two optional number inputs: **Transfer Fee** and **Cash Out Fee**. Live total calculation includes fees. Badge shows fee amount on the chip when non-zero.
+- **Success Dialog**: Shows transfer details + total fees charged if any. Reset clears all fields including fees.
+- **ExpenseCategory** (`model/Expense.kt`): Added `TRANSFER_FEE("Transfer Fee")` with color `#FF6B35` for fee categorization in reports.
+
 ### Savings System (ui/screens/savings/)
 - **Savings** entity (`data/entity/Savings.kt`, table `savings`): Tracks savings deposits/withdrawals with `amount`, `note`, `category`, `timestamp`, and now `accountId` (linking to Account system). Positive `amount` = deposit, negative `amount` = withdrawal.
 - **SavingsRepository** (`data/repository/SavingsRepository.kt`): Bridges DAO to ViewModels. Key methods:

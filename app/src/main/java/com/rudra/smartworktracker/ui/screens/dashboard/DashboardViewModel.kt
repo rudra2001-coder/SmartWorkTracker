@@ -108,7 +108,10 @@ class DashboardViewModel(
                 transactionRepository.getIncomeByCategoryBetween(startTime, endTime),
                 accountRepository.getTotalBalance(),
                 loanRepository.getTotalBorrowed(),
-                loanRepository.getTotalLent()
+                loanRepository.getTotalLent(),
+                settingsRepository.heroColor,
+                settingsRepository.heroAccountId,
+                accountRepository.getAllAccounts()
             )
 
             combine(flows) { array ->
@@ -150,6 +153,10 @@ class DashboardViewModel(
                 val totalLent = array[28] as? Double ?: 0.0
                 val totalLoan = totalBorrowed + totalLent
 
+                val heroColor = array[29] as? String ?: "#FFFFFF"
+                val heroAccountId = array[30] as? Long ?: 0L
+                val accounts = array[31] as? List<com.rudra.smartworktracker.data.entity.Account> ?: emptyList()
+
                 val ftExpenseByCategory = ftExpenseCategories.map {
                     ExpenseByCategory(
                         category = it.category.toExpenseCategory(),
@@ -168,7 +175,12 @@ class DashboardViewModel(
                     .mapValues { it.value.sumOf { e -> e.total } }
 
                 val netSavings = monthlyIncome - monthlyExpense
-                val allTimeNetSavings = allTimeIncome - allTimeExpense
+                
+                val displayedNetBalance = if (heroAccountId != 0L) {
+                    accounts.find { it.id == heroAccountId }?.balance ?: (allTimeIncome - allTimeExpense)
+                } else {
+                    allTimeIncome - allTimeExpense
+                }
 
                 DashboardUiState(
                     userName = userProfile?.name,
@@ -179,7 +191,7 @@ class DashboardViewModel(
                         totalIncome = monthlyIncome,
                         totalExpense = monthlyExpense,
                         totalSavings = totalSavings,
-                        netSavings = allTimeNetSavings,
+                        netSavings = displayedNetBalance,
                         monthlyNetSavings = netSavings,
                         dailyIncome = dailyIncome,
                         dailyExpense = dailyExpense,
@@ -196,7 +208,10 @@ class DashboardViewModel(
                     incomesByCategory = incomesByCategoryMap,
                     incomes = incomes,
                     expenses = expenses,
-                    workLogs = overtimeLogs
+                    workLogs = overtimeLogs,
+                    heroColor = heroColor,
+                    heroAccountId = heroAccountId,
+                    accounts = accounts
                 )
             }.collect { newState ->
                 _uiSate.value = newState
@@ -228,6 +243,18 @@ class DashboardViewModel(
                 )
                 expenseRepository.insertExpense(mealExpense)
             }
+        }
+    }
+
+    fun updateHeroColor(color: String) {
+        viewModelScope.launch {
+            settingsRepository.setHeroColor(color)
+        }
+    }
+
+    fun updateHeroAccountId(accountId: Long) {
+        viewModelScope.launch {
+            settingsRepository.setHeroAccountId(accountId)
         }
     }
 

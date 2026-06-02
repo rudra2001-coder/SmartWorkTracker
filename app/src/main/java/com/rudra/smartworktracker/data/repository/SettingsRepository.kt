@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,6 +21,8 @@ class SettingsRepository(private val context: Context) {
     private val notificationsKey = booleanPreferencesKey(NOTIFICATIONS)
     private val vibrationKey = booleanPreferencesKey(VIBRATION)
     private val autoBackupKey = booleanPreferencesKey(AUTO_BACKUP)
+    private val heroColorKey = stringPreferencesKey("hero_color")
+    private val heroAccountIdKey = longPreferencesKey("hero_account_id")
 
     val mealRate: Flow<Double> = context.dataStore.data.map {
         it[mealRateKey] ?: 60.0
@@ -27,6 +31,26 @@ class SettingsRepository(private val context: Context) {
     suspend fun setMealRate(rate: Double) {
         context.dataStore.edit {
             it[mealRateKey] = rate
+        }
+    }
+
+    val heroColor: Flow<String> = context.dataStore.data.map {
+        it[heroColorKey] ?: "#FFFFFF"
+    }
+
+    suspend fun setHeroColor(color: String) {
+        context.dataStore.edit {
+            it[heroColorKey] = color
+        }
+    }
+
+    val heroAccountId: Flow<Long> = context.dataStore.data.map {
+        it[heroAccountIdKey] ?: 0L
+    }
+
+    suspend fun setHeroAccountId(accountId: Long) {
+        context.dataStore.edit {
+            it[heroAccountIdKey] = accountId
         }
     }
 

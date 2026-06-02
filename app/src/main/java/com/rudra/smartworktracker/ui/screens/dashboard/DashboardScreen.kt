@@ -60,23 +60,30 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.MoneyOff
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -209,7 +216,16 @@ fun DashboardScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
         ) {
             item { Header(userName = uiState.userName) }
-            item { NetBalanceHeroCard(financialSummary = uiState.financialSummary) }
+            item {
+                NetBalanceHeroCard(
+                    financialSummary = uiState.financialSummary,
+                    heroColor = uiState.heroColor,
+                    heroAccountId = uiState.heroAccountId,
+                    accounts = uiState.accounts,
+                    onColorSelected = { viewModel.updateHeroColor(it) },
+                    onAccountSelected = { viewModel.updateHeroAccountId(it) }
+                )
+            }
             item { AccountBalanceCard(totalBalance = uiState.financialSummary.totalBalance) }
             item { TripleMetricRow(financialSummary = uiState.financialSummary) }
             item { DailySnapshotCard(financialSummary = uiState.financialSummary) }
@@ -324,10 +340,25 @@ fun Header(userName: String?) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun NetBalanceHeroCard(financialSummary: FinancialSummary) {
+fun NetBalanceHeroCard(
+    financialSummary: FinancialSummary,
+    heroColor: String = "#FFFFFF",
+    heroAccountId: Long = 0L,
+    accounts: List<com.rudra.smartworktracker.data.entity.Account> = emptyList(),
+    onColorSelected: (String) -> Unit = {},
+    onAccountSelected: (Long) -> Unit = {}
+) {
     val isPositive = financialSummary.netSavings >= 0
     val accentColor = if (isPositive) EmeraldGreen else CoralRed
-    val bgColor = if (isPositive) GreenSurface else RedSurface
+    val defaultBgColor = if (isPositive) GreenSurface else RedSurface
+    
+    val cardBgColor = remember(heroColor) {
+        try {
+            Color(android.graphics.Color.parseColor(heroColor))
+        } catch (e: Exception) {
+            Color.White
+        }
+    }
 
     var animatedBalance by remember { mutableDoubleStateOf(0.0) }
     val animatedValue by animateFloatAsState(
@@ -341,12 +372,19 @@ fun NetBalanceHeroCard(financialSummary: FinancialSummary) {
         animatedBalance = financialSummary.netSavings
     }
 
+    var showColorMenu by remember { mutableStateOf(false) }
+    var showAccountMenu by remember { mutableStateOf(false) }
+
+    val selectedAccountName = remember(heroAccountId, accounts) {
+        if (heroAccountId == 0L) "All-Time" else accounts.find { it.id == heroAccountId }?.name ?: "All-Time"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(elevation = 12.dp, shape = CardShape, clip = false),
         shape = CardShape,
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = cardBgColor),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -355,6 +393,70 @@ fun NetBalanceHeroCard(financialSummary: FinancialSummary) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Settings Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box {
+                    IconButton(onClick = { showAccountMenu = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.AccountBalance, contentDescription = "Select Account", tint = SlateGray, modifier = Modifier.size(18.dp))
+                    }
+                    DropdownMenu(expanded = showAccountMenu, onDismissRequest = { showAccountMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("All-Time Net Balance") },
+                            onClick = {
+                                onAccountSelected(0L)
+                                showAccountMenu = false
+                            }
+                        )
+                        accounts.forEach { account ->
+                            DropdownMenuItem(
+                                text = { Text(account.name) },
+                                onClick = {
+                                    onAccountSelected(account.id)
+                                    showAccountMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Box {
+                    IconButton(onClick = { showColorMenu = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.ColorLens, contentDescription = "Change Color", tint = SlateGray, modifier = Modifier.size(18.dp))
+                    }
+                    DropdownMenu(expanded = showColorMenu, onDismissRequest = { showColorMenu = false }) {
+                        val colors = listOf(
+                            "#FFFFFF" to "White",
+                            "#E6FBF4" to "Emerald",
+                            "#FFEDED" to "Rose",
+                            "#EFF6FF" to "Blue",
+                            "#FFFBEB" to "Amber",
+                            "#F5F3FF" to "Violet",
+                            "#F1F5F9" to "Slate",
+                            "#E0F2FE" to "Sky",
+                            "#F0FDF4" to "Green",
+                            "#FFF1F2" to "Pink"
+                        )
+                        colors.forEach { (hex, name) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Box(modifier = Modifier.size(16.dp).background(Color(android.graphics.Color.parseColor(hex)), CircleShape).border(1.dp, Color.Gray, CircleShape))
+                                        Text(name)
+                                    }
+                                },
+                                onClick = {
+                                    onColorSelected(hex)
+                                    showColorMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Label row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -367,7 +469,7 @@ fun NetBalanceHeroCard(financialSummary: FinancialSummary) {
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    "All-Time Net Balance",
+                    if (heroAccountId == 0L) "All-Time Net Balance" else "$selectedAccountName Balance",
                     style = typography.bodyMedium,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -388,7 +490,7 @@ fun NetBalanceHeroCard(financialSummary: FinancialSummary) {
             // Status pill
             Surface(
                 shape = PillShape,
-                color = bgColor
+                color = if (cardBgColor == Color.White) defaultBgColor else Color.White.copy(alpha = 0.5f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
