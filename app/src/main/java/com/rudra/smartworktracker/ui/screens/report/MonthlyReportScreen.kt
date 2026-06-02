@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.ui.screens.report
 
 import android.app.Application
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,19 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Work
@@ -389,6 +403,9 @@ fun MonthlyReportScreen(onNavigateBack: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(24.dp))
                 }
+
+                // ── Full Data Report ────────────────────────────────────────────
+                FullDataReportSection(fullReport = uiState.fullReport)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -1219,6 +1236,254 @@ private fun OutlinedDateField(
         modifier = modifier.clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium
     )
+}
+
+// ── Full Data Report Section ───────────────────────────────────────────────
+
+@Composable
+private fun FullDataReportSection(fullReport: FullReportData) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.ListAlt,
+                    contentDescription = "Full Report",
+                    tint = Color(0xFF6C5CE7),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Full Data Report",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Work Section
+            ReportSubsection(
+                title = "Work",
+                icon = Icons.Default.Work,
+                color = Color(0xFF3498DB),
+                metrics = listOf(
+                    ReportMetric("Work Sessions", fullReport.workSessionCount.toString(), Color(0xFF3498DB)),
+                    ReportMetric("Work Session Hours", "%.1f".format(fullReport.workSessionHours) + "h", Color(0xFF3498DB)),
+                    ReportMetric("Work Days (Log)", fullReport.workDayCount.toString(), Color(0xFF5DADE2))
+                )
+            )
+
+            // Productivity Section
+            ReportSubsection(
+                title = "Productivity",
+                icon = Icons.Default.FitnessCenter,
+                color = Color(0xFF2ECC71),
+                metrics = listOf(
+                    ReportMetric("Habits", fullReport.habitCount.toString(), Color(0xFF2ECC71)),
+                    ReportMetric("Focus Sessions", fullReport.focusSessionCount.toString(), Color(0xFF27AE60)),
+                    ReportMetric("Focus Minutes", fullReport.focusSessionMinutes.toString(), Color(0xFF27AE60)),
+                    ReportMetric("Health Metrics", fullReport.healthMetricCount.toString(), Color(0xFF2ECC71)),
+                    ReportMetric("Achievements", "${fullReport.achievementsUnlocked}/${fullReport.achievementCount}", Color(0xFFF1C40F))
+                )
+            )
+
+            // Financial Section (Loans, Cards, EMIs)
+            ReportSubsection(
+                title = "Loans & Credit",
+                icon = Icons.Default.CreditCard,
+                color = Color(0xFFE74C3C),
+                metrics = listOf(
+                    ReportMetric("Active Loans", fullReport.activeLoanCount.toString(), Color(0xFFE74C3C)),
+                    ReportMetric("Borrowed (Remaining)", formatCurrency(fullReport.totalBorrowedRemaining), Color(0xFFE74C3C)),
+                    ReportMetric("Lent (Remaining)", formatCurrency(fullReport.totalLentRemaining), Color(0xFF2ECC71)),
+                    ReportMetric("Credit Cards", fullReport.creditCardCount.toString(), Color(0xFF9B59B6)),
+                    ReportMetric("Card Debt", formatCurrency(fullReport.totalCreditCardDebt), Color(0xFFE74C3C)),
+                    ReportMetric("Card Limits", formatCurrency(fullReport.totalCreditCardLimit), Color(0xFF2ECC71))
+                )
+            )
+
+            // EMIs Section
+            ReportSubsection(
+                title = "EMIs",
+                icon = Icons.Default.Home,
+                color = Color(0xFFE67E22),
+                metrics = listOf(
+                    ReportMetric("Active EMIs", fullReport.activeEmiCount.toString(), Color(0xFFE67E22)),
+                    ReportMetric("Pending EMIs", fullReport.pendingEmiCount.toString(), Color(0xFFE74C3C)),
+                    ReportMetric("Overdue EMIs", fullReport.overdueEmiCount.toString(), Color(0xFFE74C3C)),
+                    ReportMetric("Pending Amount", formatCurrency(fullReport.totalPendingEmiAmount), Color(0xFFE67E22))
+                )
+            )
+
+            // Journal & Check-in Section
+            ReportSubsection(
+                title = "Journal & Check-in",
+                icon = Icons.Default.SelfImprovement,
+                color = Color(0xFF9B59B6),
+                metrics = listOf(
+                    ReportMetric("Daily Journals", fullReport.journalCount.toString(), Color(0xFF9B59B6)),
+                    ReportMetric("Check-ins", fullReport.checkInCount.toString(), Color(0xFF8E44AD)),
+                    ReportMetric("Decisions", fullReport.decisionCount.toString(), Color(0xFF9B59B6)),
+                    ReportMetric("Positive", fullReport.positiveDecisions.toString(), Color(0xFF2ECC71)),
+                    ReportMetric("Negative", fullReport.negativeDecisions.toString(), Color(0xFFE74C3C))
+                )
+            )
+
+            // Reality & Debt Section
+            ReportSubsection(
+                title = "Reality & Debt",
+                icon = Icons.Default.CheckCircle,
+                color = Color(0xFF1ABC9C),
+                metrics = listOf(
+                    ReportMetric("Reality Entries", fullReport.realityPlanned.toString(), Color(0xFF1ABC9C)),
+                    ReportMetric("Completed", fullReport.realityCompleted.toString(), Color(0xFF2ECC71)),
+                    ReportMetric("Consequence Debt", "%.0f".format(fullReport.totalDebtAmount), Color(0xFFE74C3C)),
+                    ReportMetric("Weekly Reports", fullReport.weeklyReportCount.toString(), Color(0xFF1ABC9C)),
+                    ReportMetric("Monthly Inputs", fullReport.monthlyInputCount.toString(), Color(0xFF1ABC9C))
+                )
+            )
+
+            // Recurring Section
+            ReportSubsection(
+                title = "Recurring",
+                icon = Icons.Default.Repeat,
+                color = Color(0xFF2980B9),
+                metrics = listOf(
+                    ReportMetric("Active Rules", fullReport.activeRecurringRules.toString(), Color(0xFF2980B9)),
+                    ReportMetric("Transactions", fullReport.recurringTxCount.toString(), Color(0xFF2980B9)),
+                    ReportMetric("Pending", fullReport.pendingRecurringTxCount.toString(), Color(0xFFE74C3C))
+                )
+            )
+
+            // Financial Transactions Section
+            ReportSubsection(
+                title = "Financial Transactions",
+                icon = Icons.Default.TrendingUp,
+                color = Color(0xFF2ECC71),
+                metrics = listOf(
+                    ReportMetric("Total Transactions", fullReport.financialTxCount.toString(), Color(0xFF2ECC71)),
+                    ReportMetric("Income", formatCurrency(fullReport.financialTxIncome), Color(0xFF2ECC71)),
+                    ReportMetric("Expense", formatCurrency(fullReport.financialTxExpense), Color(0xFFE74C3C))
+                )
+            )
+
+            // Meal Section
+            ReportSubsection(
+                title = "Meals",
+                icon = Icons.Default.Favorite,
+                color = Color(0xFFE74C3C),
+                metrics = listOf(
+                    ReportMetric("Total Meals", fullReport.mealCount.toString(), Color(0xFFE74C3C)),
+                    ReportMetric("Meal Cost", formatCurrency(fullReport.mealTotalCost), Color(0xFFE74C3C)),
+                    ReportMetric("Special Dates", fullReport.specialMealDateCount.toString(), Color(0xFF9B59B6))
+                )
+            )
+
+            // Other Section
+            ReportSubsection(
+                title = "Other",
+                icon = Icons.Default.Groups,
+                color = Color(0xFF95A5A6),
+                metrics = listOf(
+                    ReportMetric("Colleagues", fullReport.colleagueCount.toString(), Color(0xFF95A5A6)),
+                    ReportMetric("Schedules", fullReport.scheduleCount.toString(), Color(0xFF95A5A6)),
+                    ReportMetric("Travel Expense", formatCurrency(fullReport.travelExpenseAmount), Color(0xFF95A5A6))
+                )
+            )
+        }
+    }
+}
+
+private data class ReportMetric(
+    val label: String,
+    val value: String,
+    val color: Color = Color.Unspecified
+)
+
+@Composable
+private fun ReportSubsection(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    metrics: List<ReportMetric>
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = if (expanded) "▲" else "▼",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(4.dp))
+                metrics.forEach { metric ->
+                    ReportRow(metric.label, metric.value, metric.color, if (metric.label == "Meal Cost" || metric.label.startsWith("Card") || metric.label.startsWith("Pending Amount") || metric.label.startsWith("Borrowed") || metric.label.startsWith("Lent")) metric.color else Color.Unspecified)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+    }
+}
+
+@Composable
+private fun ReportRow(label: String, value: String, valueColor: Color = Color.Unspecified, overrideColor: Color? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = overrideColor ?: valueColor
+        )
+    }
 }
 
 // ── Utility ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ class ReportsViewModelFactory(private val application: Application) : ViewModelP
             val expenseRepository = ExpenseRepository(database.expenseDao(), database.accountDao())
             val incomeRepository = IncomeRepository(database.incomeDao(), database.accountDao())
             @Suppress("UNCHECKED_CAST")
-            return ReportsViewModel(workLogRepository, expenseRepository, incomeRepository) as T
+            return ReportsViewModel(workLogRepository, expenseRepository, incomeRepository, database) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

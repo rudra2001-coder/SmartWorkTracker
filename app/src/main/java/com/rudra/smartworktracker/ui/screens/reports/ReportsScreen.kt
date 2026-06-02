@@ -2,10 +2,12 @@ package com.rudra.smartworktracker.ui.screens.reports
 
 import android.app.Application
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +26,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Wallet
@@ -475,6 +486,11 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
+
+                item {
+                    ReportsFullDataCard(fullReport = uiState.fullReport)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             // Custom Date Range Picker Dialog
@@ -487,6 +503,165 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ReportsFullDataCard(fullReport: ReportsFullData) {
+    var expanded by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardBackground)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Full Data Report",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryText
+                )
+                androidx.compose.material3.FilledTonalButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Default.CheckCircle else Icons.Default.ListAlt,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (expanded) "Collapse" else "Show All Data")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    // Work
+                    ReportSection(title = "Work", icon = Icons.Default.Work, color = androidx.compose.ui.graphics.Color(0x4C, 0xAF, 0x50)) {
+                        ReportRow("Total Work Days", "${fullReport.workDayCount}")
+                        ReportRow("Total Work Sessions", "${fullReport.workSessionCount}")
+                        ReportRow("Total Work Hours", "%.1f hrs".format(fullReport.workSessionHours))
+                    }
+                    // Productivity
+                    ReportSection(title = "Productivity", icon = Icons.Default.FitnessCenter, color = androidx.compose.ui.graphics.Color(0x21, 0x96, 0xF3)) {
+                        ReportRow("Habits Completed", "${fullReport.habitCount}")
+                        ReportRow("Focus Sessions", "${fullReport.focusSessionCount}")
+                        ReportRow("Focus Minutes", "%d".format(fullReport.focusSessionMinutes))
+                        ReportRow("Health Logs", "${fullReport.healthMetricCount}")
+                        ReportRow("Achievements Unlocked", "${fullReport.achievementsUnlocked}")
+                    }
+                    // Loans & Credit
+                    ReportSection(title = "Loans & Credit", icon = Icons.Default.CreditCard, color = androidx.compose.ui.graphics.Color(0xFF, 0x98, 0x00)) {
+                        ReportRow("Active Loans", "${fullReport.activeLoanCount}")
+                        ReportRow("Total Loan Amount", "৳%.2f".format(fullReport.totalLoanAmount))
+                        ReportRow("Remaining Loans", "৳%.2f".format(fullReport.totalRemainingLoan))
+                        ReportRow("Active Credit Cards", "${fullReport.creditCardCount}")
+                        ReportRow("Credit Card Debt", "৳%.2f".format(fullReport.totalCreditCardDebt))
+                    }
+                    // EMIs
+                    ReportSection(title = "EMIs", icon = Icons.Default.DateRange, color = androidx.compose.ui.graphics.Color(0x9C, 0x27, 0xB0)) {
+                        ReportRow("Active EMIs", "${fullReport.activeEmiCount}")
+                        ReportRow("Pending EMIs", "${fullReport.pendingEmiCount}")
+                        ReportRow("Overdue EMIs", "${fullReport.overdueEmiCount}")
+                        ReportRow("Pending EMI Amount", "৳%.2f".format(fullReport.totalPendingEmiAmount))
+                    }
+                    // Journal & Check-in
+                    ReportSection(title = "Journal & Check-in", icon = Icons.Default.Favorite, color = androidx.compose.ui.graphics.Color(0xE9, 0x1E, 0x63)) {
+                        ReportRow("Journal Entries", "${fullReport.journalCount}")
+                        ReportRow("Daily Check-ins", "${fullReport.checkInCount}")
+                        ReportRow("Decisions", "${fullReport.decisionCount}")
+                        ReportRow("Achievements", "${fullReport.achievementCount}")
+                    }
+                    // Reality & Debt
+                    ReportSection(title = "Reality & Debt", icon = Icons.Default.Home, color = androidx.compose.ui.graphics.Color(0x79, 0x55, 0x48)) {
+                        ReportRow("Reality Planned", "${fullReport.realityPlanned}")
+                        ReportRow("Reality Completed", "${fullReport.realityCompleted}")
+                        ReportRow("Monthly Inputs", "${fullReport.monthlyInputCount}")
+                        ReportRow("Weekly Reports", "${fullReport.weeklyReportCount}")
+                        ReportRow("Total Debt Amount", "৳%.2f".format(fullReport.totalDebtAmount))
+                    }
+                    // Recurring
+                    ReportSection(title = "Recurring", icon = Icons.Default.Repeat, color = androidx.compose.ui.graphics.Color(0x60, 0x7D, 0x8B)) {
+                        ReportRow("Recurring Rules", "${fullReport.activeRecurringRules}")
+                        ReportRow("Recurring Transactions", "${fullReport.recurringTxCount}")
+                        ReportRow("Pending Recurring Tx", "${fullReport.pendingRecurringTxCount}")
+                    }
+                    // Financial Transactions
+                    ReportSection(title = "Financial Transactions", icon = Icons.Default.Wallet, color = androidx.compose.ui.graphics.Color(0x4C, 0xAF, 0x50)) {
+                        ReportRow("Total Transactions", "${fullReport.financialTxCount}")
+                        ReportRow("Total Income (Tx)", "৳%.2f".format(fullReport.financialTxIncome))
+                        ReportRow("Total Expense (Tx)", "৳%.2f".format(fullReport.financialTxExpense))
+                    }
+                    // Meals
+                    ReportSection(title = "Meals", icon = Icons.Default.FitnessCenter, color = androidx.compose.ui.graphics.Color(0xFF, 0x57, 0x22)) {
+                        ReportRow("Meal Records", "${fullReport.mealCount}")
+                        ReportRow("Meal Total Cost", "৳%.2f".format(fullReport.mealTotalCost))
+                        ReportRow("Special Meal Dates", "${fullReport.specialMealDateCount}")
+                    }
+                    // Other
+                    ReportSection(title = "Other", icon = Icons.Default.Groups, color = androidx.compose.ui.graphics.Color(0x9E, 0x9E, 0x9E)) {
+                        ReportRow("Colleagues", "${fullReport.colleagueCount}")
+                        ReportRow("Schedules", "${fullReport.scheduleCount}")
+                        ReportRow("Travel Expenses", "৳%.2f".format(fullReport.travelExpenseAmount))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportSection(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: androidx.compose.ui.graphics.Color, content: @Composable ColumnScope.() -> Unit) {
+    var expanded by remember { mutableStateOf(true) }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.BlueSurface.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(28.dp).clip(CircleShape).background(color),
+                            contentAlignment = Alignment.Center
+                        ) {
+                        Icon(icon, contentDescription = title, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = AppColors.PrimaryText)
+                }
+                androidx.compose.material3.TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Hide" else "Show", color = AppColors.OfficeBlue)
+                }
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = AppColors.SecondaryText)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = AppColors.PrimaryText)
     }
 }
 
