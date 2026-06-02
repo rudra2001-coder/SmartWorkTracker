@@ -256,6 +256,45 @@ Quarterly = Total × 3, Yearly = Total × 12
 - **Cleanup**: Removed duplicate `SummaryItem` data class, removed leftover old FocusTimelineCard code block, removed `BorderStroke` import
 - **Files**: `AnalyticsScreen.kt` (all UI changes), `AnalyticsViewModel.kt` (unchanged), `AnalyticsViewModelFactory.kt` (unchanged)
 
+### Dashboard Hero Section — Upgraded June 2026
+
+**Files**: `DashboardScreen.kt` (`NetBalanceHeroCard`, `AccountBalanceCard`, `HeroColorPickerDialog`, `ColorSlider`, `AccountBalanceRow`)
+
+#### Custom Color Picker (replaced preset dropdown)
+- **Old**: Simple `DropdownMenu` with 10 preset hex colors (`#FFFFFF`, `#E6FBF4`, etc.) — no custom color support.
+- **New** (`HeroColorPickerDialog`): Full color picker `AlertDialog` with:
+  - **16 preset colors** in a 4-column grid with checkmark selection
+  - **3 HSV sliders** (Hue 0–360°, Saturation 0–100%, Brightness 0–100%) using Material3 `Slider` with colored thumbs/tracks
+  - **Hex input field** (`OutlinedTextField`) with validation — accepts any 6-digit hex code, auto-converts to HSL sliders
+  - **Live preview** strip showing the selected color with hex label
+  - **Apply/Cancel** buttons — persists via `settingsRepository.setHeroColor(hex)` (DataStore, key `hero_color`)
+- **Trigger**: Palette icon button (`Icons.Outlined.ColorLens`) in the hero card settings row (unchanged icon).
+
+#### Account Selector Upgrade
+- **Old**: Showed account names only in dropdown — no balance context.
+- **New**: Each `DropdownMenuItem` now shows:
+  - **Colored dot** (green for positive balance, red for zero)
+  - **Account name** (bold when selected)
+  - **Balance** (right-aligned, `৳X,XXX` format)
+  - "All-Time Net Balance" also shows the computed net value with a chart icon
+- Selection persists via `settingsRepository.setHeroAccountId(id)` (DataStore, key `hero_account_id`).
+
+#### Redesigned Account Balance Card
+- **Old** (`AccountBalanceCard`): Single big number showing `totalBalance` — no per-account breakdown.
+- **New**: Lists each account with `balance > 0` as an individual row with:
+  - **Color-coded dot**: Wallet = `EmeraldGreen`, Bank = `SapphireBlue`, Mobile Banking = `VioletPurple`
+  - **Animated balance** per account (staggered 500ms delay, `tween(800)`)
+  - **Proportional progress bar** showing each account's share of total (animated via `Animatable`)
+  - **Divider** + **Total row** at the bottom with the animated aggregate
+  - Falls back to single big number when no accounts exist with balance > 0
+- **Signature changed**: `AccountBalanceCard(accounts: List<Account>, totalBalance: Double)` — call site updated to pass `uiState.accounts`.
+
+#### Exported/Public Composable API
+All existing public signatures preserved:
+- `NetBalanceHeroCard(financialSummary, heroColor, heroAccountId, accounts, onColorSelected, onAccountSelected)` — unchanged
+- `FinancialSummaryChart(financialSummary)` — unchanged (delegates to `NetBalanceHeroCard`)
+- `AccountBalanceCard(accounts, totalBalance)` — new parameter `accounts` added
+
 ### Calculation Module Bug Fixes (Applied May 22 2026)
 | File | Bug | Fix |
 |---|---|---|
