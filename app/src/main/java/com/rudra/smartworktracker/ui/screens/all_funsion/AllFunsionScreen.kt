@@ -145,6 +145,7 @@ fun AllFunsionScreen(navController: NavController) {
                     NavigationItem.Backup,
                     NavigationItem.Settings,
                     NavigationItem.Team,
+                    NavigationItem.Notifications,
                     NavigationItem.UserProfile
                 )
             ),

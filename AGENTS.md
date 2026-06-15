@@ -57,7 +57,18 @@ app/
 ```
 
 ### Navigation (MainApp.kt)
-Bottom nav has 5 tabs: **Dashboard**, **Calendar**, **Analytics**, **All Features**, **Settings**. Drawer provides additional navigation. Routes are defined via `sealed class NavigationItem`.
+Bottom nav has 5 tabs: **Dashboard**, **Calendar**, **Analytics**, **All Features**, **Settings**. Drawer provides full app navigation. Routes are defined via `sealed class NavigationItem` (~35 routes).
+
+#### Navigation Drawer — Upgraded June 2026
+- **Scrollable**: Wrapped in `Column(verticalScroll(rememberScrollState()))` — all 33 items accessible on any screen size.
+- **Grouped sections**: 5 groups with headers (Overview, Work, Finance, Personal, Tools) for easy scanning.
+- **Visual refresh**:
+  - Gradient header (blue `#1A73E8`→`#0D47A1`) with app name and tagline.
+  - Each item has a rounded icon box (36dp, 10dp radius) with blue tint when selected.
+  - Item labels show description text (11sp, gray) beneath the title.
+  - Selected item has blue background tint + semi-bold title.
+  - Fixed width 300dp for consistent layout.
+- **Data structure**: Items are organized via `data class NavGroup(title, items)` inside `MainApp()` for easy reordering.
 
 ### Architecture Pattern
 ```
@@ -220,23 +231,21 @@ Quarterly = Total × 3, Yearly = Total × 12
   - Initial transfer creation: was silently skipping balance update when linked account not found. Now throws `IllegalStateException`.
   - `transferFromCreditCard` was silently skipping balance update when destination account not found. Now throws `IllegalStateException`.
 
-### Monthly Report (ui/screens/report/) — Upgraded May 2026
+### Monthly Report (ui/screens/report/) — Upgraded June 2026
 - **Old**: Only showed work type distribution (pie chart + counts) for a selected month
-- **New**: Full monthly insights dashboard with financial data, date range filtering, and period comparison
-- **ViewModel** (`MonthlyReportViewModel.kt`): Now combines 5 data sources (work logs, expenses, incomes, savings, accounts) via `combine` + `stateIn`. Computes work stats, income/expense/net, meal expense, savings deposits/withdrawals, expense/income by category, and previous-period comparison.
-- **UiState** (`MonthlyReportUiState`): Now includes `totalIncome`, `totalExpense`, `netAmount`, `mealExpense`, `totalSavingsDeposited`, `totalSavingsWithdrawn`, `netSavings`, `expenseByCategory`, `incomeByCategory`, `previousPeriod`, `useCustomRange`, `customStartDate`, `customEndDate`, `compareWithPrevious`.
-- **Screen** (`MonthlyReportScreen.kt`): New card-based layout with:
-  - Month selector + Year navigation (left/right arrows)
-  - Custom date range toggle with Material3 DatePickerDialog for start/end dates
-  - "Compare with previous period" toggle (Switch)
-  - 4 overview StatCards (Work Days, Income, Expense, Net) with gradient icon boxes
-  - Work Distribution pie chart (existing, using ycharts)
-  - Expense by Category pie chart (new) using `ExpenseCategory.color` for slice colors
-  - Income by Category pie chart (new) with predefined color palette
-  - Savings Activity summary card (deposited/withdrawn/net)
-  - Detailed Summary card with work breakdown + financial breakdown
-  - Comparison card (if toggled) showing side-by-side current vs previous metrics with percentage change
-- **Factory** (`MonthlyReportViewModelFactory.kt`): Now passes `ExpenseRepository`, `IncomeRepository`, and `AppDatabase` in addition to `WorkLogRepository`.
+- **New**: Full monthly insights dashboard with financial data, date range filtering, period comparison, and full data report
+- **ViewModel** (`MonthlyReportViewModel.kt`): Combines 37 data sources via `combine` + `stateIn`. Computes work stats, income/expense/net, meal expense, savings deposits/withdrawals, expense/income by category, previous-period comparison, and `FullReportData` (40+ metrics from all entity types).
+- **UiState** (`MonthlyReportUiState`): Added `fullData: FullReportData` with 40+ fields spanning work, productivity, loans, credit cards, EMIs, journal, check-ins, decisions, reality, debt, recurring, financial transactions, meals, and other entities.
+- **Screen** (`MonthlyReportScreen.kt`): Added `FullDataReportSection` with 10 collapsible subsections (Work, Productivity, Loans & Credit, EMIs, Journal & Check-in, Reality & Debt, Recurring, Financial Transactions, Meals, Other).
+- **Factory** (`MonthlyReportViewModelFactory.kt`): Passes `ExpenseRepository`, `IncomeRepository`, and `AppDatabase` in addition to `WorkLogRepository`.
+
+### Reports Screen (ui/screens/reports/) — Upgraded June 2026
+- **Modules**: `ReportsScreen.kt`, `ReportsViewModel.kt`, `ReportsViewModelFactory.kt`, `ReportUiState.kt`
+- **ViewModel** (`ReportsViewModel.kt`): Combines 38 data sources via `combine` + `stateIn`. Has `AppDatabase` parameter for full DB access. Computes filtered item lists (work/incomes/expenses), summary stats, and `ReportsFullData` (40+ metrics).
+- **UiState** (`ReportUiState.kt`): Contains `fullReport: ReportsFullData` with 40+ fields — `workDayCount`, `workSessionCount`, `workSessionHours`, `habitCount`, `focusSessionCount`, `focusSessionMinutes`, `healthMetricCount`, `achievementCount`, `achievementsUnlocked`, `journalCount`, `checkInCount`, `decisionCount`, `positiveDecisions`, `negativeDecisions`, `realityPlanned`, `realityCompleted`, `activeLoanCount`, `totalLoanAmount`, `totalRemainingLoan`, `borrowedLoanCount`, `lentLoanCount`, `totalBorrowedRemaining`, `totalLentRemaining`, `activeEmiCount`, `pendingEmiCount`, `overdueEmiCount`, `totalPendingEmiAmount`, `creditCardCount`, `totalCreditCardDebt`, `totalCreditCardLimit`, `financialTxCount`, `financialTxIncome`, `financialTxExpense`, `activeRecurringRules`, `recurringTxCount`, `pendingRecurringTxCount`, `mealCount`, `mealTotalCost`, `specialMealDateCount`, `colleagueCount`, `scheduleCount`, `travelExpenseAmount`, `totalDebtAmount`, `weeklyReportCount`, `monthlyInputCount`.
+- **Screen** (`ReportsScreen.kt`): Added `ReportsFullDataCard` composable with 10 collapsible subsections matching the MonthlyReport structure. Uses `ReportsFullData` from `ReportUiState` (duplicated from `FullReportData` to avoid cross-package coupling).
+- **Factory** (`ReportsViewModelFactory.kt`): Passes `AppDatabase` to `ReportsViewModel`.
+- **Helper composables**: `ReportsFullDataCard`, `ReportSection` (collapsible subsection with icon/color header), `ReportRow` (label/value pair row).
 
 ### Analytics Screen (ui/screens/analytics/) — Upgraded May 2026
 - **Goal**: Align Analytics screen UI with Dashboard design language for visual consistency
