@@ -3,10 +3,20 @@ package com.rudra.smartworktracker.ui.navigation
 import android.content.Context
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.AccountBalance
@@ -56,6 +66,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
@@ -63,8 +74,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -135,69 +153,195 @@ fun MainApp() {
     val currentRoute = navBackStackEntry?.destination?.route
     val shouldShowBars = currentRoute != NavigationItem.Onboarding.route
 
-    val navigationItems = listOf(
-        NavigationItem.Dashboard,
-        NavigationItem.AddEntry,
-        NavigationItem.Reports,
-        NavigationItem.Journal,
-        NavigationItem.WorkTimer,
-        NavigationItem.Focus,
-        NavigationItem.MindfulBreak,
-        NavigationItem.Habit,
-        NavigationItem.Health,
-        NavigationItem.Achievements,
-        NavigationItem.Calendar,
-        NavigationItem.Analytics,
-        NavigationItem.MonthlyReport,
-        NavigationItem.Calculation,
-        NavigationItem.FinancialStatement,
-        NavigationItem.Expense,
-        NavigationItem.Income,
-        NavigationItem.Savings,
-        NavigationItem.Loans,
-        NavigationItem.EMI,
-        NavigationItem.CreditCard,
-        NavigationItem.Transfer,
-        NavigationItem.Accounts,
-        NavigationItem.Recurring,
-        NavigationItem.Notifications,
-        NavigationItem.BulkImport,
-        NavigationItem.Backup,
-        NavigationItem.Settings,
-        NavigationItem.Team,
-        NavigationItem.Overtime,
-        NavigationItem.Scheduler,
-        NavigationItem.UserProfile,
-        NavigationItem.RealityTracker,
-        NavigationItem.FutureImpact,
-        NavigationItem.SpendAdvisor
+    data class NavGroup(val title: String, val icon: ImageVector, val items: List<NavigationItem>)
 
+    val navGroups = listOf(
+        NavGroup("Overview", Icons.Default.Dashboard, listOf(
+            NavigationItem.Dashboard,
+            NavigationItem.AddEntry,
+            NavigationItem.Reports,
+            NavigationItem.Journal
+        )),
+        NavGroup("Work", Icons.Default.Timer, listOf(
+            NavigationItem.WorkTimer,
+            NavigationItem.Focus,
+            NavigationItem.MindfulBreak,
+            NavigationItem.Habit,
+            NavigationItem.Health,
+            NavigationItem.Achievements,
+            NavigationItem.Calendar,
+            NavigationItem.Analytics,
+            NavigationItem.MonthlyReport,
+            NavigationItem.Calculation,
+            NavigationItem.Overtime,
+            NavigationItem.Scheduler
+        )),
+        NavGroup("Finance", Icons.Default.AttachMoney, listOf(
+            NavigationItem.FinancialStatement,
+            NavigationItem.Expense,
+            NavigationItem.Income,
+            NavigationItem.Savings,
+            NavigationItem.Loans,
+            NavigationItem.EMI,
+            NavigationItem.CreditCard,
+            NavigationItem.Transfer,
+            NavigationItem.Accounts,
+            NavigationItem.Recurring,
+            NavigationItem.SpendAdvisor
+        )),
+        NavGroup("Personal", Icons.Default.Person, listOf(
+            NavigationItem.UserProfile,
+            NavigationItem.RealityTracker,
+            NavigationItem.FutureImpact
+        )),
+        NavGroup("Tools", Icons.Default.Settings, listOf(
+            NavigationItem.Notifications,
+            NavigationItem.BulkImport,
+            NavigationItem.Backup,
+            NavigationItem.Settings,
+            NavigationItem.Team
+        ))
     )
+
+    val drawerBlue = Color(0xFF1A73E8)
+    val drawerDarkBlue = Color(0xFF0D47A1)
+    val drawerSurface = Color(0xFFF8F9FA)
+    val itemBackground = Color(0xFFE8F0FE)
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Spacer(Modifier.height(12.dp))
-                navigationItems.forEach { item ->
-                    NavigationDrawerItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = item.route == currentRoute,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+            ModalDrawerSheet(
+                modifier = Modifier.width(300.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Gradient header
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.linearGradient(listOf(drawerBlue, drawerDarkBlue))
+                            )
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
+                    ) {
+                        Column {
+                            Text(
+                                "Smart Work Tracker",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 22.sp
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Your complete productivity hub",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Grouped navigation items
+                    navGroups.forEach { group ->
+                        // Group header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                group.icon,
+                                contentDescription = null,
+                                tint = drawerBlue.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                group.title,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        group.items.forEach { item ->
+                            val isSelected = item.route == currentRoute
+                            val containerColor = if (isSelected) itemBackground else Color.Transparent
+
+                            Surface(
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                    scope.launch {
+                                        drawerState.close()
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = containerColor
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(
+                                                if (isSelected) drawerBlue.copy(alpha = 0.12f)
+                                                else MaterialTheme.colorScheme.surfaceVariant,
+                                                RoundedCornerShape(10.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            item.icon,
+                                            contentDescription = item.title,
+                                            tint = if (isSelected) drawerBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            item.title,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) drawerBlue else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        item.description?.let { desc ->
+                                            Text(
+                                                desc,
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                 }
             }
         }

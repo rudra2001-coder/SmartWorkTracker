@@ -152,6 +152,10 @@ fun BulkImportScreen(onNavigateBack: () -> Unit) {
                 item { TypeInfoChip(currentType) { viewModel.reset() } }
             }
 
+            if (currentType != null && uiState.parsedRows.isEmpty() && !uiState.isLoading) {
+                item { QuickStartCard(currentType) { viewModel.loadSampleData() } }
+            }
+
             if (uiState.parsedRows.isEmpty() && !uiState.isLoading) {
                 item { FilePickerCard { filePickerLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "*/*")) } }
             }
@@ -161,7 +165,13 @@ fun BulkImportScreen(onNavigateBack: () -> Unit) {
             }
 
             if (uiState.parsedRows.isNotEmpty() && !uiState.isLoading) {
-                item { PreviewCard(uiState, { viewModel.executeImport() }, { viewModel.reset() }) }
+                item {
+                    PreviewCard(
+                        uiState = uiState,
+                        onImport = { viewModel.executeImport() },
+                        onClear = { viewModel.reset() }
+                    )
+                }
             }
 
             uiState.importResult?.let { result ->
@@ -404,6 +414,84 @@ private fun TypeInfoChip(type: ImportEntityType, onChange: () -> Unit) {
 }
 
 @Composable
+private fun QuickStartCard(
+    type: ImportEntityType,
+    onLoadSample: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, CardShape, clip = false),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            brush = Brush.linearGradient(listOf(GoldenAmber, CoralRed)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Notifications, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Column {
+                    Text("Quick Start", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Try with sample data or upload your own file", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                "Don't have a file ready? Load pre-built sample ${type.displayName.lowercase()} data to see how import works.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 18.sp
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onLoadSample,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = ChipShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldenAmber)
+                ) {
+                    Icon(Icons.Default.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Try Sample Data", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "or choose a file below",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FilePickerCard(onPickFile: () -> Unit) {
     Card(
         modifier = Modifier
@@ -511,6 +599,8 @@ private fun PreviewCard(
     onImport: () -> Unit,
     onClear: () -> Unit
 ) {
+    var expanded by remember { androidx.compose.runtime.mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -535,8 +625,22 @@ private fun PreviewCard(
                 ) {
                     Icon(Icons.Default.Backup, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
-                Column {
-                    Text("Data Preview", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Data Preview", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        if (uiState.isSampleData) {
+                            Surface(shape = PillShape, color = GoldenAmber.copy(alpha = 0.15f)) {
+                                Text(
+                                    "SAMPLE",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldenAmber,
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
                     Text(uiState.fileName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -576,22 +680,40 @@ private fun PreviewCard(
             if (uiState.parsedRows.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
 
-                Text(
-                    "First ${minOf(3, uiState.parsedRows.size)} rows:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (expanded) "All ${uiState.parsedRows.size} rows:" else "First ${minOf(3, uiState.parsedRows.size)} rows:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (uiState.parsedRows.size > 3) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(
+                                if (expanded) "Show Less" else "Show All (${uiState.parsedRows.size})",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
 
                 val previewHeaders = uiState.previewHeaders.take(5)
-                val previewRows = uiState.parsedRows.take(3)
+                val displayRows = if (expanded) uiState.parsedRows else uiState.parsedRows.take(3)
 
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = if (expanded) 300.dp else 140.dp),
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp).let {
+                            if (expanded) it.verticalScroll(rememberScrollState()) else it
+                        }
+                    ) {
                         Row(modifier = Modifier.fillMaxWidth()) {
                             previewHeaders.forEach { header ->
                                 Text(
@@ -613,7 +735,7 @@ private fun PreviewCard(
                             }
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), thickness = 0.5.dp)
-                        previewRows.forEach { row ->
+                        displayRows.forEach { row ->
                             Spacer(Modifier.height(4.dp))
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 previewHeaders.forEach { header ->
@@ -650,7 +772,9 @@ private fun PreviewCard(
                     modifier = Modifier.weight(1f),
                     shape = ChipShape,
                     enabled = !uiState.isLoading && uiState.parsedRows.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.isSampleData) GoldenAmber else EmeraldGreen
+                    )
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
@@ -661,7 +785,31 @@ private fun PreviewCard(
                     } else {
                         Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Import ${uiState.parsedRows.size} Rows", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (uiState.isSampleData) "Import ${uiState.parsedRows.size} Sample Rows" else "Import ${uiState.parsedRows.size} Rows",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            if (uiState.isSampleData) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        shape = PillShape,
+                        color = GoldenAmber.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            "Sample data preview — click Import to save or Clear to start over",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = GoldenAmber,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }

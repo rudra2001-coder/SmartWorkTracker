@@ -10,6 +10,7 @@ import com.rudra.smartworktracker.data.importexport.ImportManager
 import com.rudra.smartworktracker.data.importexport.ImportResult
 import com.rudra.smartworktracker.data.importexport.ImportTemplate
 import com.rudra.smartworktracker.data.importexport.ImportTemplates
+import com.rudra.smartworktracker.data.importexport.SampleImportData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,9 @@ data class BulkImportUiState(
     val previewHeaders: List<String> = emptyList(),
     val fileName: String = "",
     val isGeneratingTemplate: Boolean = false,
-    val templateGenerated: Boolean = false
+    val templateGenerated: Boolean = false,
+    val isSampleData: Boolean = false,
+    val showSamplePrompt: Boolean = false
 )
 
 sealed class BulkImportEvent {
@@ -147,6 +150,25 @@ class BulkImportViewModel(private val context: Context) : ViewModel() {
                 _event.value = BulkImportEvent.Error("Failed to generate template: ${e.localizedMessage}")
             }
         }
+    }
+
+    fun loadSampleData() {
+        val type = _uiState.value.selectedType ?: return
+        val template = ImportTemplates.getTemplate(type)
+        val sampleRows = SampleImportData.getSampleRows(type)
+        val headers = sampleRows.firstOrNull()?.keys?.toList() ?: template.headers
+
+        _uiState.value = _uiState.value.copy(
+            parsedRows = sampleRows,
+            previewHeaders = headers,
+            fileName = "📦 Sample Data — ${type.displayName}",
+            detectedType = type,
+            importResult = null,
+            isLoading = false,
+            isSampleData = true,
+            showSamplePrompt = false
+        )
+        _event.value = BulkImportEvent.FileParsed
     }
 
     fun clearEvent() {
