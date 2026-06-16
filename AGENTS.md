@@ -89,7 +89,7 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 - App uses manual DI only (`DatabaseModule` provides Room DB instance)
 - No Hilt, Dagger, Koin, or other DI framework
 - No Multiplatform, no Compose for Desktop/iOS
-- Backup system uses WorkManager (daily at 12:05 AM). Backup version: 33.
+- Backup system uses WorkManager (daily, configurable time). Backup version: 33.
 - Theme supports light/dark mode via `SmartWorkTrackerTheme`
 - Sample data is seeded on first launch from `SampleData.kt`
 - Settings managed via `DataStore Preferences` (new) and `SharedPreferences` (legacy)
@@ -101,8 +101,10 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
   - Export: reads all tables via DAO suspend `getAll*()` / `first()` methods
   - Import: clears existing data, inserts all records in a single Room transaction
   - Version: 33 (incremented on schema changes for forward-compatibility)
-- **AutoBackupWorker** (`AutoBackupWorker.kt`): WorkManager `CoroutineWorker` triggered daily at 12:05 AM. Saves JSON to Downloads (MediaStore on API 30+). Tracks `last_auto_backup_time` in SharedPreferences.
-- **Backup ViewModel/Screen** (`ui/screens/backup/`): UI for manual export/import via SAF, toggle auto-backup, view last/next backup time.
+- **AutoBackupWorker** (`AutoBackupWorker.kt`): WorkManager `CoroutineWorker` triggered daily at user-configurable time (default 12:05 AM). Saves JSON to Downloads (MediaStore on API 30+). Tracks `last_auto_backup_time` in SharedPreferences.
+- **Backup ViewModel/Screen** (`ui/screens/backup/`): UI for manual export/import via SAF, toggle auto-backup, view last/next backup time, configure backup time via Material3 TimePicker.
+- **BackupHistory** (`data/backup/BackupHistory.kt`): SharedPreferences-based store for backup history entries + backup time preference (`backup_hour`, `backup_minute` keys).
+- **BackupManager** (`BackupManager.kt`): Exposes `getBackupHour()`, `getBackupMinute()`, `setBackupTime(hour, minute)`, `getBackupTimeDisplay()` — all delegate to `BackupHistoryStore`.
 
 ### Financial System Integrity (Fixes Applied May 2026)
 **Goal**: Eliminate all system loss, balance mismatches, and silent data corruption paths.

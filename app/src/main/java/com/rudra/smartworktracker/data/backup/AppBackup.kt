@@ -1,16 +1,14 @@
 package com.rudra.smartworktracker.data.backup
 
 import com.rudra.smartworktracker.data.entity.*
+import com.rudra.smartworktracker.data.entity.InAppNotification
 import com.rudra.smartworktracker.model.*
 
-/**
- * Data class representing the entire database for backup/restore purposes.
- * Rule 3.1: Export all tables to JSON, including schema and app version.
- */
 data class AppBackup(
     val version: Int,
     val appVersion: String,
     val timestamp: Long,
+    val metadata: BackupMetadata = BackupMetadata(),
     val settings: List<Settings> = emptyList(),
     val userProfile: List<UserProfile> = emptyList(),
     val dailyJournals: List<DailyJournal> = emptyList(),
@@ -49,5 +47,28 @@ data class AppBackup(
     val weeklyMealRates: List<WeeklyMealRate> = emptyList(),
     val dailyMealRates: List<DailyMealRate> = emptyList(),
     val mealSettings: List<MealSettings> = emptyList(),
-    val specialMealDates: List<SpecialMealDate> = emptyList()
+    val specialMealDates: List<SpecialMealDate> = emptyList(),
+    val inAppNotifications: List<InAppNotification> = emptyList()
 )
+
+data class BackupMetadata(
+    val dbVersion: Int = 0,
+    val totalEntities: Int = 0,
+    val totalRows: Long = 0,
+    val entityCounts: Map<String, Int> = emptyMap(),
+    val exportDurationMs: Long = 0,
+    val fileSizeBytes: Long = 0
+) {
+    fun displaySummary(): String = buildString {
+        append("$totalRows records across $totalEntities entity types")
+        if (entityCounts.isNotEmpty()) {
+            append(" (")
+            append(entityCounts.entries
+                .filter { it.value > 0 }
+                .sortedByDescending { it.value }
+                .take(5)
+                .joinToString(", ") { "${it.key}: ${it.value}" })
+            append(")")
+        }
+    }
+}

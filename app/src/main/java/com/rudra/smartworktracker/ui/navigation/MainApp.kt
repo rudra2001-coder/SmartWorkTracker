@@ -115,6 +115,7 @@ import com.rudra.smartworktracker.ui.screens.realitytracker.RealityTrackerScreen
 import com.rudra.smartworktracker.ui.screens.futureimpact.FutureImpactScreen
 import com.rudra.smartworktracker.ui.screens.accounts.AccountsScreen
 import com.rudra.smartworktracker.ui.screens.accounts.AccountDetailScreen
+import com.rudra.smartworktracker.ui.screens.bulkimport.BulkImportScreen
 import com.rudra.smartworktracker.ui.theme.SmartWorkTrackerTheme
 import kotlinx.coroutines.launch
 
@@ -160,6 +161,7 @@ fun MainApp() {
         NavigationItem.Accounts,
         NavigationItem.Recurring,
         NavigationItem.Notifications,
+        NavigationItem.BulkImport,
         NavigationItem.Backup,
         NavigationItem.Settings,
         NavigationItem.Team,
@@ -596,6 +598,18 @@ popExitTransition = { defaultPopExitTransition() }
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
+
+                composable(
+                    route = NavigationItem.BulkImport.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    BulkImportScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
                 composable(
                     route = NavigationItem.RealityTracker.route,
                     enterTransition = { defaultEnterTransition() },
@@ -948,6 +962,13 @@ sealed class NavigationItem(
         title = "Notifications",
         icon = Icons.Default.Notifications,
         description = "View in-app notifications"
+    )
+
+    object BulkImport : NavigationItem(
+        route = "bulk_import",
+        title = "Bulk Import",
+        icon = Icons.Default.Backup,
+        description = "Import CSV/Excel data"
     )
 
     object RealityTracker : NavigationItem(

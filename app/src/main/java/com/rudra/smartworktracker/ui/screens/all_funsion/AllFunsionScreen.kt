@@ -143,6 +143,7 @@ fun AllFunsionScreen(navController: NavController) {
             FeatureSection(
                 "General", listOf(
                     NavigationItem.Backup,
+                    NavigationItem.BulkImport,
                     NavigationItem.Settings,
                     NavigationItem.Team,
                     NavigationItem.Notifications,

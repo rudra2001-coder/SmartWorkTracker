@@ -20,63 +20,86 @@ class AutoBackupWorker(
 
     override suspend fun doWork(): Result {
         val backupManager = BackupManager(applicationContext)
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val fileName = "SmartWork_Auto_$timestamp.json"
+        val prefs = applicationContext.getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
+        val attemptCount = prefs.getInt("auto_backup_attempts", 0)
 
         return try {
-            val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                saveToDownloadsMediaStore(fileName, backupManager)
+            var result = ExportResult(success = false)
+            var savedUri = ""
+            var savedMediaStoreId = 0L
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = applicationContext.contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                result = uri?.let {
+                    savedUri = it.toString()
+                    try { savedMediaStoreId = it.lastPathSegment?.toLong() ?: 0L } catch (_: Exception) {}
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        backupManager.exportToJson(outputStream)
+                    }
+                } ?: ExportResult(success = false, errorMessage = "Failed to create MediaStore entry")
             } else {
-                saveToDownloadsLegacy(fileName, backupManager)
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                result = FileOutputStream(File(downloadsDir, fileName)).use { outputStream ->
+                    backupManager.exportToJson(outputStream)
+                }
             }
 
-            if (success) {
-                val prefs = applicationContext.getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putLong("last_auto_backup_time", System.currentTimeMillis()).apply()
+            prefs.edit().putInt("auto_backup_attempts", 0).apply()
+
+            if (result.success) {
+                prefs.edit().apply {
+                    putLong("last_auto_backup_time", System.currentTimeMillis())
+                    putLong("last_backup_file_size", result.fileSizeBytes)
+                    putLong("last_backup_row_count", result.totalRows)
+                    putLong("last_backup_duration_ms", result.durationMs)
+                    putString("last_backup_file_name", fileName)
+                    apply()
+                }
+
+                backupManager.recordBackup(
+                    fileName = fileName,
+                    totalRows = result.totalRows,
+                    fileSizeBytes = result.fileSizeBytes,
+                    isManual = false,
+                    fileUri = savedUri,
+                    mediaStoreId = savedMediaStoreId
+                )
+
                 InAppNotificationManager.getInstance(applicationContext).showBackup(
                     "Auto Backup Successful",
-                    "Data backed up successfully to $fileName"
+                    "Exported ${result.totalRows} records (${formatSize(result.fileSizeBytes)})"
                 )
                 Result.success()
             } else {
                 InAppNotificationManager.getInstance(applicationContext).showBackup(
                     "Auto Backup Failed",
-                    "Failed to create backup file"
+                    result.errorMessage ?: "Unknown error"
                 )
-                Result.retry()
+                if (attemptCount < 3) Result.retry() else Result.failure()
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            prefs.edit().putInt("auto_backup_attempts", attemptCount + 1).apply()
             InAppNotificationManager.getInstance(applicationContext).showBackup(
                 "Auto Backup Error",
-                "Backup failed: ${e.localizedMessage ?: "Unknown error"}"
+                "Attempt ${attemptCount + 1} failed: ${e.localizedMessage ?: "Unknown error"}"
             )
-            Result.failure()
+            if (attemptCount < 3) Result.retry() else Result.failure()
         }
     }
 
-    private suspend fun saveToDownloadsMediaStore(fileName: String, backupManager: BackupManager): Boolean {
-        val resolver = applicationContext.contentResolver
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        }
-
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-        return uri?.let {
-            resolver.openOutputStream(it)?.use { outputStream ->
-                backupManager.exportToJson(outputStream)
-            } ?: false
-        } ?: false
-    }
-
-    private suspend fun saveToDownloadsLegacy(fileName: String, backupManager: BackupManager): Boolean {
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (!downloadsDir.exists()) downloadsDir.mkdirs()
-        val file = File(downloadsDir, fileName)
-        return FileOutputStream(file).use { outputStream ->
-            backupManager.exportToJson(outputStream)
-        }
+    private fun formatSize(bytes: Long): String = when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
+        else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
     }
 }

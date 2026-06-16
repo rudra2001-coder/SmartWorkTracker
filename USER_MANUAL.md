@@ -497,7 +497,7 @@ Export your entire database to a JSON file or import a previous backup. All 39+ 
 3. **Import** — select a JSON backup file to restore all data
 4. The system clears existing data and replaces it with the backup in a single transaction
 
-**Auto Backup:** The app automatically creates a backup every night at 12:05 AM. Saved to Downloads folder (uses MediaStore on Android 10+).
+**Auto Backup:** The app automatically creates a backup every day at a configurable time (default 12:05 AM). Tap the scheduled time on the Auto-Backup card to open the time picker and set your preferred hour/minute. Saved to Downloads folder (uses MediaStore on Android 10+).
 
 ### 8.4 Notifications
 View all in-app notifications from a single screen. The notification center captures events from:
@@ -530,8 +530,8 @@ View and edit your personal profile.
 
 These run automatically — no user action needed:
 
-### Daily Auto Backup (12:05 AM)
-Every day at 12:05 AM, the app exports your entire database to a JSON file in the Downloads folder. On Android 10+, it uses MediaStore for compatibility.
+### Daily Auto Backup (Configurable Time)
+Every day at the configured time (default 12:05 AM), the app exports your entire database to a JSON file in the Downloads folder. On Android 10+, it uses MediaStore for compatibility. You can change the backup time from the Backup screen — tap the time displayed on the Auto-Backup card and set your preferred hour and minute using the Material3 TimePicker.
 
 ### Recurring Transaction Processing (Every Hour)
 Every hour, the system checks for due recurring rules and executes them automatically. You'll receive notifications (both system and in-app) for:
