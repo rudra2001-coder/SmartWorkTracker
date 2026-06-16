@@ -432,3 +432,93 @@ All existing public signatures preserved:
 #### Database
 - DB version bumped to 14 with destructive migration
 - `AppDatabase` registers `InAppNotification` entity and `InAppNotificationDao`
+
+### Bulk Import System — Upgraded June 2026
+
+#### Architecture
+```
+BulkImportScreen (Compose UI) --> BulkImportViewModel (StateFlow) --> ImportManager --> CsvParser / ExcelParser / SampleImportData
+                                                                       --> ImportTemplates / ExcelTemplateGenerator
+```
+
+**Files**: `ui/screens/bulkimport/` (Screen, ViewModel, Factory), `data/importexport/` (7 files)
+
+#### Key Features
+| Feature | Description |
+|---|---|
+| **13 entity types** | Expense, Income, WorkLog, Account, Loan, Savings, Habit, HealthMetric, DailyJournal, CreditCard, RecurringRule, Colleague, FinancialTransaction |
+| **CSV & Excel** | RFC-compliant CSV parser + raw .xlsx parser (no Apache POI — pure ZIP/XML) |
+| **Auto-detection** | Column header matching against known templates — no manual type selection needed |
+| **Financial integrity** | Real-time balance validation per row (insufficient funds = per-row error, no silent failure) |
+
+#### Sample Data System (NEW June 2026)
+- **`SampleImportData.kt`**: Pre-built realistic sample data for all 13 entity types (5–10 rows each)
+- **QuickStartCard**: Golden "Try Sample Data" button appears after selecting a type — loads sample rows with one tap
+- **Sample badge**: Golden `SAMPLE` pill tag in the preview header when viewing sample data
+- **No file needed**: Users can instantly try importing without creating CSV/Excel files
+- **Realistic data**: Restaurant expenses (Kacchi Bhai, Uber), salary + freelance income, bank accounts (DBBL, bKash, Nagad), loans with person names, health metrics (weight, sleep, steps), habits, journals, credit cards, recurring rules, colleagues, financial transactions
+
+#### UI Flow
+```
+Select Type → QuickStart (Try Sample / Upload File) → Preview (expandable rows) → Import
+```
+- **Expandable preview**: "Show All" / "Show Less" toggle when >3 rows
+- **Sample-aware button**: Amber button color + "Import N Sample Rows" text for sample data
+- **Hint banner**: "Sample data preview — click Import to save or Clear to start over"
+
+#### Data Layer (`data/importexport/`)
+| File | Purpose |
+|---|---|
+| `ImportManager.kt` | Central orchestrator: parses CSV/Excel, imports into 13 entity types with balance validation |
+| `ImportTemplate.kt` | `ImportEntityType` enum (13 types), `ImportTemplate` data class, `ImportTemplates` object with per-type templates + auto-detection |
+| `CsvParser.kt` | RFC-compliant CSV parser (handles quotes, escaped quotes, BOM) |
+| `ExcelParser.kt` | Raw .xlsx parser using `ZipInputStream` + `XmlPullParser` |
+| `ExcelTemplateGenerator.kt` | Generates .xlsx template files from scratch via raw ZIP/XML |
+| `SampleImportData.kt` | Pre-built sample data rows for all 13 entity types |
+
+### Mindful Break — Upgraded June 2026
+
+**Files**: `ui/screens/breaks/MindfulBreakScreen.kt`, `MindfulBreakViewModel.kt`, `MindfulBreakViewModelFactory.kt`
+
+#### What It Is
+A guided breathing exercise screen with multiple patterns, session timer, stats tracking, and Dashboard-themed UI. Previously a stateless composable with one breathing pattern; now a full ViewModel-driven feature.
+
+#### Breathing Patterns
+| Pattern | Rhythm | Description |
+|---|---|---|
+| **Box Breathing** | 4-4-4-4 | Navy SEAL technique for calm & focus |
+| **4-7-8 Relax** | 4-7-8-2 | Dr. Weil's relaxation breath |
+| **Calm Flow** | 4-2-4-2 | Quick centering exercise |
+| **Energizer** | 4-0-2-2 | Energizing breath for morning |
+
+#### Functional Upgrades
+- **Session lifecycle**: IDLE → RUNNING → PAUSED → COMPLETED with Start/Pause/Resume/Stop controls
+- **Session timer**: Live MM:SS overlay on the breathing circle
+- **Session stats**: Sessions today, total minutes, day streak persisted via SharedPreferences
+- **Session summary dialog**: Post-session dialog showing duration, pattern, cycles completed, streak
+- **Pattern selector**: Visual chip grid at top showing all 4 patterns with their rhythm
+
+#### UI Upgrades
+- **Dashboard design tokens**: EmeraldGreen, CoralRed, SapphireBlue, GoldenAmber, VioletPurple + surface tints
+- **Animated background**: Gradient shifts alpha on session start/stop via `animateFloatAsState`
+- **Phase-based colors**: Breathing circle shifts color by phase (Inhale=teal, Hold=pink, Exhale=green, Rest=blue)
+- **Expanded benefits**: Collapsible card with 7 benefits instead of 4
+- **Stats row**: Pill cards showing Today/Total Min/Streak when stats exist
+- **Smooth animation**: Custom easing (smoothstep interpolation) for natural breathing feel
+
+#### ViewModel (`MindfulBreakViewModel.kt`)
+- **State**: `MindfulBreakUiState` with pattern, session state, instruction, cycle count, breathing progress, elapsed seconds, stats
+- **Patterns**: `BreathingPatterns` object with 4 predefined patterns; `BreathingPattern` data class
+- **Animation**: `animateBreathing()` with smoothstep easing + 50ms granularity
+- **Persistence**: Sessions today, total minutes, current streak saved to SharedPreferences (`mindful_break` prefs)
+- **Streak logic**: Tracks consecutive days — resets if a day is missed
+
+#### Screen (`MindfulBreakScreen.kt`)
+- **PatternSelector**: Horizontal row of 4 pattern chips with rhythm subtitle + blue border when selected
+- **BreathingCard**: Main breathing circle with phase-based gradient, instruction text, cycle count, timer, and session controls
+- **StatsRow**: Sessions today / Total minutes / Streak pills with colored icons
+- **BenefitsCard**: Collapsible card with 7 benefits and expand/collapse arrow
+- **SessionSummaryDialog**: Post-session alert dialog with time badge, pattern name, cycles, streak fire icon
+
+#### Navigation
+- Route: `"mindful_break"`, Icon: `Icons.Default.SelfImprovement`, Group: Work section in drawer
