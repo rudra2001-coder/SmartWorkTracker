@@ -62,7 +62,7 @@ import com.rudra.smartworktracker.model.*
     views = [
         MonthlySummary::class
     ],
-    version = 14, // In-app notification center: added InAppNotification entity, InAppNotificationDao
+    version = 16, // Auto-retry: added pendingRetry, retryCount, maxRetries to RecurringRule
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)

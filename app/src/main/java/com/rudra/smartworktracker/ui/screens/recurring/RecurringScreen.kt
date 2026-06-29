@@ -103,6 +103,7 @@ import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.ExpenseCategories
 import com.rudra.smartworktracker.data.entity.IncomeCategories
 import com.rudra.smartworktracker.data.entity.PreferredTime
+import com.rudra.smartworktracker.data.entity.MonthlyDayOption
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringPriority
 import com.rudra.smartworktracker.data.entity.RecurringRule
@@ -110,6 +111,9 @@ import com.rudra.smartworktracker.data.entity.RecurringTransaction
 import com.rudra.smartworktracker.data.entity.RecurringTransactionStatus
 import com.rudra.smartworktracker.data.entity.TransactionType
 import com.rudra.smartworktracker.data.entity.WeekdayAdjustment
+import com.rudra.smartworktracker.data.repository.ExpenseRepository
+import com.rudra.smartworktracker.data.repository.IncomeRepository
+import com.rudra.smartworktracker.engine.RecurringEngine
 import com.rudra.smartworktracker.engine.PatternSuggestion
 import com.rudra.smartworktracker.ui.screens.recurring.RecurringViewModel.RecurringUiState
 import java.text.SimpleDateFormat
@@ -740,6 +744,23 @@ fun RuleCard(
                                     )
                                 }
                             }
+                            if (rule.pendingRetry) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(ChipShape)
+                                        .background(CoralRed.copy(alpha = 0.15f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "RETRY (${rule.retryCount}/${rule.maxRetries})",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = CoralRed,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                }
+                            }
                         }
                         Text(
                             text = getFrequencyText(rule.frequency),
@@ -1282,7 +1303,19 @@ fun AddRuleContent(
     var endDate by remember { mutableStateOf(existingRule?.endDate) }
     var autoExecute by remember { mutableStateOf(existingRule?.autoExecute ?: true) }
     var skipIfHoliday by remember { mutableStateOf(existingRule?.skipIfHoliday ?: false) }
+    var strictMode by remember { mutableStateOf(existingRule?.strictMode ?: false) }
+    var maxCatchUpDays by remember { mutableStateOf(existingRule?.maxCatchUpDays?.toString() ?: "0") }
     var minimumBalance by remember { mutableStateOf(existingRule?.minimumBalanceRequired?.toString() ?: "") }
+
+    var selectedDaysOfMonth by remember {
+        mutableStateOf(existingRule?.selectedDaysOfMonth ?: emptyList())
+    }
+    var monthlyDayOption by remember {
+        mutableStateOf(existingRule?.monthlyDayOption ?: MonthlyDayOption.DAY_OF_MONTH)
+    }
+    var weeklyInterval by remember {
+        mutableStateOf(existingRule?.weeklyInterval?.toString() ?: "1")
+    }
 
     var typeExpanded by remember { mutableStateOf(false) }
     var frequencyExpanded by remember { mutableStateOf(false) }
@@ -1291,6 +1324,7 @@ fun AddRuleContent(
     var weekdayAdjustmentExpanded by remember { mutableStateOf(false) }
     var sourceExpanded by remember { mutableStateOf(false) }
     var destinationExpanded by remember { mutableStateOf(false) }
+    var monthlyOptionExpanded by remember { mutableStateOf(false) }
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
@@ -1501,6 +1535,18 @@ fun AddRuleContent(
                 ) { Text("Clear All") }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = weeklyInterval,
+                onValueChange = { weeklyInterval = it.filter { c -> c.isDigit() } },
+                label = { Text("Repeat Every N Weeks") },
+                placeholder = { Text("1") },
+                supportingText = { Text("e.g., 2 = every other week") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
             if (selectedDaysOfWeek.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
@@ -1514,10 +1560,12 @@ fun AddRuleContent(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+                        val weeklyIntervalVal = (weeklyInterval.toIntOrNull() ?: 1).coerceAtLeast(1)
                         val nextDates = calculateNextExecutionDates(
                             selectedDays = selectedDaysOfWeek,
                             startFrom = System.currentTimeMillis(),
-                            count = 3
+                            count = 3,
+                            weeklyInterval = weeklyIntervalVal
                         )
                         nextDates.forEachIndexed { index, date ->
                             Row(
@@ -1534,6 +1582,133 @@ fun AddRuleContent(
                                     fontWeight = FontWeight.Medium
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (frequency == RecurringFrequency.MONTHLY_SPECIFIC_DAYS) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Monthly Day Option",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            DropdownField(
+                label = "Day Type",
+                value = monthlyDayOption.name.replace("_", " "),
+                expanded = monthlyOptionExpanded,
+                onExpandedChange = { monthlyOptionExpanded = it },
+                options = MonthlyDayOption.entries,
+                optionLabel = { it.name.replace("_", " ") },
+                onSelect = {
+                    monthlyDayOption = it
+                    monthlyOptionExpanded = false
+                }
+            )
+
+            if (monthlyDayOption == MonthlyDayOption.DAY_OF_MONTH) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Select Days of Month",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                val dayOptions = listOf(1, 5, 10, 15, 20, 25, 28, -1).map {
+                    if (it > 0) Pair(it, it.toString()) else Pair(it, "Last Day")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    dayOptions.take(4).forEach { (dayNum, label) ->
+                        val isSelected = selectedDaysOfMonth.contains(dayNum)
+                        Card(
+                            onClick = {
+                                selectedDaysOfMonth = if (isSelected) {
+                                    selectedDaysOfMonth - dayNum
+                                } else {
+                                    selectedDaysOfMonth + dayNum
+                                }
+                            },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) SapphireBlue else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f),
+                            shape = ChipShape
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp, vertical = 10.dp)
+                                    .fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontSize = 11.sp,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    dayOptions.drop(4).forEach { (dayNum, label) ->
+                        val isSelected = selectedDaysOfMonth.contains(dayNum)
+                        Card(
+                            onClick = {
+                                selectedDaysOfMonth = if (isSelected) {
+                                    selectedDaysOfMonth - dayNum
+                                } else {
+                                    selectedDaysOfMonth + dayNum
+                                }
+                            },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) SapphireBlue else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f),
+                            shape = ChipShape
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp, vertical = 10.dp)
+                                    .fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontSize = 11.sp,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (selectedDaysOfMonth.isNotEmpty() || monthlyDayOption != MonthlyDayOption.DAY_OF_MONTH) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BlueSurface)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Schedule: ${monthlyDayOption.name.replace("_", " ")}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (selectedDaysOfMonth.isNotEmpty() && monthlyDayOption == MonthlyDayOption.DAY_OF_MONTH) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Days: ${selectedDaysOfMonth.sorted().joinToString(", ") { if (it > 0) "Day $it" else "Last Day" }}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
                         }
                     }
                 }
@@ -1737,6 +1912,46 @@ fun AddRuleContent(
             Switch(checked = skipIfHoliday, onCheckedChange = { skipIfHoliday = it })
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Strict Mode", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "Only execute on exact scheduled date",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+            Switch(checked = strictMode, onCheckedChange = { strictMode = it })
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Auto Catch-Up", style = MaterialTheme.typography.bodyLarge)
+            Switch(
+                checked = maxCatchUpDays.toIntOrNull() ?: 0 > 0,
+                onCheckedChange = { if (it) maxCatchUpDays = "3" else maxCatchUpDays = "0" }
+            )
+        }
+        if ((maxCatchUpDays.toIntOrNull() ?: 0) > 0) {
+            OutlinedTextField(
+                value = maxCatchUpDays,
+                onValueChange = { maxCatchUpDays = it.filter { c -> c.isDigit() } },
+                label = { Text("Max Days to Catch Up") },
+                placeholder = { Text("3") },
+                supportingText = { Text("Missed executions within this many days will auto-execute") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(
@@ -1761,9 +1976,29 @@ fun AddRuleContent(
                         Toast.makeText(context, "Please select at least one day", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    if (frequency == RecurringFrequency.MONTHLY_SPECIFIC_DAYS && monthlyDayOption == MonthlyDayOption.DAY_OF_MONTH && selectedDaysOfMonth.isEmpty()) {
+                        Toast.makeText(context, "Please select at least one day of the month", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    val weeklyIntervalVal = (weeklyInterval.toIntOrNull() ?: 1).coerceAtLeast(1)
+                    val maxCatchUpVal = (maxCatchUpDays.toIntOrNull() ?: 0).coerceAtLeast(0)
 
                     val initialNextDate = if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS && selectedDaysOfWeek.isNotEmpty()) {
                         calculateInitialNextDate(selectedDaysOfWeek, startDate)
+                    } else if (frequency == RecurringFrequency.MONTHLY_SPECIFIC_DAYS) {
+                        val db = AppDatabase.getDatabase(context)
+                        val engine = RecurringEngine(
+                            com.rudra.smartworktracker.data.repository.RecurringRepository(db.recurringRuleDao(), db.recurringTransactionDao()),
+                            IncomeRepository(db.incomeDao(), db.accountDao()),
+                            ExpenseRepository(db.expenseDao(), db.accountDao()),
+                            db.accountDao(), null, null
+                        )
+                        engine.calculateNextMonthlySpecificDayWithDays(
+                            startDate,
+                            if (monthlyDayOption == MonthlyDayOption.DAY_OF_MONTH) selectedDaysOfMonth else listOf(1),
+                            monthlyDayOption
+                        )
                     } else startDate
 
                     val rule = RecurringRule(
@@ -1777,7 +2012,11 @@ fun AddRuleContent(
                         sourceAccountId = sourceAccountId,
                         destinationAccountId = if (transactionType == TransactionType.TRANSFER) destinationAccountId else null,
                         frequency = frequency,
+                        interval = existingRule?.interval ?: 1,
                         selectedDaysOfWeek = if (frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) selectedDaysOfWeek else null,
+                        selectedDaysOfMonth = if (frequency == RecurringFrequency.MONTHLY_SPECIFIC_DAYS && monthlyDayOption == MonthlyDayOption.DAY_OF_MONTH) selectedDaysOfMonth else null,
+                        monthlyDayOption = monthlyDayOption,
+                        weeklyInterval = weeklyIntervalVal,
                         priority = priority,
                         preferredTime = preferredTime,
                         weekdayAdjustment = weekdayAdjustment,
@@ -1786,6 +2025,8 @@ fun AddRuleContent(
                         nextExecutionDate = existingRule?.nextExecutionDate ?: initialNextDate,
                         minimumBalanceRequired = minBalance,
                         autoExecute = autoExecute,
+                        strictMode = strictMode,
+                        maxCatchUpDays = maxCatchUpVal,
                         isActive = existingRule?.isActive ?: true,
                         isPaused = existingRule?.isPaused ?: false,
                         maxExecutions = maxExec,
@@ -2219,7 +2460,8 @@ fun getFrequencyText(frequency: RecurringFrequency): String {
         RecurringFrequency.QUARTERLY -> "Every 3 Months"
         RecurringFrequency.YEARLY -> "Yearly"
         RecurringFrequency.CUSTOM -> "Custom"
-        RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> "Weekly (Specific Days)"
+        RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> "Weekly (Custom Days)"
+        RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> "Monthly (Specific Days)"
     }
 }
 
@@ -2228,13 +2470,17 @@ fun getFrequencyDisplayName(frequency: RecurringFrequency): String = getFrequenc
 fun calculateNextExecutionDates(
     selectedDays: List<DayOfWeek>,
     startFrom: Long,
-    count: Int
+    count: Int,
+    weeklyInterval: Int = 1
 ): List<Long> {
     val dates = mutableListOf<Long>()
     val calendar = java.util.Calendar.getInstance()
     calendar.timeInMillis = startFrom
 
     val selectedCalendarDays = selectedDays.map { DayOfWeek.toCalendarDay(it) }.sorted()
+    val interval = weeklyInterval.coerceAtLeast(1)
+
+    var weekCounter = 0
 
     repeat(count) {
         val currentDayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
@@ -2253,6 +2499,12 @@ fun calculateNextExecutionDates(
         } else {
             val daysToAdd = (7 - currentDayOfWeek) + selectedCalendarDays.first()
             calendar.add(java.util.Calendar.DAY_OF_YEAR, daysToAdd)
+            weekCounter++
+        }
+
+        if (weekCounter > 0 && weekCounter % interval != 0 && interval > 1) {
+            calendar.add(java.util.Calendar.WEEK_OF_YEAR, interval - (weekCounter % interval))
+            weekCounter += interval - (weekCounter % interval)
         }
 
         dates.add(calendar.timeInMillis)
@@ -2264,7 +2516,8 @@ fun calculateNextExecutionDates(
 
 fun calculateInitialNextDate(
     selectedDays: List<DayOfWeek>,
-    startDate: Long
+    startDate: Long,
+    weeklyInterval: Int = 1
 ): Long {
     if (selectedDays.isEmpty()) return startDate
 

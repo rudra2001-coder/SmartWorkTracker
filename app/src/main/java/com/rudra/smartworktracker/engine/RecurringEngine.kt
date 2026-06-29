@@ -3,6 +3,8 @@ package com.rudra.smartworktracker.engine
 import com.rudra.smartworktracker.data.dao.AccountDao
 import com.rudra.smartworktracker.data.entity.DayOfWeek
 import com.rudra.smartworktracker.data.entity.Income
+import com.rudra.smartworktracker.data.entity.MonthlyDayOption
+import com.rudra.smartworktracker.data.entity.PreferredTime
 import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringPriority
 import com.rudra.smartworktracker.data.entity.RecurringRule
@@ -18,7 +20,14 @@ import com.rudra.smartworktracker.data.repository.SavingsRepository
 import com.rudra.smartworktracker.model.Expense
 import com.rudra.smartworktracker.model.ExpenseCategory
 import kotlinx.coroutines.flow.first
-import java.util.Calendar
+import java.time.DayOfWeek as JavaDayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.time.temporal.IsoFields
+import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 
 class RecurringEngine(
@@ -31,150 +40,301 @@ class RecurringEngine(
 ) {
     companion object {
         private const val DEFAULT_MINIMUM_BALANCE = 0.0
+        private val SYSTEM_ZONE: ZoneId = ZoneId.systemDefault()
+    }
+
+    private fun getPreferredHour(preferredTime: PreferredTime): Int = when (preferredTime) {
+        PreferredTime.MORNING -> 9
+        PreferredTime.AFTERNOON -> 14
+        PreferredTime.EVENING -> 19
+        PreferredTime.NIGHT -> 22
+    }
+
+    private fun toZonedDateTime(millis: Long): ZonedDateTime =
+        ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), SYSTEM_ZONE)
+
+    private fun toMillis(zdt: ZonedDateTime): Long =
+        zdt.toInstant().toEpochMilli()
+
+    private fun startOfDayZoned(date: LocalDate, preferredTime: PreferredTime): ZonedDateTime {
+        val hour = getPreferredHour(preferredTime)
+        return date.atTime(LocalTime.of(hour, 0, 0)).atZone(SYSTEM_ZONE)
+    }
+
+    private fun getIsoWeek(date: LocalDate): Long {
+        val year = date.get(IsoFields.WEEK_BASED_YEAR).toLong()
+        val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR).toLong()
+        return year * 100 + week
     }
 
     fun calculateNextExecutionDate(
         currentDate: Long,
         frequency: RecurringFrequency,
         interval: Int = 1,
-        preferredTime: com.rudra.smartworktracker.data.entity.PreferredTime = com.rudra.smartworktracker.data.entity.PreferredTime.MORNING,
-        weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP
+        preferredTime: PreferredTime = PreferredTime.MORNING,
+        weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP,
+        selectedDaysOfWeek: List<DayOfWeek>? = null,
+        selectedDaysOfMonth: List<Int>? = null,
+        monthlyDayOption: MonthlyDayOption = MonthlyDayOption.DAY_OF_MONTH,
+        weeklyInterval: Int = 1
     ): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = currentDate
+        val zdt = toZonedDateTime(currentDate)
+        val date = zdt.toLocalDate()
 
-        val hour = when (preferredTime) {
-            com.rudra.smartworktracker.data.entity.PreferredTime.MORNING -> 9
-            com.rudra.smartworktracker.data.entity.PreferredTime.AFTERNOON -> 14
-            com.rudra.smartworktracker.data.entity.PreferredTime.EVENING -> 19
-            com.rudra.smartworktracker.data.entity.PreferredTime.NIGHT -> 22
-        }
-        calendar.set(Calendar.HOUR_OF_DAY, hour)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-
-        when (frequency) {
-            RecurringFrequency.DAILY -> calendar.add(Calendar.DAY_OF_MONTH, interval)
-            RecurringFrequency.WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, interval)
-            RecurringFrequency.BIWEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, 2 * interval)
-            RecurringFrequency.MONTHLY -> calendar.add(Calendar.MONTH, interval)
-            RecurringFrequency.QUARTERLY -> calendar.add(Calendar.MONTH, 3 * interval)
-            RecurringFrequency.YEARLY -> calendar.add(Calendar.YEAR, interval)
+        val result = when (frequency) {
+            RecurringFrequency.DAILY -> {
+                startOfDayZoned(date.plusDays(interval.toLong()), preferredTime)
+            }
+            RecurringFrequency.WEEKLY -> {
+                startOfDayZoned(date.plusWeeks(interval.toLong()), preferredTime)
+            }
+            RecurringFrequency.BIWEEKLY -> {
+                startOfDayZoned(date.plusWeeks(2L * interval), preferredTime)
+            }
+            RecurringFrequency.MONTHLY -> {
+                startOfDayZoned(date.plusMonths(interval.toLong()), preferredTime)
+            }
+            RecurringFrequency.QUARTERLY -> {
+                startOfDayZoned(date.plusMonths(3L * interval), preferredTime)
+            }
+            RecurringFrequency.YEARLY -> {
+                startOfDayZoned(date.plusYears(interval.toLong()), preferredTime)
+            }
             RecurringFrequency.CUSTOM -> {
-                calendar.add(Calendar.DAY_OF_MONTH, interval)
+                startOfDayZoned(date.plusDays(interval.toLong()), preferredTime)
             }
             RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
-                return calculateNextSpecificDay(calendar, null, preferredTime, weekdayAdjustment)
+                val days = selectedDaysOfWeek ?: return toMillis(startOfDayZoned(date.plusWeeks(1), preferredTime))
+                if (days.isEmpty()) return toMillis(startOfDayZoned(date.plusWeeks(1), preferredTime))
+                return calculateNextSpecificDay(zdt, days, preferredTime, weekdayAdjustment, weeklyInterval)
+            }
+            RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> {
+                val days = selectedDaysOfMonth ?: return toMillis(startOfDayZoned(date.plusMonths(1), preferredTime))
+                if (days.isEmpty()) return toMillis(startOfDayZoned(date.plusMonths(1), preferredTime))
+                return calculateNextMonthlySpecificDay(zdt, days, monthlyDayOption, preferredTime, weekdayAdjustment)
             }
         }
 
-        return applyWeekdayAdjustment(calendar.timeInMillis, weekdayAdjustment)
+        return applyWeekdayAdjustment(toMillis(result), weekdayAdjustment)
     }
 
     fun calculateNextExecutionDateWithDays(
         currentDate: Long,
         selectedDays: List<DayOfWeek>,
-        preferredTime: com.rudra.smartworktracker.data.entity.PreferredTime = com.rudra.smartworktracker.data.entity.PreferredTime.MORNING,
+        preferredTime: PreferredTime = PreferredTime.MORNING,
+        weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP,
+        weeklyInterval: Int = 1
+    ): Long {
+        val zdt = toZonedDateTime(currentDate)
+        return calculateNextSpecificDay(zdt, selectedDays, preferredTime, weekdayAdjustment, weeklyInterval)
+    }
+
+    fun calculateNextMonthlySpecificDayWithDays(
+        currentDate: Long,
+        selectedDays: List<Int>,
+        monthlyDayOption: MonthlyDayOption = MonthlyDayOption.DAY_OF_MONTH,
+        preferredTime: PreferredTime = PreferredTime.MORNING,
         weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP
     ): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = currentDate
-        return calculateNextSpecificDay(calendar, selectedDays, preferredTime, weekdayAdjustment)
+        val zdt = toZonedDateTime(currentDate)
+        return calculateNextMonthlySpecificDay(zdt, selectedDays, monthlyDayOption, preferredTime, weekdayAdjustment)
     }
 
     private fun calculateNextSpecificDay(
-        calendar: Calendar,
-        selectedDays: List<DayOfWeek>? = null,
-        preferredTime: com.rudra.smartworktracker.data.entity.PreferredTime = com.rudra.smartworktracker.data.entity.PreferredTime.MORNING,
-        weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP
+        zdt: ZonedDateTime,
+        selectedDays: List<DayOfWeek>,
+        preferredTime: PreferredTime,
+        weekdayAdjustment: WeekdayAdjustment,
+        weeklyInterval: Int = 1
     ): Long {
-        val hour = when (preferredTime) {
-            com.rudra.smartworktracker.data.entity.PreferredTime.MORNING -> 9
-            com.rudra.smartworktracker.data.entity.PreferredTime.AFTERNOON -> 14
-            com.rudra.smartworktracker.data.entity.PreferredTime.EVENING -> 19
-            com.rudra.smartworktracker.data.entity.PreferredTime.NIGHT -> 22
-        }
+        val date = zdt.toLocalDate()
+        val selectedJavaDays = selectedDays.map { d -> java.time.DayOfWeek.valueOf(d.name) }.sorted()
 
-        if (selectedDays.isNullOrEmpty()) {
-            calendar.add(Calendar.WEEK_OF_YEAR, 1)
-            calendar.set(Calendar.HOUR_OF_DAY, hour)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            return applyWeekdayAdjustment(calendar.timeInMillis, weekdayAdjustment)
-        }
+        val currentJavaDay = date.dayOfWeek
 
-        val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-        val selectedCalendarDays = selectedDays.map { DayOfWeek.toCalendarDay(it) }.sorted()
-
-        var nextDay: Int? = null
-        for (day in selectedCalendarDays) {
-            if (day > currentDayOfWeek) {
-                nextDay = day
+        var nextDate: LocalDate = date
+        for (day in selectedJavaDays) {
+            if (day > currentJavaDay) {
+                nextDate = date.with(TemporalAdjusters.next(day))
                 break
             }
         }
 
-        if (nextDay != null) {
-            val daysToAdd = nextDay - currentDayOfWeek
-            calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
-        } else {
-            val daysToAdd = (7 - currentDayOfWeek) + selectedCalendarDays.first()
-            calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
+        if (nextDate == date) {
+            nextDate = date.with(TemporalAdjusters.next(selectedJavaDays.first()))
         }
 
-        calendar.set(Calendar.HOUR_OF_DAY, hour)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
+        if (weeklyInterval > 1) {
+            val currentWeek = getIsoWeek(date)
+            val nextWeek = getIsoWeek(nextDate)
+            val isoWeeksDiff = nextWeek - currentWeek
 
-        return applyWeekdayAdjustment(calendar.timeInMillis, weekdayAdjustment)
+            if (isoWeeksDiff > 0) {
+                val mod = isoWeeksDiff % weeklyInterval
+                if (mod != 0L) {
+                    nextDate = nextDate.plusWeeks((weeklyInterval - mod).toLong())
+                }
+            }
+        }
+
+        return toMillis(startOfDayZoned(nextDate, preferredTime))
+    }
+
+    private fun calculateNextMonthlySpecificDay(
+        zdt: ZonedDateTime,
+        selectedDays: List<Int>,
+        monthlyDayOption: MonthlyDayOption,
+        preferredTime: PreferredTime,
+        weekdayAdjustment: WeekdayAdjustment
+    ): Long {
+        val date = zdt.toLocalDate()
+        val sortedDays = selectedDays.sorted()
+
+        val candidateDays = mutableListOf<LocalDate>()
+
+        for (dayNum in sortedDays) {
+            val dayInMonth = when (monthlyDayOption) {
+                MonthlyDayOption.DAY_OF_MONTH -> {
+                    if (dayNum > 0) {
+                        try { date.withDayOfMonth(dayNum.coerceIn(1, date.lengthOfMonth())) } catch (_: Exception) { null }
+                    } else {
+                        try { date.withDayOfMonth(date.lengthOfMonth() + 1 + dayNum) } catch (_: Exception) { null }
+                    }
+                }
+                MonthlyDayOption.FIRST_DAY -> date.withDayOfMonth(1)
+                MonthlyDayOption.LAST_DAY -> date.withDayOfMonth(date.lengthOfMonth())
+                MonthlyDayOption.FIRST_WEEKDAY -> {
+                    val firstDay = date.withDayOfMonth(1)
+                    when (firstDay.dayOfWeek) {
+                        JavaDayOfWeek.SATURDAY -> firstDay.plusDays(2)
+                        JavaDayOfWeek.FRIDAY -> firstDay.plusDays(3)
+                        else -> firstDay
+                    }
+                }
+                MonthlyDayOption.LAST_WEEKDAY -> {
+                    val lastDay = date.withDayOfMonth(date.lengthOfMonth())
+                    when (lastDay.dayOfWeek) {
+                        JavaDayOfWeek.SATURDAY -> lastDay.minusDays(1)
+                        JavaDayOfWeek.FRIDAY -> lastDay.minusDays(1)
+                        else -> lastDay
+                    }
+                }
+            }
+            if (dayInMonth != null) candidateDays.add(dayInMonth)
+        }
+
+        val today = date
+        for (candidate in candidateDays.sorted()) {
+            if (!candidate.isBefore(today)) {
+                return toMillis(startOfDayZoned(candidate, preferredTime))
+            }
+        }
+
+        val nextMonth = date.plusMonths(1)
+        val nextCandidates = candidateDays.map {
+            when (monthlyDayOption) {
+                MonthlyDayOption.DAY_OF_MONTH -> {
+                    val dayNum = if (it.dayOfMonth > nextMonth.lengthOfMonth()) nextMonth.lengthOfMonth() else it.dayOfMonth
+                    nextMonth.withDayOfMonth(dayNum)
+                }
+                MonthlyDayOption.FIRST_DAY -> nextMonth.withDayOfMonth(1)
+                MonthlyDayOption.LAST_DAY -> nextMonth.withDayOfMonth(nextMonth.lengthOfMonth())
+                MonthlyDayOption.FIRST_WEEKDAY -> {
+                    val firstDay = nextMonth.withDayOfMonth(1)
+                    when (firstDay.dayOfWeek) {
+                        JavaDayOfWeek.SATURDAY -> firstDay.plusDays(2)
+                        JavaDayOfWeek.FRIDAY -> firstDay.plusDays(3)
+                        else -> firstDay
+                    }
+                }
+                MonthlyDayOption.LAST_WEEKDAY -> {
+                    val lastDay = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth())
+                    when (lastDay.dayOfWeek) {
+                        JavaDayOfWeek.SATURDAY -> lastDay.minusDays(1)
+                        JavaDayOfWeek.FRIDAY -> lastDay.minusDays(1)
+                        else -> lastDay
+                    }
+                }
+            }
+        }
+        val earliestNext = nextCandidates.minOrNull() ?: nextMonth.withDayOfMonth(1)
+        return toMillis(startOfDayZoned(earliestNext, preferredTime))
     }
 
     private fun applyWeekdayAdjustment(millis: Long, adjustment: WeekdayAdjustment): Long {
         if (adjustment == WeekdayAdjustment.SKIP) return millis
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = millis
-        var dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-
-        if (adjustment == WeekdayAdjustment.PREVIOUS_WORKDAY) {
-            while (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.FRIDAY) {
-                calendar.add(Calendar.DAY_OF_YEAR, -1)
-                dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        var date = toZonedDateTime(millis).toLocalDate()
+        when (adjustment) {
+            WeekdayAdjustment.PREVIOUS_WORKDAY -> {
+                while (date.dayOfWeek == JavaDayOfWeek.SATURDAY || date.dayOfWeek == JavaDayOfWeek.FRIDAY) {
+                    date = date.minusDays(1)
+                }
             }
-        } else if (adjustment == WeekdayAdjustment.NEXT_WORKDAY) {
-            while (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.FRIDAY) {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
-                dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            WeekdayAdjustment.NEXT_WORKDAY -> {
+                while (date.dayOfWeek == JavaDayOfWeek.SATURDAY || date.dayOfWeek == JavaDayOfWeek.FRIDAY) {
+                    date = date.plusDays(1)
+                }
             }
+            WeekdayAdjustment.SKIP -> {}
         }
-
-        return calendar.timeInMillis
+        return toMillis(date.atTime(LocalTime.of(toZonedDateTime(millis).hour, 0, 0)).atZone(SYSTEM_ZONE))
     }
 
     fun isExecutionDay(rule: RecurringRule, date: Long = System.currentTimeMillis()): Boolean {
-        if (rule.frequency != RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
-            return true
+        val zdt = toZonedDateTime(date)
+        val localDate = zdt.toLocalDate()
+        return when (rule.frequency) {
+            RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
+                val todayJava = localDate.dayOfWeek
+                rule.selectedDaysOfWeek?.any { java.time.DayOfWeek.valueOf(it.name) == todayJava } ?: false
+            }
+            RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> {
+                val today = localDate.dayOfMonth
+                rule.selectedDaysOfMonth?.any {
+                    val targetDay = if (it > 0) it else localDate.lengthOfMonth() + 1 + it
+                    today == targetDay
+                } ?: false
+            }
+            else -> true
         }
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = date
-        val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-        val today = DayOfWeek.fromCalendarDay(currentDayOfWeek)
-        return rule.selectedDaysOfWeek?.contains(today) ?: false
     }
 
     private fun isWeekend(date: Long): Boolean {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = date
-        val day = calendar.get(Calendar.DAY_OF_WEEK)
-        return day == Calendar.SATURDAY || day == Calendar.FRIDAY
+        val day = toZonedDateTime(date).dayOfWeek
+        return day == JavaDayOfWeek.SATURDAY || day == JavaDayOfWeek.FRIDAY
     }
 
     suspend fun executeRule(rule: RecurringRule): ExecutionResult {
         val balanceCheck = checkBalanceProtection(rule)
         if (!balanceCheck.canExecute) {
+            if (balanceCheck.shouldReschedule) {
+                val newRetryCount = rule.retryCount + 1
+                if (newRetryCount >= rule.maxRetries) {
+                    recurringRepository.updateRuleActiveStatus(rule.id, false)
+                    return ExecutionResult(
+                        success = false,
+                        reason = "Deactivated after $newRetryCount failed retries: ${balanceCheck.reason}",
+                        shouldReschedule = false,
+                        shouldSkip = true
+                    )
+                }
+                val now = System.currentTimeMillis()
+                recurringRepository.updateRetryState(
+                    rule.id, pendingRetry = true,
+                    retryCount = newRetryCount,
+                    nextDate = now - 600_000
+                )
+                return ExecutionResult(
+                    success = false,
+                    reason = balanceCheck.reason ?: "Insufficient balance (retry $newRetryCount/${rule.maxRetries})",
+                    shouldReschedule = false,
+                    shouldSkip = false
+                )
+            }
             return ExecutionResult(
                 success = false,
                 reason = balanceCheck.reason ?: "Balance protection triggered",
-                shouldReschedule = balanceCheck.shouldReschedule,
+                shouldReschedule = false,
                 shouldSkip = balanceCheck.shouldSkip
             )
         }
@@ -189,22 +349,46 @@ class RecurringEngine(
             )
         }
 
+        val now = System.currentTimeMillis()
+        val localDate = toZonedDateTime(now).toLocalDate()
+        val executionDate = toZonedDateTime(rule.nextExecutionDate).toLocalDate()
+
+        if (rule.strictMode) {
+            if (localDate.isAfter(executionDate)) {
+                val daysLate = ChronoUnit.DAYS.between(executionDate, localDate)
+                if (daysLate > 0) {
+                    val nextDate = calculateNextExecutionDate(
+                        rule.nextExecutionDate, rule.frequency, rule.interval,
+                        rule.preferredTime, rule.weekdayAdjustment,
+                        rule.selectedDaysOfWeek, rule.selectedDaysOfMonth,
+                        rule.monthlyDayOption, rule.weeklyInterval
+                    )
+                    recurringRepository.updateNextExecutionAndChecked(rule.id, nextDate, now)
+                    return ExecutionResult(
+                        success = true,
+                        reason = "Skipped (strict mode: missed window by ${daysLate} day(s))",
+                        shouldReschedule = false,
+                        shouldSkip = true
+                    )
+                }
+            }
+        }
+
         if (rule.skipIfHoliday && isWeekend(rule.nextExecutionDate)) {
             val nextDate = calculateNextExecutionDate(
-                rule.nextExecutionDate,
-                rule.frequency,
-                rule.interval,
-                rule.preferredTime,
-                rule.weekdayAdjustment
+                rule.nextExecutionDate, rule.frequency, rule.interval,
+                rule.preferredTime, rule.weekdayAdjustment,
+                rule.selectedDaysOfWeek, rule.selectedDaysOfMonth,
+                rule.monthlyDayOption, rule.weeklyInterval
             )
             if (rule.endDate != null && nextDate > rule.endDate) {
                 recurringRepository.updateRuleActiveStatus(rule.id, false)
             } else {
-                recurringRepository.updateNextExecutionDate(rule.id, nextDate)
+                recurringRepository.updateNextExecutionAndChecked(rule.id, nextDate, now)
             }
             return ExecutionResult(
                 success = true,
-                reason = "Skipped (weekend)",
+                reason = "Skipped (weekend/holiday)",
                 shouldReschedule = false,
                 shouldSkip = true
             )
@@ -224,20 +408,17 @@ class RecurringEngine(
 
             if (result.success) {
                 recurringRepository.markTransactionExecuted(
-                    transactionId,
-                    RecurringTransactionStatus.EXECUTED
+                    transactionId, RecurringTransactionStatus.EXECUTED
                 )
 
                 val newExecutedCount = rule.executedCount + 1
                 val newTotalAmount = rule.totalExecutedAmount + rule.amount
-                val now = System.currentTimeMillis()
 
                 val nextDate = calculateNextExecutionDate(
-                    rule.nextExecutionDate,
-                    rule.frequency,
-                    rule.interval,
-                    rule.preferredTime,
-                    rule.weekdayAdjustment
+                    now, rule.frequency, rule.interval,
+                    rule.preferredTime, rule.weekdayAdjustment,
+                    rule.selectedDaysOfWeek, rule.selectedDaysOfMonth,
+                    rule.monthlyDayOption, rule.weeklyInterval
                 )
 
                 val reachedMax = rule.maxExecutions != null && newExecutedCount >= rule.maxExecutions
@@ -247,15 +428,21 @@ class RecurringEngine(
                     recurringRepository.updateRuleActiveStatus(rule.id, false)
                 }
 
+                if (rule.pendingRetry || rule.retryCount > 0) {
+                    recurringRepository.clearRetryState(rule.id)
+                }
+
                 recurringRepository.updateExecutionStats(
-                    rule.id,
-                    newExecutedCount,
-                    newTotalAmount,
-                    now,
+                    rule.id, newExecutedCount, newTotalAmount, now,
                     if (reachedMax || pastEndDate) now else nextDate
                 )
+
+                recurringRepository.updateLastCheckedTimestamp(rule.id, now)
             } else {
                 recurringRepository.markTransactionFailed(transactionId, result.reason)
+                if (!result.shouldSkip) {
+                    smartReschedule(rule, result.reason)
+                }
             }
 
             result
@@ -269,6 +456,77 @@ class RecurringEngine(
         }
     }
 
+    suspend fun checkForMissedExecutions(): List<ExecutionResult> {
+        val results = mutableListOf<ExecutionResult>()
+        val now = System.currentTimeMillis()
+        val localDateNow = toZonedDateTime(now).toLocalDate()
+        val nowHour = toZonedDateTime(now).hour
+
+        val allActiveRules = recurringRepository.getActiveRules().first()
+
+        for (rule in allActiveRules) {
+            if (!rule.isActive || rule.isPaused) continue
+
+            val lastChecked = rule.lastCheckedTimestamp ?: rule.startDate
+            val lastCheckedDate = toZonedDateTime(lastChecked).toLocalDate()
+            val nextExecDate = toZonedDateTime(rule.nextExecutionDate).toLocalDate()
+
+            if (nextExecDate.isBefore(localDateNow) && lastCheckedDate.isBefore(localDateNow)) {
+                val daysMissed = ChronoUnit.DAYS.between(nextExecDate, localDateNow)
+                if (daysMissed <= 0) continue
+
+                val maxCatchUp = rule.maxCatchUpDays
+                if (maxCatchUp <= 0) continue
+
+                val daysToCatchUp = daysMissed.coerceAtMost(maxCatchUp.toLong())
+
+                var currentCheckDate = nextExecDate
+                var caughtUp = 0
+                var lastCatchUpExecDate: LocalDate? = null
+
+                while (caughtUp < daysToCatchUp && (currentCheckDate.isBefore(localDateNow) || currentCheckDate.isEqual(localDateNow))) {
+                    val validDay = when (rule.frequency) {
+                        RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
+                            val todayJava = currentCheckDate.dayOfWeek
+                            val dayMatch = rule.selectedDaysOfWeek?.any { java.time.DayOfWeek.valueOf(it.name) == todayJava } ?: false
+                            if (dayMatch && rule.weeklyInterval > 1 && lastCatchUpExecDate != null) {
+                                val isoWeeksDiff = getIsoWeek(currentCheckDate) - getIsoWeek(lastCatchUpExecDate)
+                                isoWeeksDiff % rule.weeklyInterval.toLong() == 0L
+                            } else dayMatch
+                        }
+                        RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> {
+                            rule.selectedDaysOfMonth?.any {
+                                val targetDay = if (it > 0) it else currentCheckDate.lengthOfMonth() + 1 + it
+                                currentCheckDate.dayOfMonth == targetDay
+                            } ?: true
+                        }
+                        else -> true
+                    }
+
+                    if (validDay) {
+                        val preferredHour = getPreferredHour(rule.preferredTime)
+                        if (currentCheckDate.isEqual(localDateNow) && nowHour < preferredHour) {
+                            currentCheckDate = currentCheckDate.plusDays(1)
+                            caughtUp++
+                            continue
+                        }
+                        val tempRule = rule.copy(nextExecutionDate = toMillis(startOfDayZoned(currentCheckDate, rule.preferredTime)))
+                        val result = executeRule(tempRule)
+                        results.add(result)
+                        if (result.success) lastCatchUpExecDate = currentCheckDate
+                    }
+
+                    currentCheckDate = currentCheckDate.plusDays(1)
+                    caughtUp++
+                }
+
+                recurringRepository.updateLastCheckedTimestamp(rule.id, now)
+            }
+        }
+
+        return results
+    }
+
     private suspend fun checkBalanceProtection(rule: RecurringRule): BalanceCheckResult {
         if (rule.transactionType == TransactionType.INCOME ||
             rule.transactionType == TransactionType.SAVINGS_WITHDRAW) {
@@ -276,7 +534,6 @@ class RecurringEngine(
         }
 
         val accountBalance = getAccountBalance(rule)
-
         val minimumRequired = rule.minimumBalanceRequired ?: (rule.amount + DEFAULT_MINIMUM_BALANCE)
 
         return when (rule.priority) {
@@ -290,8 +547,7 @@ class RecurringEngine(
                     BalanceCheckResult(
                         canExecute = false,
                         reason = "Insufficient balance. Account has ৳${"%,.0f".format(accountBalance)}, needs ৳${"%,.0f".format(minimumRequired)}",
-                        shouldReschedule = true,
-                        shouldSkip = false
+                        shouldReschedule = true, shouldSkip = false
                     )
                 }
             }
@@ -302,8 +558,7 @@ class RecurringEngine(
                     BalanceCheckResult(
                         canExecute = false,
                         reason = "Insufficient balance for ${rule.priority.name.lowercase()} priority rule. Available: ৳${"%,.0f".format(accountBalance)}",
-                        shouldReschedule = true,
-                        shouldSkip = false
+                        shouldReschedule = true, shouldSkip = false
                     )
                 }
             }
@@ -314,8 +569,7 @@ class RecurringEngine(
                     BalanceCheckResult(
                         canExecute = false,
                         reason = "Insufficient balance for optional rule. Skipping.",
-                        shouldReschedule = false,
-                        shouldSkip = true
+                        shouldReschedule = false, shouldSkip = true
                     )
                 }
             }
@@ -506,21 +760,70 @@ class RecurringEngine(
             recurringRepository.updateRuleActiveStatus(rule.id, false)
         }
 
+        val catchUpResults = checkForMissedExecutions()
+        results.addAll(catchUpResults)
+
         val allActiveRules = recurringRepository.getRulesDueForExecution(now)
 
         for (rule in allActiveRules) {
-            if (rule.isActive && !rule.isPaused) {
-                if (rule.frequency == RecurringFrequency.WEEKLY_SPECIFIC_DAYS) {
-                    if (isExecutionDay(rule, now)) {
-                        val result = executeRule(rule)
-                        results.add(result)
-                    }
-                } else {
-                    if (rule.nextExecutionDate <= now) {
-                        val result = executeRule(rule)
-                        results.add(result)
+            if (!rule.isActive || rule.isPaused) continue
+
+            val zdtNow = toZonedDateTime(now)
+            val localDateNow = zdtNow.toLocalDate()
+            val nowHour = zdtNow.hour
+            val execDate = toZonedDateTime(rule.nextExecutionDate).toLocalDate()
+
+            val shouldExecute = when (rule.frequency) {
+                RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
+                    val todayJava = localDateNow.dayOfWeek
+                    val dayMatches = rule.selectedDaysOfWeek?.any { java.time.DayOfWeek.valueOf(it.name) == todayJava } ?: false
+
+                    if (dayMatches) {
+                        val preferredHour = getPreferredHour(rule.preferredTime)
+                        val timeReached = nowHour >= preferredHour
+
+                        if (!timeReached) {
+                            false
+                        } else if (execDate.isEqual(localDateNow) || execDate.isBefore(localDateNow)) {
+                            if (rule.lastExecutedDate != null) {
+                                val lastWeek = getIsoWeek(toZonedDateTime(rule.lastExecutedDate).toLocalDate())
+                                val currentWeek = getIsoWeek(localDateNow)
+                                val isoWeeksDiff = currentWeek - lastWeek
+                                isoWeeksDiff % rule.weeklyInterval.toLong() == 0L || isoWeeksDiff == 0L
+                            } else true
+                        } else false
+                    } else {
+                        if (rule.nextExecutionDate <= now && !rule.pendingRetry) {
+                            val nextOccurrence = calculateNextExecutionDate(
+                                now, rule.frequency, rule.interval,
+                                rule.preferredTime, rule.weekdayAdjustment,
+                                rule.selectedDaysOfWeek, rule.selectedDaysOfMonth,
+                                rule.monthlyDayOption, rule.weeklyInterval
+                            )
+                            recurringRepository.updateNextExecutionAndChecked(rule.id, nextOccurrence, now)
+                        }
+                        false
                     }
                 }
+                RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> {
+                    val dayMatches = isExecutionDay(rule, now)
+                    if (!dayMatches && rule.nextExecutionDate <= now && !rule.pendingRetry) {
+                        val nextOccurrence = calculateNextExecutionDate(
+                            now, rule.frequency, rule.interval,
+                            rule.preferredTime, rule.weekdayAdjustment,
+                            rule.selectedDaysOfWeek, rule.selectedDaysOfMonth,
+                            rule.monthlyDayOption, rule.weeklyInterval
+                        )
+                        recurringRepository.updateNextExecutionAndChecked(rule.id, nextOccurrence, now)
+                        false
+                    } else dayMatches
+                }
+                else -> rule.nextExecutionDate <= now
+            }
+
+            if (shouldExecute) {
+                val result = executeRule(rule)
+                results.add(result)
             }
         }
 
@@ -532,9 +835,6 @@ class RecurringEngine(
     }
 
     suspend fun smartReschedule(rule: RecurringRule, failureReason: String?): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = rule.nextExecutionDate
-
         val gracePeriodHours = when (rule.priority) {
             RecurringPriority.CRITICAL -> 2
             RecurringPriority.HIGH -> 6
@@ -543,8 +843,10 @@ class RecurringEngine(
             RecurringPriority.OPTIONAL -> 72
         }
 
-        calendar.add(Calendar.HOUR_OF_DAY, gracePeriodHours)
-        val newDate = calendar.timeInMillis
+        val newDate = toZonedDateTime(rule.nextExecutionDate)
+            .plusHours(gracePeriodHours.toLong())
+            .toInstant().toEpochMilli()
+
         recurringRepository.updateNextExecutionDate(rule.id, newDate)
         return newDate
     }
@@ -587,7 +889,12 @@ class RecurringEngine(
                 RecurringFrequency.CUSTOM -> rule.amount * (30.0 / rule.interval)
                 RecurringFrequency.WEEKLY_SPECIFIC_DAYS -> {
                     val daysPerWeek = (rule.selectedDaysOfWeek?.size ?: 1).coerceAtLeast(1)
-                    rule.amount * daysPerWeek * 4
+                    val weeksPerMonth = 4.0 / rule.weeklyInterval.coerceAtLeast(1)
+                    rule.amount * daysPerWeek * weeksPerMonth
+                }
+                RecurringFrequency.MONTHLY_SPECIFIC_DAYS -> {
+                    val daysPerMonth = (rule.selectedDaysOfMonth?.size ?: 1).coerceAtLeast(1)
+                    rule.amount * daysPerMonth
                 }
             }
 

@@ -92,4 +92,25 @@ interface RecurringRuleDao {
 
     @Query("SELECT * FROM recurring_rules WHERE isActive = 1 AND isPaused = 0 AND isDeleted = 0 AND endDate IS NOT NULL AND endDate <= :timestamp")
     suspend fun getRulesPastEndDate(timestamp: Long): List<RecurringRule>
+
+    @Query("UPDATE recurring_rules SET lastCheckedTimestamp = :timestamp, updatedAt = :updatedAt WHERE id = :ruleId")
+    suspend fun updateLastCheckedTimestamp(ruleId: Long, timestamp: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE recurring_rules SET nextExecutionDate = :nextDate, lastCheckedTimestamp = :checkedTimestamp, updatedAt = :updatedAt WHERE id = :ruleId")
+    suspend fun updateNextExecutionAndChecked(ruleId: Long, nextDate: Long, checkedTimestamp: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM recurring_rules WHERE frequency = :frequency AND isActive = 1 AND isPaused = 0 AND isDeleted = 0")
+    suspend fun getActiveRulesByFrequency(frequency: RecurringFrequency): List<RecurringRule>
+
+    @Query("SELECT * FROM recurring_rules WHERE frequency = :frequency AND isActive = 1 AND isPaused = 0 AND isDeleted = 0 AND selectedDaysOfMonth IS NOT NULL")
+    fun getMonthlySpecificDayRules(frequency: RecurringFrequency = RecurringFrequency.MONTHLY_SPECIFIC_DAYS): Flow<List<RecurringRule>>
+
+    @Query("SELECT * FROM recurring_rules WHERE pendingRetry = 1 AND isActive = 1 AND isPaused = 0 AND isDeleted = 0")
+    suspend fun getPendingRetryRules(): List<RecurringRule>
+
+    @Query("UPDATE recurring_rules SET pendingRetry = :pendingRetry, retryCount = :retryCount, nextExecutionDate = :nextDate, updatedAt = :updatedAt WHERE id = :ruleId")
+    suspend fun updateRetryState(ruleId: Long, pendingRetry: Boolean, retryCount: Int, nextDate: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE recurring_rules SET pendingRetry = 0, retryCount = 0, updatedAt = :updatedAt WHERE id = :ruleId")
+    suspend fun clearRetryState(ruleId: Long, updatedAt: Long = System.currentTimeMillis())
 }

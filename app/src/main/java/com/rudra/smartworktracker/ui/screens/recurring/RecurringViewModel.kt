@@ -189,11 +189,15 @@ class RecurringViewModel(
             recurringRepository.updateRulePausedStatus(rule.id, newPaused)
             if (!newPaused) {
                 val nextDate = recurringEngine.calculateNextExecutionDate(
-                    System.currentTimeMillis(),
-                    rule.frequency,
-                    rule.interval,
-                    rule.preferredTime,
-                    rule.weekdayAdjustment
+                    currentDate = System.currentTimeMillis(),
+                    frequency = rule.frequency,
+                    interval = rule.interval,
+                    preferredTime = rule.preferredTime,
+                    weekdayAdjustment = rule.weekdayAdjustment,
+                    selectedDaysOfWeek = rule.selectedDaysOfWeek,
+                    selectedDaysOfMonth = rule.selectedDaysOfMonth,
+                    monthlyDayOption = rule.monthlyDayOption,
+                    weeklyInterval = rule.weeklyInterval
                 )
                 if (rule.endDate != null && nextDate > rule.endDate) {
                     recurringRepository.updateRuleActiveStatus(rule.id, false)

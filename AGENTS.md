@@ -345,39 +345,69 @@ All existing public signatures preserved:
 | `OvertimeViewModel.kt:40-51` | `loadOvertimeData()` used UTC-based `monthYear`/`year` from `SimpleDateFormat` | Now computes `startOfMonth`/`endOfMonth` and `startOfYear`/`endOfYear` via `LocalDate` local-timezone; uses `getOvertimeLogsInRange`/`getOvertimeLogsInYearRange` |
 | `CalculationViewModel.kt:114-115,227-228` | `runFullCalculation`/`fetchMonthlyBreakdown` used UTC `monthYearFormat` with `getWorkLogsByMonth` | Replaced with `getWorkLogsInRange` using local-time millis bounds from Calendar instance |
 
-### Recurring System — Upgraded June 2026
-**Goal**: Upgrade the recurring transaction system with accurate account-based balance checking, richer features, and Dashboard-themed UI.
+### Recurring System — Upgraded July 2026 (V2 Rewrite)
+**Goal**: Fully scheduled, timezone-safe, weekly-interval-aware recurring system with catch-up, strict mode, and monthly specific days.
 
-#### Entity Changes (`RecurringRule.kt`)
-- Added fields: `maxExecutions`, `executedCount`, `totalExecutedAmount`, `lastExecutedDate`, `isPaused`, `skipIfHoliday`, `weekdayAdjustment`, `tags`, `notes`
-- Added `WeekdayAdjustment` enum (NONE, PREVIOUS_WEEKDAY, NEXT_WEEKDAY, SKIP)
+#### Key Upgrades
+| Feature | Description |
+|---|---|
+| **Timezone-safe engine** | All date math uses `java.time.ZonedDateTime` + `ZoneId.systemDefault()` instead of `Calendar` |
+| **Truly scheduled WEEKLY_SPECIFIC_DAYS** | `nextExecutionDate` always advances to next matching day, not "1 week later" |
+| **MONTHLY_SPECIFIC_DAYS frequency** | Select specific day numbers (1st, 5th, 10th, 15th, 20th, 25th, 28th, Last Day) |
+| **MonthlyDayOption** | `DAY_OF_MONTH`, `FIRST_DAY`, `LAST_DAY`, `FIRST_WEEKDAY`, `LAST_WEEKDAY` |
+| **ISO week-based weeklyInterval** | Uses `IsoFields.WEEK_OF_WEEK_BASED_YEAR` — correctly handles same-week vs cross-week boundaries for "every Nth week" |
+| **Catch-up logic** | `checkForMissedExecutions()` auto-executes missed days up to `maxCatchUpDays`; respects weeklyInterval during catch-up |
+| **Strict mode** | When enabled, rule skips cleanly if scheduled date has passed (applies to all frequencies) |
+| **Preferred time gate** | Explicit check prevents execution before the configured hour |
+| **lastCheckedTimestamp** | Prevents double-execution across worker runs |
+| **Priority-based smart reschedule** | Failed transactions get grace-period retry (CRITICAL=2h → OPTIONAL=72h) |
 
-#### DAO Changes
-- `RecurringRuleDao`: New queries for paused rules (`getPausedRules`), execution stats, max-reached rules (`getMaxExecutionReachedRules`), past-end-date rules (`getPastEndDateRules`), filtered counts, search by tags
-- `RecurringTransactionDao`: New queries for skip/failure status filtering, aggregated stats
+#### Entity (`RecurringRule.kt`) — New Fields
+```kotlin
+selectedDaysOfMonth: List<Int>? = null          // 1-31, negative = from month end
+monthlyDayOption: MonthlyDayOption = DAY_OF_MONTH
+weeklyInterval: Int = 1                          // Every N weeks for WEEKLY_SPECIFIC_DAYS
+strictMode: Boolean = false
+maxCatchUpDays: Int = 0
+lastCheckedTimestamp: Long? = null
+```
 
-#### Engine Rewrite (`RecurringEngine.kt`)
-- Now takes `AccountDao` directly — balance lookups are always real-time from the database
-- Validates balances before expense/transfer/savings executions
-- Enforces `maxExecutions` and `endDate` auto-deactivation
-- Handles weekend/weekday adjustment
-- Full `detectPatterns()` and `calculateTotalMonthlyImpact()` implementations
+#### Enums
+- **`RecurringFrequency`**: added `MONTHLY_SPECIFIC_DAYS`
+- **`MonthlyDayOption`**: `DAY_OF_MONTH`, `FIRST_DAY`, `LAST_DAY`, `FIRST_WEEKDAY`, `LAST_WEEKDAY`
 
-#### Three-State Rule Lifecycle
-- `isActive=true + isPaused=false` (running)
-- `isActive=true + isPaused=true` (paused)
-- `isActive=false` (deactivated)
+#### Engine Core (`RecurringEngine.kt`)
+- `calculateNextExecutionDate()` — overloaded with `selectedDaysOfWeek`, `selectedDaysOfMonth`, `monthlyDayOption`, `weeklyInterval`
+- `calculateNextSpecificDay()` — uses ISO week numbers for weeklyInterval: `getIsoWeek(nextDate) - getIsoWeek(currentDate) % weeklyInterval == 0`
+- `calculateNextMonthlySpecificDay()` — handles all 5 `MonthlyDayOption` modes, wraps to next month
+- `checkForMissedExecutions()` — iterates from `nextExecutionDate` to `now` day-by-day, respecting frequency filters and weeklyInterval; gates on preferred hour
+- `processDueRules()` — WEEKLY_SPECIFIC_DAYS branch: checks day match → preferred time → ISO week gap from last execution; if no match today, auto-reschedules `nextExecutionDate`
+- `isExecutionDay()` — checks both WEEKLY_SPECIFIC_DAYS (day-of-week) and MONTHLY_SPECIFIC_DAYS (day-of-month)
+- `calculateTotalMonthlyImpact()` — `WEEKLY_SPECIFIC_DAYS` divided by `weeklyInterval`; `MONTHLY_SPECIFIC_DAYS` by selected day count
 
-#### Screen Rewrite (`RecurringScreen.kt`)
-- Dashboard design tokens: gradient header, stat cards, filter chips
-- Enhanced rule cards with progress bars (`executedCount/maxExecutions`) and pause badges
-- Form sections: tags, notes, maxExecutions, weekdayAdjustment, endDate picker
-- Manual execution dialog with result feedback
-- History tab with animated progress bars
+#### DAO (`RecurringRuleDao.kt`) — New Queries
+- `updateLastCheckedTimestamp(ruleId, timestamp)`
+- `updateNextExecutionAndChecked(ruleId, nextDate, checkedTimestamp)`
+- `getActiveRulesByFrequency(frequency)`
+- `getMonthlySpecificDayRules()` — Flow-based
 
-#### Worker Upgrade (`RecurringNotificationWorker.kt`)
-- Big-text notifications with failure reasons inline
-- Amounts in ৳ format
+#### UI (`RecurringScreen.kt`) — New Form Fields
+- **MONTHLY_SPECIFIC_DAYS**: Day type dropdown (5 `MonthlyDayOption` modes) + day number chip grid (1,5,10,15,20,25,28,Last Day)
+- **Weekly interval input**: "Repeat Every N Weeks" for WEEKLY_SPECIFIC_DAYS
+- **Strict Mode toggle**: With subtitle "Only execute on exact scheduled date"
+- **Auto Catch-Up toggle**: Enables `maxCatchUpDays` number input with "Missed executions within this many days will auto-execute"
+- `calculateNextExecutionDates()` updated with `weeklyInterval` parameter for date preview
+
+#### Worker (`RecurringNotificationWorker.kt`)
+- Runs `checkForMissedExecutions()` before `processDueRules()` — catch-up happens first
+- Separates skipped/failed/success counts in notification logic
+- New `sendSkipNotification()` for skipped transactions with LOW priority channel
+
+#### Database
+- **Version 14 → 15** (destructive migration via `fallbackToDestructiveMigration`)
+- New `MonthlyDayOption` converter in `Converters.kt` (JSON serialization)
+- New `List<Int>` converter for `selectedDaysOfMonth`
+- All new entity columns auto-created on DB rebuild
 
 ### In-App Notification Module — Created June 2026
 **Goal**: Centralized in-app notification system capturing events from recurring, backup, alarm, focus, and team systems.

@@ -28,6 +28,12 @@ data class RecurringRule(
 
     val selectedDaysOfWeek: List<DayOfWeek>? = null,
 
+    val selectedDaysOfMonth: List<Int>? = null,
+
+    val monthlyDayOption: MonthlyDayOption = MonthlyDayOption.DAY_OF_MONTH,
+
+    val weeklyInterval: Int = 1,
+
     val cronExpression: String? = null,
 
     val startDate: Long,
@@ -62,6 +68,18 @@ data class RecurringRule(
 
     val weekdayAdjustment: WeekdayAdjustment = WeekdayAdjustment.SKIP,
 
+    val strictMode: Boolean = false,
+
+    val maxCatchUpDays: Int = 0,
+
+    val lastCheckedTimestamp: Long? = null,
+
+    val pendingRetry: Boolean = false,
+
+    val retryCount: Int = 0,
+
+    val maxRetries: Int = 10,
+
     val tags: String? = null,
 
     val notes: String? = null,
@@ -86,7 +104,8 @@ enum class RecurringFrequency {
     QUARTERLY,
     YEARLY,
     CUSTOM,
-    WEEKLY_SPECIFIC_DAYS
+    WEEKLY_SPECIFIC_DAYS,
+    MONTHLY_SPECIFIC_DAYS
 }
 
 enum class DayOfWeek(val displayName: String, val shortName: String) {
@@ -149,4 +168,12 @@ enum class WeekdayAdjustment {
     SKIP,
     PREVIOUS_WORKDAY,
     NEXT_WORKDAY
+}
+
+enum class MonthlyDayOption {
+    DAY_OF_MONTH,
+    FIRST_DAY,
+    LAST_DAY,
+    FIRST_WEEKDAY,
+    LAST_WEEKDAY
 }

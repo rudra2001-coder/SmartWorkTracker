@@ -66,31 +66,39 @@ class RecurringNotificationWorker(
                 database.accountDao(), savingsRepository, fusionEngine
             )
 
-            val results = engine.processDueRules()
+            val catchUpResults = engine.checkForMissedExecutions()
+            val dueResults = engine.processDueRules()
+            val results = catchUpResults + dueResults
 
             val upcomingTransactions = engine.getUpcomingTransactions(1)
+
+            val skippedCount = results.count { it.shouldSkip }
+            val failedCount = results.count { !it.success && !it.shouldSkip }
+            val successCount = results.count { it.success && !it.shouldSkip }
 
             if (upcomingTransactions.isNotEmpty()) {
                 sendUpcomingNotification(upcomingTransactions.size, upcomingTransactions.first().amount)
             }
 
-            val failedCount = results.count { !it.success }
             if (failedCount > 0) {
-                val failedReasons = results.filter { !it.success }.mapNotNull { it.reason }
+                val failedReasons = results.filter { !it.success && !it.shouldSkip }.mapNotNull { it.reason }
                 sendFailureNotification(failedCount, failedReasons.take(3))
             }
 
-            val successCount = results.count { it.success }
             if (successCount > 0) {
-                val totalAmount = results.filter { it.success }.sumOf { 0.0 }
                 sendSuccessNotification(successCount)
+            }
+
+            if (skippedCount > 0) {
+                sendSkipNotification(skippedCount)
             }
 
             val notifManager = InAppNotificationManager.getInstance(context)
             if (successCount > 0) {
                 notifManager.showRecurring(
                     "Recurring Transactions Executed",
-                    "$successCount recurring transaction(s) processed successfully"
+                    "$successCount recurring transaction(s) processed successfully" +
+                        if (skippedCount > 0) " ($skippedCount skipped)" else ""
                 )
             }
             if (failedCount > 0) {
@@ -174,6 +182,31 @@ class RecurringNotificationWorker(
 
         val notificationManager = context.getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID + 1, notification)
+    }
+
+    private fun sendSkipNotification(count: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "recurring")
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("Recurring Transactions Skipped")
+            .setContentText("$count transaction(s) skipped (weekend/priority)")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("$count recurring transaction(s) were skipped. Reasons: weekend/holiday, strict mode mismatch, or low priority with insufficient balance."))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID + 4, notification)
     }
 
     private fun sendFailureNotification(count: Int, reasons: List<String>) {

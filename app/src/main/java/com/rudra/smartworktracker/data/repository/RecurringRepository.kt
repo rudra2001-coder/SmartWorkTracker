@@ -2,6 +2,7 @@ package com.rudra.smartworktracker.data.repository
 
 import com.rudra.smartworktracker.data.dao.RecurringRuleDao
 import com.rudra.smartworktracker.data.dao.RecurringTransactionDao
+import com.rudra.smartworktracker.data.entity.RecurringFrequency
 import com.rudra.smartworktracker.data.entity.RecurringRule
 import com.rudra.smartworktracker.data.entity.RecurringTransaction
 import com.rudra.smartworktracker.data.entity.RecurringTransactionStatus
@@ -138,4 +139,25 @@ class RecurringRepository(
 
     suspend fun getTransactionByRelatedIds(incomeId: Long?, expenseId: Long?, transactionId: Int?): RecurringTransaction? =
         recurringTransactionDao.getTransactionByRelatedIds(incomeId, expenseId, transactionId)
+
+    suspend fun updateLastCheckedTimestamp(ruleId: Long, timestamp: Long) =
+        recurringRuleDao.updateLastCheckedTimestamp(ruleId, timestamp)
+
+    suspend fun updateNextExecutionAndChecked(ruleId: Long, nextDate: Long, checkedTimestamp: Long) =
+        recurringRuleDao.updateNextExecutionAndChecked(ruleId, nextDate, checkedTimestamp)
+
+    suspend fun getActiveRulesByFrequency(frequency: RecurringFrequency): List<RecurringRule> =
+        recurringRuleDao.getActiveRulesByFrequency(frequency)
+
+    fun getMonthlySpecificDayRules(frequency: RecurringFrequency = RecurringFrequency.MONTHLY_SPECIFIC_DAYS): Flow<List<RecurringRule>> =
+        recurringRuleDao.getMonthlySpecificDayRules(frequency)
+
+    suspend fun getPendingRetryRules(): List<RecurringRule> =
+        recurringRuleDao.getPendingRetryRules()
+
+    suspend fun updateRetryState(ruleId: Long, pendingRetry: Boolean, retryCount: Int, nextDate: Long) =
+        recurringRuleDao.updateRetryState(ruleId, pendingRetry, retryCount, nextDate)
+
+    suspend fun clearRetryState(ruleId: Long) =
+        recurringRuleDao.clearRetryState(ruleId)
 }
