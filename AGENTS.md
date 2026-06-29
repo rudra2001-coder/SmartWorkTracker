@@ -89,22 +89,47 @@ UI (Compose Screens) --> ViewModels (StateFlow) --> Repositories --> Room DAOs -
 - App uses manual DI only (`DatabaseModule` provides Room DB instance)
 - No Hilt, Dagger, Koin, or other DI framework
 - No Multiplatform, no Compose for Desktop/iOS
-- Backup system uses WorkManager (daily, configurable time). Backup version: 33.
+- Backup system uses WorkManager (daily/weekly/monthly, configurable time). Backup format: 35 (auto-migrates from any older version). Supports GZIP compression + AES-256-GCM encryption.
 - Theme supports light/dark mode via `SmartWorkTrackerTheme`
 - Sample data is seeded on first launch from `SampleData.kt`
 - Settings managed via `DataStore Preferences` (new) and `SharedPreferences` (legacy)
 
-### Backup System (data/backup/) — Updated May 2026
-- **AppBackup** (`AppBackup.kt`): Data class mirroring all DB tables for JSON export/import.
-  - Backs up 39+ entity lists including the 5 new calculation tables: `mealTypes`, `weeklyMealRates`, `dailyMealRates`, `mealSettings`, `specialMealDates`
-- **BackupManager** (`BackupManager.kt`): Gson-based export (to JSON) / import (from JSON) with Room transaction wrapping.
+### Backup System (data/backup/) — Updated July 2026
+- **AppBackup** (`AppBackup.kt`): Data class mirroring all DB tables for JSON export/import (40+ entity lists). All list fields default to `emptyList()` for null safety.
+- **BackupManager** (`BackupManager.kt`): Gson-based export/to JSON/import (from JSON) with Room transaction wrapping.
   - Export: reads all tables via DAO suspend `getAll*()` / `first()` methods
   - Import: clears existing data, inserts all records in a single Room transaction
-  - Version: 33 (incremented on schema changes for forward-compatibility)
-- **AutoBackupWorker** (`AutoBackupWorker.kt`): WorkManager `CoroutineWorker` triggered daily at user-configurable time (default 12:05 AM). Saves JSON to Downloads (MediaStore on API 30+). Tracks `last_auto_backup_time` in SharedPreferences.
-- **Backup ViewModel/Screen** (`ui/screens/backup/`): UI for manual export/import via SAF, toggle auto-backup, view last/next backup time, configure backup time via Material3 TimePicker.
-- **BackupHistory** (`data/backup/BackupHistory.kt`): SharedPreferences-based store for backup history entries + backup time preference (`backup_hour`, `backup_minute` keys).
-- **BackupManager** (`BackupManager.kt`): Exposes `getBackupHour()`, `getBackupMinute()`, `setBackupTime(hour, minute)`, `getBackupTimeDisplay()` — all delegate to `BackupHistoryStore`.
+  - Version: 35 (backup format version, not DB version)
+  - Both preview and import paths run the JSON through `BackupFormatMigrator` before Gson deserialization
+  - **Selective export**: `BackupOptions.selectedTypes` filters entity types (null = all types)
+  - **Compression**: `BackupOptions.compress=true` enables GZIP compression via `BackupCompression`
+  - **Encryption**: `BackupOptions.password` enables AES-256-GCM encryption via `BackupCrypto`
+  - Auto-detects GZIP magic bytes (0x1F 0x8B) during import — no manual decompression needed
+  - `processInputBytes()` handles decompression + decryption pipeline transparently
+- **BackupFormatMigrator** (`BackupFormatMigrator.kt`): **Forward-compatibility layer** — JSON-level preprocessing that injects default values for any missing top-level fields before Gson deserialization.
+  - Maintains `ARRAY_FIELDS` set of all 42 known array field names. Any missing field gets `[]`.
+  - Missing object fields (e.g., `metadata`) get a complete default JSON object injected.
+  - Backup version is always set to `CURRENT_BACKUP_VERSION` (35) after migration.
+  - **When adding a new entity list to AppBackup**: Just add the field name to `ARRAY_FIELDS`. Old backups from any version get `[]` — no crash, no data loss.
+  - No per-version migration code needed — declarative (field list) not imperative (functions).
+- **BackupCompression** (`BackupCompression.kt`): GZIP compression/decompression with 8KB buffer. Methods: `compress()`, `decompress()`, `compressStream()`, `decompressStream()`.
+- **BackupCrypto** (`BackupCrypto.kt`): AES-256-GCM encryption via PBKDF2WithHmacSHA256 (100K iterations, 16-byte salt, 12-byte IV). Output format: `salt(16) + iv(12) + ciphertext`. Decrypt throws on wrong password (AEADBadTagException).
+- **AutoBackupWorker** (`AutoBackupWorker.kt`): WorkManager `CoroutineWorker` — now uses `BackupOptions(compress=true)` for compressed auto-backups. Logs "compressed" in notification message.
+- **BackupHistory** (`BackupHistory.kt`): SharedPreferences-based store for backup entries.
+  - New: `retention_days` — age-based retention (auto-deletes backups older than N days)
+  - New: `backup_frequency` — "daily" / "weekly" / "monthly" schedule option
+  - `cleanupByAge()` called from `enforceRetention()` alongside count-based cleanup
+- **BackupScreen** (`ui/screens/backup/BackupScreen.kt`): **Completely redesigned UI with 3 tabs:**
+  - **Overview**: Status header, Export/Restore action tiles, history list with aggregate stats (total size, total rows, auto/manual counts), progress cards
+  - **Export**: Compression toggle (GZIP), encryption toggle with password field (show/hide), entity type selection chips (12 inline + overflow), export button with format-aware filename (.json, .json.gz, .json.gz.enc)
+  - **Settings**: Auto-backup toggle + frequency selector (Daily/Weekly/Monthly) + time picker, retention settings (max count + max age dialogs), backup tips
+  - Dialogs: RestorePreview (migration-aware), RetentionCount, RetentionAge, Frequency, TimePicker, DeleteConfirmation
+- **BackupViewModel** (`ui/screens/backup/BackupViewModel.kt`): Central `BackupUiState` data class with all UI state.
+  - New fields: `compressEnabled`, `encryptionEnabled`, `encryptionPassword`, `showPassword`, `restorePassword`, `selectedTypes`, `selectAllTypes`, `backupFrequency`, `retentionDays`
+  - Schedules periodic work at configurable interval: 24h (daily) / 168h (weekly) / 720h (monthly)
+  - Uses `BackupOptions` data class for all export configuration
+  - `restorePassword` flows through to `BackupManager.previewBackup()` / `importFromJson()` for encrypted backup decryption
+- **BackupEntry** (`data/backup/BackupEntry.kt`): Data class with `id`, `fileName`, `timestamp`, `fileSizeBytes`, `totalRows`, `isManual`, `fileUri`, `mediaStoreId`. Display helpers: `displayType`, `displaySize`, `displayRows`.
 
 ### Financial System Integrity (Fixes Applied May 2026)
 **Goal**: Eliminate all system loss, balance mismatches, and silent data corruption paths.

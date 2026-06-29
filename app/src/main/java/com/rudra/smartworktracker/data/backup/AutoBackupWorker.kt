@@ -42,14 +42,20 @@ class AutoBackupWorker(
                     savedUri = it.toString()
                     try { savedMediaStoreId = it.lastPathSegment?.toLong() ?: 0L } catch (_: Exception) {}
                     resolver.openOutputStream(it)?.use { outputStream ->
-                        backupManager.exportToJson(outputStream)
+                        backupManager.exportToJson(
+                            outputStream = outputStream,
+                            options = BackupOptions(compress = true)
+                        )
                     }
                 } ?: ExportResult(success = false, errorMessage = "Failed to create MediaStore entry")
             } else {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 if (!downloadsDir.exists()) downloadsDir.mkdirs()
                 result = FileOutputStream(File(downloadsDir, fileName)).use { outputStream ->
-                    backupManager.exportToJson(outputStream)
+                    backupManager.exportToJson(
+                        outputStream = outputStream,
+                        options = BackupOptions(compress = true)
+                    )
                 }
             }
 
@@ -76,7 +82,7 @@ class AutoBackupWorker(
 
                 InAppNotificationManager.getInstance(applicationContext).showBackup(
                     "Auto Backup Successful",
-                    "Exported ${result.totalRows} records (${formatSize(result.fileSizeBytes)})"
+                    "Exported ${result.totalRows} records (${formatSize(result.fileSizeBytes)}, compressed)"
                 )
                 Result.success()
             } else {

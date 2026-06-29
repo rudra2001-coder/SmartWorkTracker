@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.rudra.smartworktracker.data.AppDatabase
+import com.rudra.smartworktracker.data.entity.TravelAndExpense
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -29,6 +31,12 @@ data class RestorePreview(
     val validationMessage: String? = null
 )
 
+data class BackupOptions(
+    val compress: Boolean = false,
+    val password: String? = null,
+    val selectedTypes: Set<String>? = null
+)
+
 class BackupManager(private val context: Context) {
 
     private val db = AppDatabase.getDatabase(context)
@@ -37,66 +45,70 @@ class BackupManager(private val context: Context) {
 
     suspend fun exportToJson(
         outputStream: OutputStream,
-        onProgress: ((String) -> Unit)? = null
+        onProgress: ((String) -> Unit)? = null,
+        options: BackupOptions = BackupOptions()
     ): ExportResult = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
         try {
+            val sel = options.selectedTypes
+
             onProgress?.invoke("Reading accounts...")
-            val accounts = db.accountDao().getAllAccounts().first()
+            val accounts = if (sel == null || "Accounts" in sel) db.accountDao().getAllAccounts().first() else emptyList()
             onProgress?.invoke("Reading expenses...")
-            val expenses = db.expenseDao().getAllExpenses().first()
+            val expenses = if (sel == null || "Expenses" in sel) db.expenseDao().getAllExpenses().first() else emptyList()
             onProgress?.invoke("Reading incomes...")
-            val incomes = db.incomeDao().getAllIncomes().first()
+            val incomes = if (sel == null || "Incomes" in sel) db.incomeDao().getAllIncomes().first() else emptyList()
             onProgress?.invoke("Reading work logs...")
-            val workLogs = db.workLogDao().getAllWorkLogs().first()
+            val workLogs = if (sel == null || "Work Logs" in sel) db.workLogDao().getAllWorkLogs().first() else emptyList()
             onProgress?.invoke("Reading financial records...")
-            val loans = db.loanDao().getAllLoans().first()
-            val emis = db.emiDao().getAllEmis().first()
-            val creditCards = db.creditCardDao().getAllCreditCards().first()
-            val creditCardTransactions = db.creditCardTransactionDao().getAllTransactions().first()
-            val savings = db.savingsDao().getAllSavings().first()
-            val financialTransactions = db.financialTransactionDao().getAllTransactions().first()
-            val recurringRules = db.recurringRuleDao().getAllRules().first()
-            val recurringTransactions = db.recurringTransactionDao().getAllTransactions().first()
+            val loans = if (sel == null || "Loans" in sel) db.loanDao().getAllLoans().first() else emptyList()
+            val emis = if (sel == null || "EMIs" in sel) db.emiDao().getAllEmis().first() else emptyList()
+            val creditCards = if (sel == null || "Credit Cards" in sel) db.creditCardDao().getAllCreditCards().first() else emptyList()
+            val creditCardTransactions = if (sel == null || "Credit Card Tx" in sel) db.creditCardTransactionDao().getAllTransactions().first() else emptyList()
+            val savings = if (sel == null || "Savings" in sel) db.savingsDao().getAllSavings().first() else emptyList()
+            val financialTransactions = if (sel == null || "Fin. Transactions" in sel) db.financialTransactionDao().getAllTransactions().first() else emptyList()
+            val recurringRules = if (sel == null || "Recurring Rules" in sel) db.recurringRuleDao().getAllRules().first() else emptyList()
+            val recurringTransactions = if (sel == null || "Recurring Tx" in sel) db.recurringTransactionDao().getAllTransactions().first() else emptyList()
 
             onProgress?.invoke("Reading personal data...")
-            val habits = db.habitDao().getAllHabits().first()
-            val focusSessions = db.focusSessionDao().getAllFocusSessions().first()
-            val workSessions = db.workSessionDao().getAllWorkSessions().first()
-            val healthMetrics = db.healthMetricDao().getAllHealthMetrics().first()
-            val dailyJournals = db.dailyJournalDao().getAllJournals().first()
-            val workDays = db.workDayDao().getAllWorkDays().first()
-            val achievements = db.achievementDao().getAllAchievements().first()
-            val colleagues = db.colleagueDao().getAllColleagues().first()
-            val schedules = db.scheduleDao().getAllSchedules().first()
+            val habits = if (sel == null || "Habits" in sel) db.habitDao().getAllHabits().first() else emptyList()
+            val focusSessions = if (sel == null || "Focus Sessions" in sel) db.focusSessionDao().getAllFocusSessions().first() else emptyList()
+            val workSessions = if (sel == null || "Work Sessions" in sel) db.workSessionDao().getAllWorkSessions().first() else emptyList()
+            val healthMetrics = if (sel == null || "Health Metrics" in sel) db.healthMetricDao().getAllHealthMetrics().first() else emptyList()
+            val dailyJournals = if (sel == null || "Journals" in sel) db.dailyJournalDao().getAllJournals().first() else emptyList()
+            val workDays = if (sel == null || "Work Days" in sel) db.workDayDao().getAllWorkDays().first() else emptyList()
+            val achievements = if (sel == null || "Achievements" in sel) db.achievementDao().getAllAchievements().first() else emptyList()
+            val colleagues = if (sel == null || "Colleagues" in sel) db.colleagueDao().getAllColleagues().first() else emptyList()
+            val schedules = if (sel == null || "Schedules" in sel) db.scheduleDao().getAllSchedules().first() else emptyList()
 
             onProgress?.invoke("Reading system data...")
-            val settings = db.settingsDao().getAllSettings().first()
-            val userProfile = db.userProfileDao().getUserProfile().first()
-            val monthlyInputs = db.monthlyInputDao().getAllMonthlyInputs().first()
-            val calculations = db.calculationDao().getCalculations().first()
-            val meals = db.mealDao().getAllMeals().first()
-            val travelExpenses = db.travelExpenseDao().getTravelExpense().first()
-            val mealRateSettings = db.mealRateSettingDao().getAllMealRateSettings().first()
-            val realityEntries = db.realityTrackerDao().getAllEntries().first()
-            val decisions = db.decisionDao().getAllDecisions().first()
-            val dailyCheckIns = db.checkInDao().getAllCheckIns().first()
-            val consequenceDebts = db.consequenceDebtDao().getAllDebts().first()
-            val weeklyReports = db.weeklyReportDao().getAllReports().first()
-            val userHistories = db.userHistoryDao().getUserHistory().first()
+            val settings = if (sel == null || "Settings" in sel) db.settingsDao().getAllSettings().first() else emptyList()
+            val userProfile = if (sel == null || "User Profile" in sel) db.userProfileDao().getUserProfile().first() else null
+            val monthlyInputs = if (sel == null || "Monthly Inputs" in sel) db.monthlyInputDao().getAllMonthlyInputs().first() else emptyList()
+            val calculations = if (sel == null || "Calculations" in sel) db.calculationDao().getCalculations().first() else emptyList()
+            val meals = if (sel == null || "Meals" in sel) db.mealDao().getAllMeals().first() else emptyList()
+            val travelExpense = if (sel == null || "Travel" in sel) db.travelExpenseDao().getTravelExpense().first() else null
+            val travelExpenses: List<TravelAndExpense> = travelExpense?.let { listOf(it) } ?: emptyList()
+            val mealRateSettings = if (sel == null || "Meal Rates" in sel) db.mealRateSettingDao().getAllMealRateSettings().first() else emptyList()
+            val realityEntries = if (sel == null || "Reality" in sel) db.realityTrackerDao().getAllEntries().first() else emptyList()
+            val decisions = if (sel == null || "Decisions" in sel) db.decisionDao().getAllDecisions().first() else emptyList()
+            val dailyCheckIns = if (sel == null || "Check-ins" in sel) db.checkInDao().getAllCheckIns().first() else emptyList()
+            val consequenceDebts = if (sel == null || "Debts" in sel) db.consequenceDebtDao().getAllDebts().first() else emptyList()
+            val weeklyReports = if (sel == null || "Weekly Reports" in sel) db.weeklyReportDao().getAllReports().first() else emptyList()
+            val userHistories = if (sel == null || "User History" in sel) db.userHistoryDao().getUserHistory().first() else null
 
             onProgress?.invoke("Reading meal config...")
-            val mealTypes = db.mealTypeDao().getAllMealTypesList()
-            val weeklyMealRates = db.weeklyMealRateDao().getAllWeeklyMealRates()
-            val dailyMealRates = db.dailyMealRateDao().getAllDailyMealRates()
-            val mealSettings = db.mealSettingsDao().getMealSettingsOnce()
-            val specialMealDates = db.specialMealDateDao().getAllSpecialDatesList()
+            val mealTypes = if (sel == null || "Meal Types" in sel) db.mealTypeDao().getAllMealTypesList() else emptyList()
+            val weeklyMealRates = if (sel == null || "Meal Rates" in sel) db.weeklyMealRateDao().getAllWeeklyMealRates() else emptyList()
+            val dailyMealRates = if (sel == null || "Meal Rates" in sel) db.dailyMealRateDao().getAllDailyMealRates() else emptyList()
+            val mealSettings = if (sel == null || "Meal Config" in sel) db.mealSettingsDao().getMealSettingsOnce() else null
+            val specialMealDates = if (sel == null || "Meal Config" in sel) db.specialMealDateDao().getAllSpecialDatesList() else emptyList()
 
             onProgress?.invoke("Reading manual meal entries...")
-            val manualMealEntries = db.manualMealEntryDao().getAllEntriesList()
+            val manualMealEntries = if (sel == null || "Manual Meals" in sel) db.manualMealEntryDao().getAllEntriesList() else emptyList()
 
             onProgress?.invoke("Reading notifications...")
-            val inAppNotifications = db.inAppNotificationDao().getAllNotifications().first()
+            val inAppNotifications = if (sel == null || "Notifications" in sel) db.inAppNotificationDao().getAllNotifications().first() else emptyList()
 
             val entityCounts = linkedMapOf(
                 "Accounts" to accounts.size,
@@ -134,7 +146,7 @@ class BackupManager(private val context: Context) {
             val durationMs = System.currentTimeMillis() - startTime
 
             val backup = AppBackup(
-                version = 35,
+                version = BackupFormatMigrator.CURRENT_BACKUP_VERSION,
                 appVersion = "1.0.0",
                 timestamp = System.currentTimeMillis(),
                 metadata = BackupMetadata(
@@ -167,7 +179,7 @@ class BackupManager(private val context: Context) {
                 savings = savings,
                 schedules = schedules,
                 meals = meals,
-                travelExpenses = travelExpenses?.let { listOf(it) } ?: emptyList(),
+                travelExpenses = travelExpenses,
                 accounts = accounts,
                 mealRateSettings = mealRateSettings,
                 recurringRules = recurringRules,
@@ -188,8 +200,22 @@ class BackupManager(private val context: Context) {
             )
 
             onProgress?.invoke("Writing JSON...")
-            val jsonString = gson.toJson(backup)
-            val bytes = jsonString.toByteArray()
+            var bytes = gson.toJson(backup).toByteArray()
+
+            val ext = mutableListOf<String>()
+
+            if (options.compress) {
+                onProgress?.invoke("Compressing...")
+                bytes = BackupCompression.compress(bytes)
+                ext.add("gz")
+            }
+
+            if (!options.password.isNullOrBlank()) {
+                onProgress?.invoke("Encrypting...")
+                bytes = BackupCrypto.encrypt(bytes, options.password)
+                ext.add("enc")
+            }
+
             BufferedOutputStream(outputStream).use { it.write(bytes) }
 
             val elapsed = System.currentTimeMillis() - startTime
@@ -211,10 +237,16 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun previewBackup(inputStream: InputStream): RestorePreview = withContext(Dispatchers.IO) {
+    suspend fun previewBackup(
+        inputStream: InputStream,
+        password: String? = null
+    ): RestorePreview = withContext(Dispatchers.IO) {
         try {
-            val jsonString = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
-            val backup = gson.fromJson(jsonString, AppBackup::class.java)
+            val rawBytes = inputStream.readBytes()
+            val decompressed = processInputBytes(rawBytes, password)
+
+            val migratedJson = BackupFormatMigrator.migrateToCurrent(decompressed)
+            val backup = gson.fromJson(migratedJson, AppBackup::class.java)
                 ?: return@withContext RestorePreview(
                     version = 0, appVersion = "", timestamp = 0,
                     totalRows = 0, entityCounts = emptyMap(),
@@ -224,37 +256,47 @@ class BackupManager(private val context: Context) {
             val entityCounts = buildEntityCounts(backup)
             val totalRows = entityCounts.values.sum().toLong()
 
-            if (backup.version > 34) {
-                RestorePreview(
-                    version = backup.version, appVersion = backup.appVersion,
-                    timestamp = backup.timestamp, totalRows = totalRows,
-                    entityCounts = entityCounts, isValid = true,
-                    validationMessage = "Newer backup version (${backup.version}). Some data may not restore correctly."
-                )
-            } else {
-                RestorePreview(
-                    version = backup.version, appVersion = backup.appVersion,
-                    timestamp = backup.timestamp, totalRows = totalRows,
-                    entityCounts = entityCounts, isValid = true
-                )
-            }
+            val messages = mutableListOf<String>()
+            val originalVersion = try {
+                com.google.gson.JsonParser.parseString(decompressed).asJsonObject.get("version")?.asInt ?: 1
+            } catch (_: Exception) { 1 }
+            BackupFormatMigrator.describeMigration(originalVersion)?.let { messages.add(it) }
+
+            RestorePreview(
+                version = backup.version, appVersion = backup.appVersion,
+                timestamp = backup.timestamp, totalRows = totalRows,
+                entityCounts = entityCounts, isValid = true,
+                validationMessage = if (messages.isNotEmpty()) messages.joinToString("\n") else null
+            )
         } catch (e: Exception) {
+            val msg = e.localizedMessage ?: "Unknown error"
             RestorePreview(
                 version = 0, appVersion = "", timestamp = 0,
                 totalRows = 0, entityCounts = emptyMap(),
-                isValid = false, validationMessage = "Invalid backup file: ${e.localizedMessage}"
+                isValid = false,
+                validationMessage = when {
+                    msg.contains("AEADBadTagException") || msg.contains("Bad tag") ->
+                        "Wrong password or corrupted backup file"
+                    msg.contains("GZIP") || msg.contains("gzip") ->
+                        "Invalid compressed backup file"
+                    else -> "Invalid backup file: $msg"
+                }
             )
         }
     }
 
     suspend fun importFromJson(
         inputStream: InputStream,
-        onProgress: ((String) -> Unit)? = null
+        onProgress: ((String) -> Unit)? = null,
+        password: String? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             onProgress?.invoke("Parsing backup file...")
-            val jsonString = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
-            val backup = gson.fromJson(jsonString, AppBackup::class.java)
+            val rawBytes = inputStream.readBytes()
+            val decompressed = processInputBytes(rawBytes, password)
+
+            val migratedJson = BackupFormatMigrator.migrateToCurrent(decompressed)
+            val backup = gson.fromJson(migratedJson, AppBackup::class.java)
                 ?: return@withContext Result.failure(Exception("Failed to parse backup file"))
 
             val entityCounts = buildEntityCounts(backup)
@@ -322,8 +364,33 @@ class BackupManager(private val context: Context) {
             Result.success(Unit)
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(Exception("Restore failed: ${e.localizedMessage ?: "Unknown error"}"))
+            val msg = e.localizedMessage ?: "Unknown error"
+            Result.failure(Exception(
+                when {
+                    msg.contains("AEADBadTagException") || msg.contains("Bad tag") ->
+                        "Wrong password or corrupted backup file"
+                    else -> "Restore failed: $msg"
+                }
+            ))
         }
+    }
+
+    private fun processInputBytes(raw: ByteArray, password: String?): String {
+        var bytes = raw
+
+        if (isGzip(bytes)) {
+            bytes = BackupCompression.decompress(bytes)
+        }
+
+        if (!password.isNullOrBlank()) {
+            bytes = BackupCrypto.decrypt(bytes, password)
+        }
+
+        return String(bytes)
+    }
+
+    private fun isGzip(data: ByteArray): Boolean {
+        return data.size >= 2 && data[0].toInt() == 0x1F && data[1].toInt() == 0x8B
     }
 
     fun recordBackup(
@@ -361,6 +428,13 @@ class BackupManager(private val context: Context) {
         enforceRetention()
     }
 
+    fun getRetentionDays(): Int = historyStore.getRetentionDays()
+
+    fun setRetentionDays(days: Int) {
+        historyStore.setRetentionDays(days)
+        enforceRetention()
+    }
+
     fun getBackupHour(): Int = historyStore.getBackupHour()
 
     fun getBackupMinute(): Int = historyStore.getBackupMinute()
@@ -377,12 +451,20 @@ class BackupManager(private val context: Context) {
         return "%d:%02d %s".format(hour12, m, amPm)
     }
 
+    fun getBackupFrequency(): String = historyStore.getBackupFrequency()
+
+    fun setBackupFrequency(frequency: String) {
+        historyStore.setBackupFrequency(frequency)
+    }
+
     fun enforceRetention() {
         val excess = historyStore.getExcessEntries()
         for (entry in excess) {
             BackupHistoryStore.deleteFile(context, entry)
             historyStore.remove(entry.id)
         }
+        // Age-based cleanup
+        historyStore.cleanupByAge()
     }
 
     private fun buildEntityCounts(backup: AppBackup): Map<String, Int> = linkedMapOf(

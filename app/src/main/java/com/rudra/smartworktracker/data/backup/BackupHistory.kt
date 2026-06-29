@@ -76,6 +76,18 @@ class BackupHistoryStore(private val context: Context) {
         prefs.edit().putInt("retention_limit", maxOf(0, limit)).apply()
     }
 
+    fun getRetentionDays(): Int = prefs.getInt("retention_days", 0)
+
+    fun setRetentionDays(days: Int) {
+        prefs.edit().putInt("retention_days", maxOf(0, days)).apply()
+    }
+
+    fun getBackupFrequency(): String = prefs.getString("backup_frequency", "daily") ?: "daily"
+
+    fun setBackupFrequency(frequency: String) {
+        prefs.edit().putString("backup_frequency", frequency).apply()
+    }
+
     fun getBackupHour(): Int = prefs.getInt("backup_hour", 0)
 
     fun getBackupMinute(): Int = prefs.getInt("backup_minute", 5)
@@ -91,6 +103,16 @@ class BackupHistoryStore(private val context: Context) {
         val all = getAll()
         if (all.size <= limit) return emptyList()
         return all.drop(limit)
+    }
+
+    fun cleanupByAge() {
+        val maxDays = getRetentionDays()
+        if (maxDays <= 0) return
+        val cutoff = System.currentTimeMillis() - maxDays * 86400000L
+        val all = getAll().toMutableList()
+        val before = all.size
+        all.removeAll { it.timestamp < cutoff }
+        if (all.size < before) saveAll(all)
     }
 
     private fun saveAll(entries: List<BackupEntry>) {
