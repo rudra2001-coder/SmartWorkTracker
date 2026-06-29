@@ -90,6 +90,9 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                     actions = {
                         if (s.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        IconButton(onClick = { viewModel.exportToClipboard(context) }) {
+                            Icon(Icons.Default.ContentCopy, "Copy report", modifier = Modifier.size(20.dp))
+                        }
                     }
                 )
             },
@@ -102,13 +105,17 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
             ) {
                 item { MonthNav(month = mdf.format(s.selectedDate), onPrev = { viewModel.goToPreviousMonth() }, onNext = { viewModel.goToNextMonth() }, loading = s.isLoading) }
 
-                item { SummaryHead(officeDays = s.officeDays, mealCost = s.totalMealMonthlyCost, totalCost = s.totalExpensePerMonth) }
+                item { SummaryHead(officeDays = s.officeDays, mealCost = s.totalMealMonthlyCost, totalCost = s.totalExpensePerMonth, budgetPercent = s.budgetPercent, monthlyBudget = s.monthlyMealBudget, budgetRemaining = s.budgetRemaining) }
 
-                item { SettingsCard(normalRate = s.normalMealRate, specialRate = s.specialMealRate, mealDays = s.mealDays, onSave = { n, sp, d -> viewModel.saveMealSettings(n, sp, d) }) }
+                item { SettingsCard(normalRate = s.normalMealRate, specialRate = s.specialMealRate, mealDays = s.mealDays, mealCount = s.mealCountPerDay, monthlyBudget = s.monthlyMealBudget, onSave = { n, sp, d, mc, mb -> viewModel.saveMealSettings(n, sp, d, mc, mb) }) }
 
                 item { SpecialDatesCard(selectedDate = s.selectedDate, specialDates = s.specialDates, officeDates = s.officeDates, workLogDates = s.workLogDates, onToggle = { viewModel.toggleSpecialDate(it) }) }
 
                 item { SummaryCard(totalMeals = s.totalMeals, normalMeals = s.normalMeals, specialMeals = s.specialMeals, totalMonthly = s.totalMealMonthlyCost, totalQuarterly = s.totalMealQuarterlyCost, totalYearly = s.totalMealYearlyCost, normalRate = s.normalMealRate, specialRate = s.specialMealRate, breakdown = s.dayBreakdown) }
+
+                if (s.weekBreakdown.isNotEmpty()) {
+                    item { WeekBreakdownCard(weekBreakdown = s.weekBreakdown) }
+                }
 
                 if (s.monthlyBreakdown.isNotEmpty()) {
                     item { ChartCard(data = s.monthlyBreakdown, year = viewModel.getCurrentYear()) }
@@ -122,7 +129,7 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
 
                 item { ExpenseCard(travelInput = travelInput, otherInput = otherInput, otherDesc = otherDesc, onTravelChange = { travelInput = it }, onOtherChange = { otherInput = it }, onDescChange = { otherDesc = it }, onSave = { t, o, d -> viewModel.saveTravelExpense(t.toDoubleOrNull() ?: 0.0, o.toDoubleOrNull() ?: 0.0, d) }, focusManager = focusManager) }
 
-                item { TotalCard(mealMonthly = s.totalMealMonthlyCost, mealQuarterly = s.totalMealQuarterlyCost, mealYearly = s.totalMealYearlyCost, travelMonthly = s.travelCostPerMonth, travelYearly = s.travelCostPerYear, otherMonthly = s.otherExpensePerMonth, otherYearly = s.otherExpensePerYear, totalMonthly = s.totalExpensePerMonth, totalQuarterly = s.totalExpensePerQuarter, totalYearly = s.totalExpensePerYear) }
+                item { TotalCard(mealMonthly = s.totalMealMonthlyCost, mealQuarterly = s.totalMealQuarterlyCost, mealYearly = s.totalMealYearlyCost, travelMonthly = s.travelCostPerMonth, travelYearly = s.travelCostPerYear, otherMonthly = s.otherExpensePerMonth, otherYearly = s.otherExpensePerYear, overtimeHours = s.overtimeHours, overtimeCost = s.overtimeCost, totalMonthly = s.totalExpensePerMonth, totalQuarterly = s.totalExpensePerQuarter, totalYearly = s.totalExpensePerYear) }
 
                 item { ManualCalendarCard(
                     selectedMonth = s.manualSelectedMonth,
@@ -134,12 +141,16 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
                     manualSpecial = s.manualSpecial,
                     manualCost = s.manualCost,
                     manualCalculated = s.manualCalculated,
+                    manualDayBreakdown = s.manualDayBreakdown,
+                    manualMealCount = s.manualMealCount,
                     onPrevMonth = { viewModel.manualGoToPreviousMonth() },
                     onNextMonth = { viewModel.manualGoToNextMonth() },
                     onToggleDate = { date, type -> viewModel.toggleManualDate(date, type) },
                     onClearAll = { viewModel.clearAllManualDates() },
-                    onSaveRates = { n, s -> viewModel.saveManualRates(n, s) },
-                    onCalculate = { viewModel.calculateManual() }
+                    onSaveRates = { n, s, mc -> viewModel.saveManualRates(n, s, mc) },
+                    onCalculate = { viewModel.calculateManual() },
+                    onOverrideCost = { date, cost -> viewModel.overrideManualDayCost(date, cost) },
+                    onClearOverride = { date -> viewModel.clearManualDayOverride(date) }
                 ) }
 
                 item { Spacer(Modifier.height(8.dp)) }
@@ -162,7 +173,7 @@ private fun MonthNav(month: String, onPrev: () -> Unit, onNext: () -> Unit, load
 // ─── Summary Header ──────────────────────────────────────────────
 
 @Composable
-private fun SummaryHead(officeDays: Int, mealCost: Double, totalCost: Double) {
+private fun SummaryHead(officeDays: Int, mealCost: Double, totalCost: Double, budgetPercent: Float, monthlyBudget: Double, budgetRemaining: Double) {
     Card(Modifier.fillMaxWidth(), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
         Column(Modifier.padding(16.dp)) {
             Text("This Month", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -171,6 +182,22 @@ private fun SummaryHead(officeDays: Int, mealCost: Double, totalCost: Double) {
                 StatCol("Office Days", "$officeDays", null)
                 StatCol("Meal Cost", "\u09F3${"%,.0f".format(mealCost)}", EmeraldGreen)
                 StatCol("Total Cost", "\u09F3${"%,.0f".format(totalCost)}", MaterialTheme.colorScheme.error)
+            }
+            if (monthlyBudget > 0) {
+                Spacer(Modifier.height(8.dp))
+                Column {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Monthly Budget", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                        Text("\u09F3${"%,.0f".format(monthlyBudget)} | Used: ${(budgetPercent * 100).toInt()}% | Left: \u09F3${"%,.0f".format(budgetRemaining)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (budgetPercent > 0.8f) CoralRed else EmeraldGreen)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = budgetPercent,
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(ChipShape),
+                        color = when { budgetPercent > 0.8f -> CoralRed; budgetPercent > 0.5f -> GoldenAmber; else -> EmeraldGreen },
+                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+                    )
+                }
             }
         }
     }
@@ -188,10 +215,12 @@ private fun StatCol(label: String, value: String, color: Color?) {
 // ─── Meal Settings Card ──────────────────────────────────────────
 
 @Composable
-private fun SettingsCard(normalRate: Double, specialRate: Double, mealDays: Set<Int>, onSave: (Double, Double, Set<Int>) -> Unit) {
+private fun SettingsCard(normalRate: Double, specialRate: Double, mealDays: Set<Int>, mealCount: Int, monthlyBudget: Double, onSave: (Double, Double, Set<Int>, Int, Double) -> Unit) {
     var exp by remember { mutableStateOf(true) }
     var nInput by remember(normalRate) { mutableStateOf(if (normalRate == 0.0) "" else normalRate.toString()) }
     var sInput by remember(specialRate) { mutableStateOf(if (specialRate == 0.0) "" else specialRate.toString()) }
+    var mcInput by remember(mealCount) { mutableStateOf(mealCount.toString()) }
+    var mbInput by remember(monthlyBudget) { mutableStateOf(if (monthlyBudget == 0.0) "" else monthlyBudget.toString()) }
     var days by remember(mealDays) { mutableStateOf(mealDays) }
     var saved by remember { mutableStateOf(false) }
 
@@ -215,6 +244,11 @@ private fun SettingsCard(normalRate: Double, specialRate: Double, mealDays: Set<
                         OutlinedTextField(value = sInput, onValueChange = { sInput = it; saved = false }, label = { Text("Special Rate") }, leadingIcon = { Text("\u09F3", fontWeight = FontWeight.Bold) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = ChipShape)
                     }
 
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(value = mcInput, onValueChange = { mcInput = it.filter { c -> c.isDigit() }; saved = false }, label = { Text("Meals/Day") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f), shape = ChipShape)
+                        OutlinedTextField(value = mbInput, onValueChange = { mbInput = it.filter { c -> c.isDigit() || c == '.' }; saved = false }, label = { Text("Monthly Budget") }, leadingIcon = { Text("\u09F3", fontWeight = FontWeight.Bold) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = ChipShape)
+                    }
+
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Meal Weekdays", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -229,7 +263,7 @@ private fun SettingsCard(normalRate: Double, specialRate: Double, mealDays: Set<
                         }
                     }
 
-                    Button(onClick = { onSave(nInput.toDoubleOrNull() ?: normalRate, sInput.toDoubleOrNull() ?: specialRate, days); saved = true }, modifier = Modifier.fillMaxWidth(), shape = ChipShape, colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)) {
+                    Button(onClick = { onSave(nInput.toDoubleOrNull() ?: normalRate, sInput.toDoubleOrNull() ?: specialRate, days, mcInput.toIntOrNull() ?: 1, mbInput.toDoubleOrNull() ?: 0.0); saved = true }, modifier = Modifier.fillMaxWidth(), shape = ChipShape, colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)) {
                         if (saved) { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
                         Text(if (saved) "Saved!" else "Save Settings")
                     }
@@ -466,7 +500,7 @@ private fun ChipStat(label: String, value: String, color: Color) {
 // ─── Total Summary Card ──────────────────────────────────────────
 
 @Composable
-private fun TotalCard(mealMonthly: Double, mealQuarterly: Double, mealYearly: Double, travelMonthly: Double, travelYearly: Double, otherMonthly: Double, otherYearly: Double, totalMonthly: Double, totalQuarterly: Double, totalYearly: Double) {
+private fun TotalCard(mealMonthly: Double, mealQuarterly: Double, mealYearly: Double, travelMonthly: Double, travelYearly: Double, otherMonthly: Double, otherYearly: Double, overtimeHours: Double, overtimeCost: Double, totalMonthly: Double, totalQuarterly: Double, totalYearly: Double) {
     var exp by remember { mutableStateOf(true) }
     Card(Modifier.fillMaxWidth(), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.padding(16.dp)) {
@@ -489,6 +523,7 @@ private fun TotalCard(mealMonthly: Double, mealQuarterly: Double, mealYearly: Do
                     Row(Modifier.fillMaxWidth()) { TSummaryRow("Meal", mealMonthly, mealYearly, EmeraldGreen) }
                     Row(Modifier.fillMaxWidth()) { TSummaryRow("Travel", travelMonthly, travelYearly, Color(0xFF388E3C)) }
                     Row(Modifier.fillMaxWidth()) { TSummaryRow("Other", otherMonthly, otherYearly, GoldenAmber) }
+                    if (overtimeCost > 0) Row(Modifier.fillMaxWidth()) { TSummaryRow("Overtime (${"%,.1f".format(overtimeHours)}h)", overtimeCost, overtimeCost * 12, VioletPurple) }
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth()) { TSummaryRow("Total", totalMonthly, totalYearly, MaterialTheme.colorScheme.error, bold = true) }
                     Spacer(Modifier.height(4.dp))
@@ -510,6 +545,48 @@ private fun RowScope.TSummaryRow(label: String, monthly: Double, yearly: Double,
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium, color = color)
         Text("\u09F3${"%,.0f".format(monthly)}", Modifier.width(90.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.End, color = color)
         Text("\u09F3${"%,.0f".format(yearly)}", Modifier.width(90.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, textAlign = TextAlign.End, color = color)
+    }
+}
+
+// ─── Weekly Breakdown Card ───────────────────────────────────────
+
+@Composable
+private fun WeekBreakdownCard(weekBreakdown: List<WeekBreakdown>) {
+    var exp by remember { mutableStateOf(true) }
+    Card(Modifier.fillMaxWidth(), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { exp = !exp }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(24.dp), tint = SapphireBlue)
+                    Spacer(Modifier.width(10.dp))
+                    Text("Weekly Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                Icon(if (exp) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, modifier = Modifier.size(24.dp), tint = SlateGray)
+            }
+            AnimatedVisibility(visible = exp) {
+                Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text("Week", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray)
+                        Text("Days", Modifier.width(50.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray, textAlign = TextAlign.End)
+                        Text("Cost", Modifier.width(80.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray, textAlign = TextAlign.End)
+                    }
+                    HorizontalDivider()
+                    weekBreakdown.forEach { w ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                            Text(w.weekLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            Text("${w.dayCount}", Modifier.width(50.dp), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("\u09F3${"%,.0f".format(w.mealCost)}", Modifier.width(80.dp), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End, color = EmeraldGreen)
+                        }
+                    }
+                    HorizontalDivider()
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Text("Total", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text("${weekBreakdown.sumOf { it.dayCount }}", Modifier.width(50.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+                        Text("\u09F3${"%,.0f".format(weekBreakdown.sumOf { it.mealCost })}", Modifier.width(80.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, color = EmeraldGreen)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -614,16 +691,21 @@ private fun ManualCalendarCard(
     manualSpecial: Int,
     manualCost: Double,
     manualCalculated: Boolean,
+    manualDayBreakdown: List<DayMealBreakdown>,
+    manualMealCount: Int,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onToggleDate: (Long, ManualDateType) -> Unit,
     onClearAll: () -> Unit,
-    onSaveRates: (Double, Double) -> Unit,
-    onCalculate: () -> Unit
+    onSaveRates: (Double, Double, Int) -> Unit,
+    onCalculate: () -> Unit,
+    onOverrideCost: (Long, Double) -> Unit,
+    onClearOverride: (Long) -> Unit
 ) {
     var markMode by remember { mutableStateOf(ManualDateType.NORMAL) }
     var nInput by remember(normalRate) { mutableStateOf(normalRate.let { if (it == 0.0) "" else it.toString() }) }
     var sInput by remember(specialRate) { mutableStateOf(specialRate.let { if (it == 0.0) "" else it.toString() }) }
+    var mcInput by remember(manualMealCount) { mutableStateOf(manualMealCount.toString()) }
     var saved by remember { mutableStateOf(false) }
     val cal = remember { Calendar.getInstance() }.apply { time = selectedMonth }
     val year = cal.get(Calendar.YEAR)
@@ -632,6 +714,8 @@ private fun ManualCalendarCard(
     val fdow = Calendar.getInstance().apply { set(year, month, 1) }.get(Calendar.DAY_OF_WEEK) - 1
     val mdf = remember { SimpleDateFormat("MMM yyyy", Locale.getDefault()) }
     val df = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    var overrideDialogDate by remember { mutableStateOf<Long?>(null) }
+    var overrideInput by remember { mutableStateOf("") }
 
     Card(Modifier.fillMaxWidth(), shape = CardShape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.padding(16.dp)) {
@@ -644,12 +728,13 @@ private fun ManualCalendarCard(
                 Text("Manual Meal Calculator", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(4.dp))
-            Text("Tap dates to mark as Normal or Special, enter rates, and calculate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Selections are saved automatically. Tap dates to mark Normal/Special.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = nInput, onValueChange = { nInput = it; saved = false }, label = { Text("Normal Rate") }, leadingIcon = { Text("\u09F3", fontWeight = FontWeight.Bold) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = ChipShape)
                 OutlinedTextField(value = sInput, onValueChange = { sInput = it; saved = false }, label = { Text("Special Rate") }, leadingIcon = { Text("\u09F3", fontWeight = FontWeight.Bold) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = ChipShape)
+                OutlinedTextField(value = mcInput, onValueChange = { mcInput = it.filter { c -> c.isDigit() }; saved = false }, label = { Text("Count") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.width(60.dp), shape = ChipShape)
             }
             Spacer(Modifier.height(8.dp))
 
@@ -750,7 +835,7 @@ private fun ManualCalendarCard(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
-                    onSaveRates(nInput.toDoubleOrNull() ?: normalRate, sInput.toDoubleOrNull() ?: specialRate)
+                    onSaveRates(nInput.toDoubleOrNull() ?: normalRate, sInput.toDoubleOrNull() ?: specialRate, mcInput.toIntOrNull() ?: 1)
                     onCalculate()
                     saved = true
                 },
@@ -791,28 +876,83 @@ private fun ManualCalendarCard(
                 }
 
                 var showBreakdown by remember { mutableStateOf(false) }
-                if (selectedDates.isNotEmpty()) {
+                if (manualDayBreakdown.isNotEmpty()) {
                     TextButton(onClick = { showBreakdown = !showBreakdown }) {
                         Icon(if (showBreakdown) Icons.Default.ExpandLess else Icons.Default.ListAlt, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (showBreakdown) "Hide day list" else "Show selected days")
+                        Text(if (showBreakdown) "Hide day list" else "Show selected days (${manualDayBreakdown.size})")
                     }
                     AnimatedVisibility(visible = showBreakdown) {
-                        Column(Modifier.heightIn(max = 200.dp)) {
-                            val sorted = selectedDates.entries.sortedBy { it.key }
-                            sorted.forEach { (ts, type) ->
-                                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(Modifier.size(6.dp).clip(CircleShape).background(if (type == ManualDateType.NORMAL) EmeraldGreen else CoralRed))
+                        Column(Modifier.heightIn(max = 250.dp)) {
+                            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                Text("Date", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray)
+                                Text("Type", Modifier.width(30.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray, textAlign = TextAlign.Center)
+                                Text("Amount", Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray, textAlign = TextAlign.End)
+                                Text("Override", Modifier.width(20.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SlateGray, textAlign = TextAlign.Center)
+                            }
+                            manualDayBreakdown.forEach { d ->
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(Modifier.size(6.dp).clip(CircleShape).background(if (d.isSpecial) CoralRed else EmeraldGreen))
                                         Spacer(Modifier.width(6.dp))
-                                        Text(df.format(Date(ts)), style = MaterialTheme.typography.bodySmall)
+                                        Text(d.dateLabel, style = MaterialTheme.typography.bodySmall)
                                     }
-                                    Text(if (type == ManualDateType.NORMAL) "\u09F3${"%,.0f".format(nInput.toDoubleOrNull() ?: normalRate)}" else "\u09F3${"%,.0f".format(sInput.toDoubleOrNull() ?: specialRate)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = if (type == ManualDateType.NORMAL) EmeraldGreen else CoralRed)
+                                    Box(Modifier.size(6.dp).clip(CircleShape).background(if (d.isSpecial) CoralRed else EmeraldGreen))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("\u09F3${"%,.0f".format(d.cost)}", Modifier.width(60.dp), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End, color = if (d.isSpecial) CoralRed else EmeraldGreen)
+                                    IconButton(onClick = { overrideDialogDate = try { SimpleDateFormat("dd MMM", Locale.getDefault()).parse(d.dateLabel)?.time } catch (_: Exception) { null } }, modifier = Modifier.size(20.dp)) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Override cost", modifier = Modifier.size(14.dp), tint = if (d.overrideCost != null) GoldenAmber else SlateGray)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            if (overrideDialogDate != null) {
+                AlertDialog(
+                    onDismissRequest = {
+                        overrideDialogDate = null
+                        overrideInput = ""
+                    },
+                    title = { Text("Override Day Cost") },
+                    text = {
+                        Column {
+                            Text("Set custom cost for ${df.format(Date(overrideDialogDate!!))}:", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = overrideInput,
+                                onValueChange = { overrideInput = it.filter { c -> c.isDigit() || c == '.' } },
+                                label = { Text("Custom cost") },
+                                leadingIcon = { Text("\u09F3") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ChipShape
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val cost = overrideInput.toDoubleOrNull()
+                            if (cost != null && cost > 0) {
+                                onOverrideCost(overrideDialogDate!!, cost)
+                            } else {
+                                onClearOverride(overrideDialogDate!!)
+                            }
+                            overrideDialogDate = null
+                            overrideInput = ""
+                        }) { Text("Apply") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            onClearOverride(overrideDialogDate!!)
+                            overrideDialogDate = null
+                            overrideInput = ""
+                        }) { Text("Clear Override") }
+                    }
+                )
             }
         }
     }

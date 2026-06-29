@@ -92,6 +92,9 @@ class BackupManager(private val context: Context) {
             val mealSettings = db.mealSettingsDao().getMealSettingsOnce()
             val specialMealDates = db.specialMealDateDao().getAllSpecialDatesList()
 
+            onProgress?.invoke("Reading manual meal entries...")
+            val manualMealEntries = db.manualMealEntryDao().getAllEntriesList()
+
             onProgress?.invoke("Reading notifications...")
             val inAppNotifications = db.inAppNotificationDao().getAllNotifications().first()
 
@@ -123,6 +126,7 @@ class BackupManager(private val context: Context) {
                 "Debts" to consequenceDebts.size,
                 "Weekly Reports" to weeklyReports.size,
                 "Meal Settings" to (if (mealSettings != null) 1 else 0),
+                "Manual Meals" to manualMealEntries.size,
                 "Notifications" to inAppNotifications.size
             ).filter { it.value > 0 }
 
@@ -130,11 +134,11 @@ class BackupManager(private val context: Context) {
             val durationMs = System.currentTimeMillis() - startTime
 
             val backup = AppBackup(
-                version = 34,
+                version = 35,
                 appVersion = "1.0.0",
                 timestamp = System.currentTimeMillis(),
                 metadata = BackupMetadata(
-                    dbVersion = 14,
+                    dbVersion = 17,
                     totalEntities = entityCounts.size,
                     totalRows = totalRows,
                     entityCounts = entityCounts,
@@ -179,6 +183,7 @@ class BackupManager(private val context: Context) {
                 dailyMealRates = dailyMealRates,
                 mealSettings = mealSettings?.let { listOf(it) } ?: emptyList(),
                 specialMealDates = specialMealDates,
+                manualMealEntries = manualMealEntries,
                 inAppNotifications = inAppNotifications
             )
 
@@ -305,6 +310,7 @@ class BackupManager(private val context: Context) {
                 backup.dailyMealRates.forEach { db.dailyMealRateDao().insert(it) }
                 backup.mealSettings.forEach { db.mealSettingsDao().insert(it) }
                 backup.specialMealDates.forEach { db.specialMealDateDao().insert(it) }
+                backup.manualMealEntries.forEach { db.manualMealEntryDao().insert(it) }
                 onProgress?.invoke("Restoring notifications...")
                 backup.inAppNotifications.forEach { db.inAppNotificationDao().insert(it) }
                 onProgress?.invoke("Restoring settings...")
@@ -394,6 +400,7 @@ class BackupManager(private val context: Context) {
         "Journals" to backup.dailyJournals.size,
         "Recurring Rules" to backup.recurringRules.size,
         "Notifications" to backup.inAppNotifications.size,
-        "Settings" to backup.settings.size
+        "Settings" to backup.settings.size,
+        "Manual Meals" to backup.manualMealEntries.size
     ).filter { it.value > 0 }
 }

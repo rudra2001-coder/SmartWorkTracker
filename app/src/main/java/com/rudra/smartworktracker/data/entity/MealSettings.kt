@@ -10,6 +10,8 @@ data class MealSettings(
     val normalMealRate: Double = 70.0,
     val specialMealRate: Double = 90.0,
     val mealDays: Set<Int>? = null,
+    val mealCountPerDay: Int = 1,
+    val monthlyMealBudget: Double = 0.0,
     val isEnabled: Boolean = true,
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),

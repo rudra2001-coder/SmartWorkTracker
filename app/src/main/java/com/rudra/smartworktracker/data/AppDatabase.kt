@@ -57,12 +57,13 @@ import com.rudra.smartworktracker.model.*
         DailyMealRate::class,
         MealSettings::class,
         SpecialMealDate::class,
-        InAppNotification::class
+        InAppNotification::class,
+        ManualMealEntry::class
     ],
     views = [
         MonthlySummary::class
     ],
-    version = 16, // Auto-retry: added pendingRetry, retryCount, maxRetries to RecurringRule
+    version = 17, // Calculation upgrade: ManualMealEntry entity + mealCountPerDay/monthlyMealBudget in MealSettings
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -110,6 +111,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mealSettingsDao(): MealSettingsDao
     abstract fun specialMealDateDao(): SpecialMealDateDao
     abstract fun inAppNotificationDao(): InAppNotificationDao
+    abstract fun manualMealEntryDao(): ManualMealEntryDao
 
     companion object {
         @Volatile

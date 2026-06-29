@@ -48,6 +48,7 @@ data class AppBackup(
     val dailyMealRates: List<DailyMealRate> = emptyList(),
     val mealSettings: List<MealSettings> = emptyList(),
     val specialMealDates: List<SpecialMealDate> = emptyList(),
+    val manualMealEntries: List<ManualMealEntry> = emptyList(),
     val inAppNotifications: List<InAppNotification> = emptyList()
 )
 
