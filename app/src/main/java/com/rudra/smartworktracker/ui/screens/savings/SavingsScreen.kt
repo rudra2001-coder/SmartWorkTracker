@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Savings
+import com.rudra.smartworktracker.utils.CurrencyManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -305,7 +306,7 @@ fun AnimatedSavingsCard(savings: Double) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = String.format("%.2f BDT", animatedSavings.toDouble()),
+                text = CurrencyManager.format(animatedSavings.toDouble()),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -456,7 +457,7 @@ fun QuickAmountButtons(onAmountSelected: (Double) -> Unit) {
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("${amount.toInt()} BDT")
+                    Text(CurrencyManager.format(amount.toDouble()))
                 }
             }
         }

@@ -33,7 +33,7 @@ import java.util.*
 fun BackupScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val viewModel: BackupViewModel = viewModel(factory = BackupViewModelFactory(context))
-    val backupState by viewModel.backupState.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val lastBackupTime by viewModel.lastBackupTime.collectAsState()
     val nextBackupTime by viewModel.nextBackupTime.collectAsState()
     val isAutoBackupEnabled by viewModel.isAutoBackupEnabled.collectAsState()
@@ -51,11 +51,12 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
         onResult = { uri -> uri?.let { viewModel.createBackup(it) } }
     )
 
-    LaunchedEffect(backupState) {
-        when (val state = backupState) {
-            is BackupState.Success -> Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            is BackupState.Error -> Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            else -> {}
+    LaunchedEffect(Unit) {
+        viewModel.backupResult.collect { result ->
+            when (result) {
+                is BackupResult.Success -> Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                is BackupResult.Error -> Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -185,7 +186,7 @@ fun BackupScreen(onNavigateBack: () -> Unit) {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    if (backupState is BackupState.InProgress) {
+                    if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
                         Text("Restore Data")

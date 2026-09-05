@@ -16,6 +16,7 @@ import com.rudra.smartworktracker.ui.DashboardUiState
 import com.rudra.smartworktracker.ui.FinancialSummary
 import com.rudra.smartworktracker.ui.MonthlyStats
 import com.rudra.smartworktracker.ui.WorkLogUi
+import com.rudra.smartworktracker.utils.CurrencyManager
 import com.rudra.smartworktracker.utils.DateTimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -188,7 +189,7 @@ class DashboardViewModel(
                     amount = mealRate,
                     category = ExpenseCategory.MEAL,
                     timestamp = today.time,
-                    currency = "BDT", // or your default currency
+                    currency = CurrencyManager.getCurrencyCode(),
                     merchant = "Office Canteen", // or appropriate merchant
                     notes = "Auto-generated meal expense for office day",
                     imageUri = null

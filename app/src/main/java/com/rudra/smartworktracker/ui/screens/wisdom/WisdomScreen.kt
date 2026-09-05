@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.Goal
 import com.rudra.smartworktracker.model.GoalCategory
@@ -37,10 +38,11 @@ import java.time.LocalDateTime
 fun WisdomScreen(viewModel: WisdomViewModel = viewModel()) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Wisdom", "Life Plan", "Boosters", "Shop")
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            StatsDashboard(viewModel)
+            StatsDashboard(uiState.userStats)
 
             TabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
@@ -62,24 +64,23 @@ fun WisdomScreen(viewModel: WisdomViewModel = viewModel()) {
             }
         }
 
-        if (viewModel.showGoalCelebration) {
-            GoalCelebrationAnimation(achievementName = viewModel.lastAchievedItemName)
+        if (uiState.showGoalCelebration) {
+            GoalCelebrationAnimation(achievementName = uiState.lastAchievedItemName)
         }
 
         AnimatedVisibility(
-            visible = viewModel.showTargetCelebration,
+            visible = uiState.showTargetCelebration,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            TargetCelebrationAnimation(achievementName = viewModel.lastAchievedItemName)
+            TargetCelebrationAnimation(achievementName = uiState.lastAchievedItemName)
         }
     }
 }
 
 @Composable
-fun StatsDashboard(viewModel: WisdomViewModel) {
-    val stats = viewModel.userStats
+fun StatsDashboard(stats: UserStats) {
     
     Card(
         modifier = Modifier
@@ -222,8 +223,9 @@ fun WisdomItem(wisdom: Wisdom) {
 
 @Composable
 fun GoalScreen(viewModel: WisdomViewModel) {
-    val goals = viewModel.goals
-    val selectedGoal = viewModel.selectedGoal
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val goals = uiState.goals
+    val selectedGoal = uiState.selectedGoal
     var showAddGoalDialog by remember { mutableStateOf(false) }
 
     if (showAddGoalDialog) {
@@ -411,7 +413,8 @@ fun GoalCard(goal: Goal, onClick: () -> Unit, onDelete: () -> Unit) {
 
 @Composable
 fun GoalDetailSection(goal: Goal, viewModel: WisdomViewModel) {
-    val targets = viewModel.targetsMap[goal.id] ?: emptyList()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val targets = uiState.targetsMap[goal.id] ?: emptyList()
     var newTargetTitle by remember { mutableStateOf("") }
 
     Card(
@@ -591,7 +594,8 @@ fun TargetCelebrationAnimation(achievementName: String) {
 
 @Composable
 fun EnhancedShopScreen(viewModel: WisdomViewModel) {
-    val stats = viewModel.userStats
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val stats = uiState.userStats
     
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
@@ -661,8 +665,9 @@ fun RowScope.BoosterOption(name: String, cost: Int, xpBalance: Int, onPurchase: 
 
 @Composable
 fun BoosterManagementScreen(viewModel: WisdomViewModel) {
-    val inventory = viewModel.inventoryBoosters
-    val active = viewModel.activeBoosters
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val inventory = uiState.inventoryBoosters
+    val active = uiState.activeBoosters
     
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {

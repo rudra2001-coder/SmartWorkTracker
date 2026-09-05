@@ -24,6 +24,12 @@ interface FinancialTransactionDao {
     @Query("SELECT * FROM financial_transactions WHERE id = :transactionId")
     suspend fun getTransactionById(transactionId: Int): FinancialTransaction?
 
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM financial_transactions WHERE type IN ('INCOME', 'LOAN_RECEIVE')")
+    fun getTotalIncome(): Flow<Double>
+
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM financial_transactions WHERE type IN ('EXPENSE', 'EMI_PAID')")
+    fun getTotalExpenses(): Flow<Double>
+
     @Delete
     suspend fun delete(financialTransaction: FinancialTransaction)
 }

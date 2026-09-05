@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.backup.BackupManager
 import com.rudra.smartworktracker.data.repository.*
+import com.rudra.smartworktracker.utils.CurrencyManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,6 +61,16 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = false
     )
+    val biometricEnabled = settingsRepository.biometric.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+    val currency = settingsRepository.currency.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "BDT"
+    )
 
     fun setMealRate(rate: Double) {
         viewModelScope.launch {
@@ -88,6 +99,19 @@ class SettingsViewModel(
     fun setAutoBackup(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setAutoBackup(enabled)
+        }
+    }
+
+    fun setBiometric(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setBiometric(enabled)
+        }
+    }
+
+    fun setCurrency(currencyCode: String) {
+        viewModelScope.launch {
+            settingsRepository.setCurrency(currencyCode)
+            CurrencyManager.setCurrency(currencyCode)
         }
     }
 

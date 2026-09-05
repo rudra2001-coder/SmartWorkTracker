@@ -30,6 +30,20 @@ class Converters {
     }
 
     @TypeConverter
+    fun fromDoubleList(value: String?): List<Double> {
+        if (value == null) return emptyList()
+        val type = object : TypeToken<List<Double>>() {}.type
+        return try {
+            gson.fromJson(value, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
+    fun toDoubleList(list: List<Double>?): String = gson.toJson(list ?: emptyList<Double>())
+
+    @TypeConverter
     fun fromDayOfWeekList(value: String?): List<DayOfWeek> {
         if (value == null) return emptyList()
         val type = object : TypeToken<List<DayOfWeek>>() {}.type

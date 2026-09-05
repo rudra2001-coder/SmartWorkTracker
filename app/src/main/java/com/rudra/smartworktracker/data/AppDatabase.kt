@@ -50,12 +50,14 @@ import com.rudra.smartworktracker.model.*
         ConsequenceDebt::class,
         WeeklyReport::class,
         UserHistory::class,
-        Account::class
+        Account::class,
+        ExecutionHistoryEntity::class,
+        BillSplit::class
     ],
     views = [
         MonthlySummary::class
     ],
-    version = 8, // Fresh Start Version 2 - Forces destructive migration for schema changes
+    version = 11, // v11: Added bill_splits table
     exportSchema = false
 )
 @TypeConverters(LocalTypeConverters::class, Converters::class)
@@ -96,6 +98,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun weeklyReportDao(): WeeklyReportDao
     abstract fun userHistoryDao(): UserHistoryDao
     abstract fun accountDao(): AccountDao
+    abstract fun executionHistoryDao(): ExecutionHistoryDao
+    abstract fun billSplitDao(): BillSplitDao
 
     companion object {
         @Volatile

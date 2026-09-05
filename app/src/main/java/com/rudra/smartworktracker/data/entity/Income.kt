@@ -1,9 +1,13 @@
 package com.rudra.smartworktracker.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "incomes")
+@Entity(
+    tableName = "incomes",
+    indices = [Index(value = ["timestamp"])]
+)
 data class Income(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

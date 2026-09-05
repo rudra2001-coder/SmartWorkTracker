@@ -60,15 +60,13 @@ fun CalendarScreen(
     val context = LocalContext.current
     val viewModel: CalendarViewModel = viewModel(factory = CalendarViewModel.factory(AppDatabase.getDatabase(context)))
     val uiState by viewModel.uiState.collectAsState()
-    val shareWorkLog by viewModel.shareWorkLog.collectAsState()
-    val templateWorkLog by viewModel.templateWorkLog.collectAsState()
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
     val scrollState = rememberScrollState()
 
     // Handle share intent
-    shareWorkLog?.let { workLog ->
-        LaunchedEffect(workLog) {
+    LaunchedEffect(Unit) {
+        viewModel.shareWorkLog.collect { workLog ->
             val shareText = buildString {
                 append("Work Entry Details\n")
                 append("Date: ${workLog.formattedDate}\n")
@@ -89,8 +87,8 @@ fun CalendarScreen(
     }
 
     // Handle template save
-    templateWorkLog?.let { workLog ->
-        LaunchedEffect(workLog) {
+    LaunchedEffect(Unit) {
+        viewModel.templateWorkLog.collect { workLog ->
             viewModel.copyWorkLog(workLog)
         }
     }

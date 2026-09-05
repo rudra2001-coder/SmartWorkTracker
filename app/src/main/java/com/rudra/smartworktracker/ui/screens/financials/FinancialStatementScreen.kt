@@ -46,16 +46,14 @@ fun FinancialStatementScreen(
         factory = FinancialStatementViewModelFactory(context.applicationContext as Application)
     )
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showDatePickerRange by remember { mutableStateOf(false) }
     var transactionToDelete by remember { mutableStateOf<UnifiedTransaction?>(null) }
 
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearSnackbar()
+    LaunchedEffect(Unit) {
+        viewModel.snackbarMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 

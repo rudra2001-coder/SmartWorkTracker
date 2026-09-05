@@ -8,9 +8,12 @@ import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.data.repository.WorkLogRepository
 import com.rudra.smartworktracker.ui.WorkLogUi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -168,22 +171,22 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
     }
 
     fun shareWorkLog(workLog: WorkLogUi) {
-        // This will be handled by the UI layer with Intent
-        // We'll set a state to trigger the share dialog in the UI
-        _shareWorkLog.value = workLog
+        viewModelScope.launch {
+            _shareWorkLog.emit(workLog)
+        }
     }
 
     fun saveAsTemplate(workLog: WorkLogUi) {
-        // This will be handled by the UI layer
-        // We'll set a state to trigger the template dialog in the UI
-        _templateWorkLog.value = workLog
+        viewModelScope.launch {
+            _templateWorkLog.emit(workLog)
+        }
     }
 
-    private val _shareWorkLog = MutableStateFlow<WorkLogUi?>(null)
-    val shareWorkLog: StateFlow<WorkLogUi?> = _shareWorkLog.asStateFlow()
+    private val _shareWorkLog = MutableSharedFlow<WorkLogUi>()
+    val shareWorkLog: SharedFlow<WorkLogUi> = _shareWorkLog.asSharedFlow()
 
-    private val _templateWorkLog = MutableStateFlow<WorkLogUi?>(null)
-    val templateWorkLog: StateFlow<WorkLogUi?> = _templateWorkLog.asStateFlow()
+    private val _templateWorkLog = MutableSharedFlow<WorkLogUi>()
+    val templateWorkLog: SharedFlow<WorkLogUi> = _templateWorkLog.asSharedFlow()
 
     private fun observeSelectedDate() {
         viewModelScope.launch {

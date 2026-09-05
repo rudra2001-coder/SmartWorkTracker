@@ -75,8 +75,8 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
     val pieChartData: StateFlow<Map<String, Float>> = _pieChartData.asStateFlow()
 
     // Error handling
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = MutableSharedFlow<String>()
+    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
 
     // Monthly breakdown
     private val _monthlyBreakdown = MutableStateFlow<List<Pair<String, Double>>>(emptyList())
@@ -115,7 +115,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                     fetchMonthlyBreakdown(currentCalc.dailyMealRate, currentTravelExp)
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to load data: ${e.message}"
+                _errorMessage.emit("Failed to load data: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
@@ -146,7 +146,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
 
             calculateAllCosts(dailyMealRate, travelExpense, officeDaysCount)
         } catch (e: Exception) {
-            _errorMessage.value = "Failed to fetch work logs: ${e.message}"
+            _errorMessage.emit("Failed to fetch work logs: ${e.message}")
         }
     }
 
@@ -177,7 +177,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
             
             _monthlyBreakdown.value = monthlyData
         } catch (e: Exception) {
-            _errorMessage.value = "Failed to fetch monthly breakdown: ${e.message}"
+            _errorMessage.emit("Failed to fetch monthly breakdown: ${e.message}")
         }
     }
 
@@ -212,7 +212,9 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
             _totalExpensePerMonth.value = _mealCostPerMonth.value + _travelCostPerMonth.value + _otherExpensePerMonth.value
             _totalExpensePerYear.value = _mealCostPerYear.value + _travelCostPerYear.value + _otherExpensePerYear.value
         } catch (e: Exception) {
-            _errorMessage.value = "Calculation error: ${e.message}"
+            viewModelScope.launch {
+                _errorMessage.emit("Calculation error: ${e.message}")
+            }
         }
     }
 
@@ -235,7 +237,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                 fetchWorkLogData(rate, _travelExpense.value ?: TravelAndExpense(), _selectedDate.value)
                 fetchMonthlyBreakdown(rate, _travelExpense.value ?: TravelAndExpense())
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to save meal rate: ${e.message}"
+                _errorMessage.emit("Failed to save meal rate: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
@@ -260,7 +262,7 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                 fetchWorkLogData(_calculation.value?.dailyMealRate ?: 100.0, updatedExpense, _selectedDate.value)
                 fetchMonthlyBreakdown(_calculation.value?.dailyMealRate ?: 100.0, updatedExpense)
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to save travel expense: ${e.message}"
+                _errorMessage.emit("Failed to save travel expense: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
@@ -293,15 +295,11 @@ class CalculationViewModel(private val db: AppDatabase) : ViewModel() {
                     _selectedDate.value
                 )
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to refresh data: ${e.message}"
+                _errorMessage.emit("Failed to refresh data: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
         }
-    }
-
-    fun clearErrorMessage() {
-        _errorMessage.value = null
     }
 
     fun getCurrentYear(): Int {

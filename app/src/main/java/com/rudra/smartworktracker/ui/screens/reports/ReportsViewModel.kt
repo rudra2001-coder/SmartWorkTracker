@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -53,9 +54,9 @@ class ReportsViewModel(
     private val _customStartDate = MutableStateFlow<Long?>(null)
     private val _customEndDate = MutableStateFlow<Long?>(null)
 
-    val showCustomDatePicker: StateFlow<Boolean> = _showCustomDatePicker
-    val customStartDate: StateFlow<Long?> = _customStartDate
-    val customEndDate: StateFlow<Long?> = _customEndDate
+    val showCustomDatePicker: StateFlow<Boolean> = _showCustomDatePicker.asStateFlow()
+    val customStartDate: StateFlow<Long?> = _customStartDate.asStateFlow()
+    val customEndDate: StateFlow<Long?> = _customEndDate.asStateFlow()
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     val uiState: StateFlow<ReportUiState> = combine(

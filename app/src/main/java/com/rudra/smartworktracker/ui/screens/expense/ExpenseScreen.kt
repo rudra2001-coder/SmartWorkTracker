@@ -83,6 +83,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.AccountType
 import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.model.ExpenseCategory
+import com.rudra.smartworktracker.utils.CurrencyManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -551,7 +552,7 @@ fun ExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
                     if (amount.isNotBlank()) {
                         viewModel.saveExpense(
                             amount = amount.toDouble(),
-                            currency = "BDT",
+                            currency = CurrencyManager.getCurrencyCode(),
                             category = selectedCategory,
                             merchant = merchant.ifBlank { null },
                             notes = notes.ifBlank { null },

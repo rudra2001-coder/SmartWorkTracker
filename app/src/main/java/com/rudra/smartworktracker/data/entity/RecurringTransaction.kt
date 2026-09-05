@@ -19,7 +19,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["ruleId"])]
+    indices = [
+        Index(value = ["ruleId"]),
+        Index(value = ["status"]),
+        Index(value = ["scheduledDate"])
+    ]
 )
 data class RecurringTransaction(
     @PrimaryKey(autoGenerate = true)

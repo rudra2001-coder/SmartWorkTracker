@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.WorkLog
 import java.text.SimpleDateFormat
@@ -344,19 +345,20 @@ private fun AddOvertimeContent(
 
 @Composable
 private fun OvertimeLogsList(monthlyLogs: List<WorkLog>, yearlyLogs: List<WorkLog>, viewModel: OvertimeViewModel, onDeleteClick: (WorkLog) -> Unit) {
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     Column {
         TabRow(
-            selectedTabIndex = viewModel.selectedTab,
+            selectedTabIndex = selectedTab,
             containerColor = Color.Transparent,
             contentColor = Color(0xFFFF6B6B),
             divider = {}
         ) {
-            Tab(selected = viewModel.selectedTab == 0, onClick = { viewModel.selectedTab = 0 }, text = { Text("Monthly") })
-            Tab(selected = viewModel.selectedTab == 1, onClick = { viewModel.selectedTab = 1 }, text = { Text("Yearly") })
+            Tab(selected = selectedTab == 0, onClick = { viewModel.setSelectedTab(0) }, text = { Text("Monthly") })
+            Tab(selected = selectedTab == 1, onClick = { viewModel.setSelectedTab(1) }, text = { Text("Yearly") })
         }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            val logs = if (viewModel.selectedTab == 0) monthlyLogs else yearlyLogs
+            val logs = if (selectedTab == 0) monthlyLogs else yearlyLogs
             items(logs) { log ->
                 OvertimeLogItem(log, viewModel, onDelete = { onDeleteClick(log) })
             }

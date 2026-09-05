@@ -75,4 +75,7 @@ interface RecurringTransactionDao {
     
     @Query("SELECT * FROM recurring_transactions WHERE relatedIncomeId = :incomeId OR relatedExpenseId = :expenseId OR relatedFinancialTransactionId = :transactionId")
     suspend fun getTransactionByRelatedIds(incomeId: Long?, expenseId: Long?, transactionId: Int?): RecurringTransaction?
+    
+    @Query("UPDATE recurring_transactions SET scheduledDate = :newScheduledDate, status = 'PENDING', updatedAt = :updatedAt WHERE id = :transactionId")
+    suspend fun snoozeTransaction(transactionId: Long, newScheduledDate: Long, updatedAt: Long = System.currentTimeMillis())
 }

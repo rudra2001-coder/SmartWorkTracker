@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Recommend
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -75,6 +77,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.ui.screens.achievements.AchievementsScreen
 import com.rudra.smartworktracker.ui.screens.add_entry.AddEntryScreen
 import com.rudra.smartworktracker.ui.screens.all_funsion.AllFunsionScreen
@@ -583,6 +586,24 @@ popExitTransition = { defaultPopExitTransition() }
                     )
                 }
                 composable(
+                    route = NavigationItem.BillSplit.route,
+                    enterTransition = { defaultEnterTransition() },
+                    exitTransition = { defaultExitTransition() },
+                    popEnterTransition = { defaultPopEnterTransition() },
+                    popExitTransition = { defaultPopExitTransition() }
+                ) {
+                    val viewModel: com.rudra.smartworktracker.ui.screens.billsplit.BillSplitViewModel = viewModel(
+                        factory = com.rudra.smartworktracker.ui.screens.billsplit.BillSplitViewModelFactory(context)
+                    )
+                    val billSplits by viewModel.billSplits.collectAsState()
+                    com.rudra.smartworktracker.ui.screens.billsplit.BillSplitScreen(
+                        billSplits = billSplits,
+                        onAddBillSplit = { viewModel.addBillSplit(it) },
+                        onMarkSettled = { viewModel.markSettled(it) },
+                        onDelete = { viewModel.deleteBillSplit(it) }
+                    )
+                }
+                composable(
                     route = NavigationItem.RealityTracker.route,
                     enterTransition = { defaultEnterTransition() },
                     exitTransition = { defaultExitTransition() },
@@ -948,6 +969,13 @@ sealed class NavigationItem(
         title = "Spend Advisor",
         icon = Icons.Default.Recommend,
         description = "Plan and analyze your future expenses"
+    )
+
+    object BillSplit : NavigationItem(
+        route = "bill_split",
+        title = "Bill Split",
+        icon = Icons.Default.Receipt,
+        description = "Split bills with others"
     )
 
 

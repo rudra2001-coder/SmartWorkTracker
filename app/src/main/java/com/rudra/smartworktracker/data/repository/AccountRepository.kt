@@ -5,6 +5,7 @@ import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.AccountType
+import com.rudra.smartworktracker.utils.CurrencyManager
 import kotlinx.coroutines.flow.Flow
 
 class AccountRepository(private val accountDao: AccountDao) {
@@ -72,7 +73,7 @@ class AccountRepository(private val accountDao: AccountDao) {
         if (effectiveLimit != null) {
             val todayTransferred = 0.0
             if (todayTransferred + amount > effectiveLimit) {
-                return TransferResult.Error("Daily transfer limit exceeded (${effectiveLimit.toInt()} BDT)")
+                return TransferResult.Error("Daily transfer limit exceeded (${CurrencyManager.format(effectiveLimit)})")
             }
         }
 

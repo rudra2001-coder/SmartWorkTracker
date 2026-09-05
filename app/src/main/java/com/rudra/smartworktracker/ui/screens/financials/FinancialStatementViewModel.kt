@@ -68,8 +68,8 @@ class FinancialStatementViewModel(
     private val _uiState = MutableStateFlow(FinancialsUiState())
     val uiState: StateFlow<FinancialsUiState> = _uiState.asStateFlow()
 
-    private val _snackbarMessage = MutableStateFlow<String?>(null)
-    val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+    private val _snackbarMessage = MutableSharedFlow<String>()
+    val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
 
     private val filterFlow = MutableStateFlow(TransactionFilter.ALL)
     private val startDateFlow = MutableStateFlow<LocalDate?>(null)
@@ -394,26 +394,15 @@ class FinancialStatementViewModel(
                         }
                     }
                     TransactionSource.EXPENSE -> {
-                        // Expense.id is String (UUID), but DAO expects Long - use delete by full object
-                        // Create a minimal Expense object with just the ID for deletion
                         val id = transaction.originalId
-                        val expenseToDelete = com.rudra.smartworktracker.model.Expense(
-                            id = id.toString(),
-                            amount = 0.0,
-                            timestamp = 0
-                        )
-                        expenseRepository.deleteExpense(expenseToDelete)
+                        expenseRepository.deleteExpenseById(id.toString())
                     }
                 }
-                _snackbarMessage.value = "Transaction deleted successfully"
+                _snackbarMessage.emit("Transaction deleted successfully")
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to delete transaction: ${e.message}"
+                _snackbarMessage.emit("Failed to delete transaction: ${e.message}")
             }
         }
-    }
-
-    fun clearSnackbar() {
-        _snackbarMessage.value = null
     }
 }
 

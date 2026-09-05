@@ -7,8 +7,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.*
 import com.rudra.smartworktracker.data.backup.AutoBackupWorker
 import com.rudra.smartworktracker.data.backup.BackupManager
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -19,13 +22,16 @@ class BackupViewModel(private val context: Context) : ViewModel() {
     private val backupManager = BackupManager(context)
     private val prefs = context.getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
 
-    private val _backupState = MutableStateFlow<BackupState>(BackupState.Idle)
-    val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _lastBackupTime = MutableStateFlow<Long>(0L)
+    private val _backupResult = MutableSharedFlow<BackupResult>()
+    val backupResult: SharedFlow<BackupResult> = _backupResult.asSharedFlow()
+
+    private val _lastBackupTime = MutableStateFlow(0L)
     val lastBackupTime: StateFlow<Long> = _lastBackupTime.asStateFlow()
 
-    private val _nextBackupTime = MutableStateFlow<Long>(0L)
+    private val _nextBackupTime = MutableStateFlow(0L)
     val nextBackupTime: StateFlow<Long> = _nextBackupTime.asStateFlow()
 
     private val _isAutoBackupEnabled = MutableStateFlow(false)
@@ -38,7 +44,7 @@ class BackupViewModel(private val context: Context) : ViewModel() {
     fun loadBackupStatus() {
         _lastBackupTime.value = prefs.getLong("last_auto_backup_time", 0L)
         _isAutoBackupEnabled.value = prefs.getBoolean("auto_backup_enabled", false)
-        
+
         if (_isAutoBackupEnabled.value) {
             calculateNextBackupTime()
         } else {
@@ -51,7 +57,7 @@ class BackupViewModel(private val context: Context) : ViewModel() {
         nextBackup.set(Calendar.HOUR_OF_DAY, 0)
         nextBackup.set(Calendar.MINUTE, 5)
         nextBackup.set(Calendar.SECOND, 0)
-        
+
         if (nextBackup.before(Calendar.getInstance())) {
             nextBackup.add(Calendar.DAY_OF_YEAR, 1)
         }
@@ -62,7 +68,7 @@ class BackupViewModel(private val context: Context) : ViewModel() {
         viewModelScope.launch {
             prefs.edit().putBoolean("auto_backup_enabled", enabled).apply()
             _isAutoBackupEnabled.value = enabled
-            
+
             if (enabled) {
                 scheduleDailyBackup()
                 calculateNextBackupTime()
@@ -109,49 +115,51 @@ class BackupViewModel(private val context: Context) : ViewModel() {
 
     fun createBackup(uri: Uri) {
         viewModelScope.launch {
-            _backupState.value = BackupState.InProgress
+            _isLoading.value = true
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                     val success = backupManager.exportToJson(outputStream)
                     if (success) {
-                        _backupState.value = BackupState.Success("Manual backup created successfully")
+                        _backupResult.emit(BackupResult.Success("Manual backup created successfully"))
                         loadBackupStatus()
                     } else {
-                        _backupState.value = BackupState.Error("Failed to create backup")
+                        _backupResult.emit(BackupResult.Error("Failed to create backup"))
                     }
                 } ?: run {
-                    _backupState.value = BackupState.Error("Could not open output stream")
+                    _backupResult.emit(BackupResult.Error("Could not open output stream"))
                 }
             } catch (e: Exception) {
-                _backupState.value = BackupState.Error("Backup failed: ${e.localizedMessage}")
+                _backupResult.emit(BackupResult.Error("Backup failed: ${e.localizedMessage}"))
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
     fun restoreBackup(uri: Uri) {
         viewModelScope.launch {
-            _backupState.value = BackupState.InProgress
+            _isLoading.value = true
             try {
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val result = backupManager.importFromJson(inputStream)
                     if (result.isSuccess) {
-                        _backupState.value = BackupState.Success("Data restored successfully")
+                        _backupResult.emit(BackupResult.Success("Data restored successfully"))
                     } else {
-                        _backupState.value = BackupState.Error("Restore failed: ${result.exceptionOrNull()?.message}")
+                        _backupResult.emit(BackupResult.Error("Restore failed: ${result.exceptionOrNull()?.message}"))
                     }
                 } ?: run {
-                    _backupState.value = BackupState.Error("Could not open input stream")
+                    _backupResult.emit(BackupResult.Error("Could not open input stream"))
                 }
             } catch (e: Exception) {
-                _backupState.value = BackupState.Error("Restore failed: ${e.localizedMessage}")
+                _backupResult.emit(BackupResult.Error("Restore failed: ${e.localizedMessage}"))
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 }
 
-sealed class BackupState {
-    object Idle : BackupState()
-    object InProgress : BackupState()
-    data class Success(val message: String) : BackupState()
-    data class Error(val message: String) : BackupState()
+sealed class BackupResult {
+    data class Success(val message: String) : BackupResult()
+    data class Error(val message: String) : BackupResult()
 }

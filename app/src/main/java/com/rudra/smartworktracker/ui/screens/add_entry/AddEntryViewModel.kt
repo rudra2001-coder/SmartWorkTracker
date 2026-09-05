@@ -14,6 +14,7 @@ import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkLog
 import com.rudra.smartworktracker.ui.AddEntryUiState
 import com.rudra.smartworktracker.ui.EntryType
+import com.rudra.smartworktracker.utils.CurrencyManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -66,7 +67,7 @@ class AddEntryViewModel(
         viewModelScope.launch {
             val expense = Expense(
                 amount = _uiState.value.expenseAmount.toDoubleOrNull() ?: 0.0,
-                currency = "BDT",
+                currency = CurrencyManager.getCurrencyCode(),
                 category = _uiState.value.expenseCategory,
                 merchant = null,
                 notes = _uiState.value.expenseNotes,
@@ -114,7 +115,7 @@ class AddEntryViewModel(
         viewModelScope.launch {
             val mealExpense = Expense(
                 amount = _uiState.value.mealAmount.toDoubleOrNull() ?: 0.0,
-                currency = "BDT",
+                currency = CurrencyManager.getCurrencyCode(),
                 category = ExpenseCategory.MEAL,
                 merchant = null,
                 notes = _uiState.value.mealNotes,

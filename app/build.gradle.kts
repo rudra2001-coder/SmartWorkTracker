@@ -1,18 +1,18 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.rudra.smartworktracker"
-    compileSdk = 36
+    compileSdk = 37
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.rudra.smartworktracker"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
 
@@ -41,17 +41,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         viewBinding = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
     packaging {
@@ -63,52 +55,46 @@ android {
 
 dependencies {
     // Core Android
-    implementation(libs.androidx.core.ktx.v1120)
-    implementation(libs.androidx.lifecycle.runtime.ktx.v270)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
 
     // Compose
-    implementation(libs.androidx.activity.compose.v180)
-    implementation(platform(libs.androidx.compose.bom.v20231001))
-    implementation(libs.ui)
-    implementation(libs.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.compose.material3.window.size.class1)
-    // Navigation Compose (official - no Accompanist needed)
-    implementation(libs.androidx.navigation.compose)
+    
     // Room Database (KSP only)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.litert.support.api)
-    implementation(libs.material3)
     implementation(libs.androidx.compose.ui.geometry)
     implementation(libs.androidx.compose.ui.text)
-    implementation(libs.androidx.ui.text)
-    implementation(libs.androidx.foundation.layout)
-    implementation(libs.androidx.compose.ui.ui.graphics)
     ksp(libs.androidx.room.compiler)
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Animation
     implementation(libs.lottie.compose)
-    implementation("nl.dionsegijn:konfetti-compose:2.0.2")
+    implementation(libs.konfetti.compose)
 
     // Charts
     implementation(libs.compose)
     implementation(libs.compose.m3)
-    implementation("co.yml:ycharts:2.1.0")
-    implementation("com.google.code.gson:gson:2.11.0")
+    implementation(libs.ycharts)
+    implementation(libs.gson)
+
     // DateTime
     implementation(libs.kotlinx.datetime)
 
@@ -119,24 +105,17 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-   //Other
-
-    implementation(platform("androidx.compose:compose-bom:2025.01.00"))
-    implementation("androidx.compose.material:material-icons-extended")
-// https://mvnrepository.com/artifact/org.mnode.ical4j/ical4j
-    implementation("org.mnode.ical4j:ical4j:4.2.1")
-
-
-    implementation("androidx.compose.foundation:foundation:1.5.0")
-
+    // Other
+    implementation(libs.ical4j)
+    implementation(libs.androidx.biometric)
 
     // Test dependencies
     testImplementation(libs.junit)
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
-    androidTestImplementation(libs.androidx.junit.v115)
-    androidTestImplementation(libs.androidx.espresso.core.v351)
-    androidTestImplementation(platform(libs.androidx.compose.bom.v20251001))
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

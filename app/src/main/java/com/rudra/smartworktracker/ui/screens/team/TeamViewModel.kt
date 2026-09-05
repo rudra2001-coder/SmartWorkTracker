@@ -23,7 +23,7 @@ class TeamViewModel(private val sharedPreferenceManager: SharedPreferenceManager
     private val _pendingSwaps = MutableStateFlow<List<DutySwap>>(emptyList())
     val pendingSwaps: StateFlow<List<DutySwap>> = _pendingSwaps.asStateFlow()
 
-    private val _uiEvent = MutableSharedFlow<String>()
+    private val _uiEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val uiEvent = _uiEvent.asSharedFlow()
 
     private var notificationManager: DutyNotificationManager? = null

@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.rudra.smartworktracker.utils.CurrencyManager
+import com.rudra.smartworktracker.utils.SUPPORTED_CURRENCIES
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +47,9 @@ fun SettingsScreen(navController: NavController) {
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
     val autoBackupEnabled by viewModel.autoBackupEnabled.collectAsState()
+    val biometricEnabled by viewModel.biometricEnabled.collectAsState()
+    val currency by viewModel.currency.collectAsState()
+    var showCurrencyDialog by remember { mutableStateOf(false) }
 
     val backupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -115,6 +122,19 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
+            // Security Section
+            item {
+                SettingsSection(title = "Security", icon = Icons.Default.Lock) {
+                    SettingsSwitchItem(
+                        icon = Icons.Default.Fingerprint,
+                        title = "Biometric Lock",
+                        subtitle = "Require fingerprint/face to open app",
+                        isChecked = biometricEnabled,
+                        onCheckedChange = { viewModel.setBiometric(it) }
+                    )
+                }
+            }
+
             // Notifications Section
             item {
                 SettingsSection(title = "Notifications", icon = Icons.Default.Notifications) {
@@ -138,10 +158,18 @@ fun SettingsScreen(navController: NavController) {
             // Financial Settings Section
             item {
                 SettingsSection(title = "Financial", icon = Icons.Default.AttachMoney) {
+                    val currencyName = SUPPORTED_CURRENCIES.find { it.code == currency }?.name ?: currency
+                    val currencySymbol = SUPPORTED_CURRENCIES.find { it.code == currency }?.symbol ?: currency
+                    SettingsItem(
+                        icon = Icons.Default.AttachMoney,
+                        title = "Currency",
+                        subtitle = "Current: $currencySymbol $currency — $currencyName",
+                        onClick = { showCurrencyDialog = true }
+                    )
                     SettingsItem(
                         icon = Icons.Default.Restaurant,
                         title = "Meal Rate",
-                        subtitle = "Current: ৳$mealRate per meal",
+                        subtitle = "Current: ${CurrencyManager.format(mealRate).removePrefix(CurrencyManager.symbol())} per meal",
                         onClick = { showMealRateDialog = true }
                     )
                 }
@@ -171,6 +199,48 @@ fun SettingsScreen(navController: NavController) {
                         subtitle = "Restore from previous backup file",
                         onClick = {
                             restoreLauncher.launch(arrayOf("application/json", "application/octet-stream"))
+                        }
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.FileDownload,
+                        title = "Export as CSV",
+                        subtitle = "Export income & expenses to a spreadsheet",
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    val file = com.rudra.smartworktracker.utils.CsvExporter.exportAll(context)
+                                    com.rudra.smartworktracker.utils.CsvExporter.shareFile(context, file)
+                                    Toast.makeText(context, "CSV exported!", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.CalendarMonth,
+                        title = "Export to Calendar",
+                        subtitle = "Export recurring transactions to calendar app",
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    val database = com.rudra.smartworktracker.data.AppDatabase.getDatabase(context)
+                                    val repository = com.rudra.smartworktracker.data.repository.RecurringRepository(
+                                        database.recurringRuleDao(),
+                                        database.recurringTransactionDao()
+                                    )
+                                    val rules = repository.getAllRules().first()
+                                    val uri = com.rudra.smartworktracker.utils.CalendarExporter.exportToIcs(context, rules)
+                                    if (uri != null) {
+                                        com.rudra.smartworktracker.utils.CalendarExporter.shareCalendar(context, uri)
+                                        Toast.makeText(context, "Calendar exported!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Export failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                     )
                     SettingsItem(
@@ -299,11 +369,11 @@ fun SettingsScreen(navController: NavController) {
                                 newMealRate = it
                             }
                         },
-                        label = { Text("Meal Rate (৳)") },
+                        label = { Text("Meal Rate") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        prefix = { Text("৳") }
+                        prefix = { Text(CurrencyManager.symbol()) }
                     )
                 }
             },
@@ -329,6 +399,110 @@ fun SettingsScreen(navController: NavController) {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Currency Picker Dialog
+    if (showCurrencyDialog) {
+        var searchQuery by remember { mutableStateOf("") }
+        val filtered = SUPPORTED_CURRENCIES.filter {
+            searchQuery.isBlank() || it.code.contains(searchQuery, ignoreCase = true) ||
+                    it.name.contains(searchQuery, ignoreCase = true)
+        }
+
+        AlertDialog(
+            onDismissRequest = { showCurrencyDialog = false },
+            title = {
+                Text(
+                    "Select Currency",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Search") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp)
+                    ) {
+                        items(filtered) { option ->
+                            val isSelected = option.code == currency
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                                    .clickable {
+                                        viewModel.setCurrency(option.code)
+                                        showCurrencyDialog = false
+                                    },
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        option.symbol,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.width(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        option.code,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        option.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showCurrencyDialog = false },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Close")
                 }
             },
             shape = RoundedCornerShape(20.dp)

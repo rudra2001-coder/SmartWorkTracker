@@ -1,13 +1,21 @@
 package com.rudra.smartworktracker.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * Entity representing a recurring transaction rule.
  * Supports income, expenses, savings, and transfers with flexible scheduling.
  */
-@Entity(tableName = "recurring_rules")
+@Entity(
+    tableName = "recurring_rules",
+    indices = [
+        Index(value = ["isActive"]),
+        Index(value = ["nextExecutionDate"]),
+        Index(value = ["transactionType"])
+    ]
+)
 data class RecurringRule(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

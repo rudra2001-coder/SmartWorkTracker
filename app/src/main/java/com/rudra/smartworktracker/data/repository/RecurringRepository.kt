@@ -116,4 +116,7 @@ class RecurringRepository(
     
     suspend fun getTransactionByRelatedIds(incomeId: Long?, expenseId: Long?, transactionId: Int?): RecurringTransaction? = 
         recurringTransactionDao.getTransactionByRelatedIds(incomeId, expenseId, transactionId)
+    
+    suspend fun snoozeTransaction(transactionId: Long, newScheduledDate: Long) = 
+        recurringTransactionDao.snoozeTransaction(transactionId, newScheduledDate)
 }

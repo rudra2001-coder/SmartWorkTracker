@@ -7,11 +7,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.BackoffPolicy
 import com.rudra.smartworktracker.MainActivity
 import com.rudra.smartworktracker.R
 import com.rudra.smartworktracker.data.AppDatabase
@@ -38,16 +42,28 @@ class RecurringNotificationWorker(
         const val NOTIFICATION_ID = 1001
         
         /**
-         * Schedule the recurring notification worker
+         * Schedule the recurring notification worker with constraints
          */
         fun schedule(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                .setRequiresBatteryNotLow(true)
+                .build()
+            
             val workRequest = PeriodicWorkRequestBuilder<RecurringNotificationWorker>(
-                1, TimeUnit.HOURS // Run every hour
-            ).build()
+                1, TimeUnit.HOURS
+            )
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
+                .build()
             
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 workRequest
             )
         }
@@ -66,27 +82,19 @@ class RecurringNotificationWorker(
             val expenseRepository = ExpenseRepository(database.expenseDao())
             val engine = RecurringEngine(repository, incomeRepository, expenseRepository)
             
-            // Get current balance for balance protection
             val currentBalance = calculateCurrentBalance(incomeRepository, expenseRepository)
-            
-            // Process due rules with balance check
             val results = engine.processDueRules(currentBalance)
             
-            // Check for upcoming transactions in the next 24 hours
             val upcomingTransactions = engine.getUpcomingTransactions(1)
-            
-            // Send notification for upcoming transactions
             if (upcomingTransactions.isNotEmpty()) {
                 sendUpcomingNotification(upcomingTransactions.size)
             }
             
-            // Handle failed transactions
             val failedCount = results.count { !it.success }
             if (failedCount > 0) {
                 sendFailureNotification(failedCount)
             }
             
-            // Send success notification if transactions were executed
             val successCount = results.count { it.success }
             if (successCount > 0) {
                 sendSuccessNotification(successCount)
@@ -94,7 +102,7 @@ class RecurringNotificationWorker(
             
             Result.success()
         } catch (e: Exception) {
-            Result.retry()
+            if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
     }
     

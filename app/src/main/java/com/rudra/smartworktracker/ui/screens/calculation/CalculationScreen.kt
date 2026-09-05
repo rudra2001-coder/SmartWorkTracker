@@ -48,7 +48,6 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
     val travelExpense by viewModel.travelExpense.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
     
     val mealCostPerWeek by viewModel.mealCostPerWeek.collectAsState()
     val mealCostPerMonth by viewModel.mealCostPerMonth.collectAsState()
@@ -96,11 +95,9 @@ fun CalculationScreen(onNavigateBack: () -> Unit) {
         }
     }
 
-    errorMessage?.let { message ->
-        LaunchedEffect(message) {
+    LaunchedEffect(Unit) {
+        viewModel.errorMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            delay(3000)
-            viewModel.clearErrorMessage()
         }
     }
 

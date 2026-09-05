@@ -6,10 +6,13 @@ import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.FinancialTransaction
 import com.rudra.smartworktracker.data.entity.TransactionType
+import com.rudra.smartworktracker.utils.CurrencyManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
+
+private const val LOW_BALANCE_THRESHOLD = 500.0
 
 class FusionEngine(
     private val accountDao: AccountDao,
@@ -35,7 +38,7 @@ class FusionEngine(
         if (effectiveLimit != null) {
             val todayTotal = getTodayTransferTotal(fromAccountId)
             if (todayTotal + amount > effectiveLimit) {
-                return FusionResult.Error("Daily limit exceeded (${effectiveLimit.toInt()} BDT)")
+                return FusionResult.Error("Daily limit exceeded (${CurrencyManager.format(effectiveLimit)})")
             }
         }
 
@@ -77,15 +80,16 @@ class FusionEngine(
             .sumOf { it.amount }
     }
 
-    private fun getAccountTypeName(accountId: Long): String {
-        return "BANK"
+    private suspend fun getAccountTypeName(accountId: Long): String {
+        val account = accountDao.getAccountById(accountId)
+        return account?.type?.name ?: "UNKNOWN"
     }
 
     private suspend fun updateInsights(fromAccount: Account, toAccount: Account, amount: Double) {
         val insights = mutableListOf<String>()
         
         if (amount > 10000) {
-            insights.add("Large transfer detected: $amount BDT")
+            insights.add("Large transfer detected: ${CurrencyManager.format(amount)}")
         }
 
         val totalTransfersToday = getTodayTransferTotal(fromAccount.id)
@@ -132,12 +136,12 @@ class FusionEngine(
         val accounts = accountDao.getAllAccountsList()
         
         accounts.forEach { account ->
-            if (account.balance < 500 && account.type == AccountCategory.MOBILE_BANKING) {
+            if (account.balance < LOW_BALANCE_THRESHOLD && account.type == AccountCategory.MOBILE_BANKING) {
                 alerts.add(
                     SmartAlert.LowBalance(
                         accountName = account.name,
                         balance = account.balance,
-                        message = "Your ${account.name} balance is low (${account.balance.toInt()} BDT)"
+                        message = "Your ${account.name} balance is low (${CurrencyManager.format(account.balance)})"
                     )
                 )
             }
@@ -150,7 +154,7 @@ class FusionEngine(
                             accountName = account.name,
                             used = todayTransferred,
                             limit = account.dailyTransferLimit,
-                            message = "Approaching daily limit: ${todayTransferred.toInt()}/${account.dailyTransferLimit.toInt()} BDT"
+                            message = "Approaching daily limit: ${CurrencyManager.format(todayTransferred)}/${CurrencyManager.format(account.dailyTransferLimit!!)}"
                         )
                     )
                 }

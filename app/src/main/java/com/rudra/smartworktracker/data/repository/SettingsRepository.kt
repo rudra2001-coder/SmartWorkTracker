@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,6 +20,8 @@ class SettingsRepository(private val context: Context) {
     private val notificationsKey = booleanPreferencesKey(NOTIFICATIONS)
     private val vibrationKey = booleanPreferencesKey(VIBRATION)
     private val autoBackupKey = booleanPreferencesKey(AUTO_BACKUP)
+    private val biometricKey = booleanPreferencesKey(BIOMETRIC)
+    private val currencyKey = stringPreferencesKey(CURRENCY)
 
     val mealRate: Flow<Double> = context.dataStore.data.map {
         it[mealRateKey] ?: 60.0
@@ -70,6 +73,26 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    val biometric: Flow<Boolean> = context.dataStore.data.map {
+        it[biometricKey] ?: false
+    }
+
+    suspend fun setBiometric(enabled: Boolean) {
+        context.dataStore.edit {
+            it[biometricKey] = enabled
+        }
+    }
+
+    val currency: Flow<String> = context.dataStore.data.map {
+        it[currencyKey] ?: "BDT"
+    }
+
+    suspend fun setCurrency(currencyCode: String) {
+        context.dataStore.edit {
+            it[currencyKey] = currencyCode
+        }
+    }
+
     suspend fun clearAll() {
         context.dataStore.edit {
             it.clear()
@@ -81,5 +104,7 @@ class SettingsRepository(private val context: Context) {
         const val DARK_THEME = "dark_theme"
         const val VIBRATION = "vibration"
         const val AUTO_BACKUP = "auto_backup"
+        const val BIOMETRIC = "biometric"
+        const val CURRENCY = "currency"
     }
 }

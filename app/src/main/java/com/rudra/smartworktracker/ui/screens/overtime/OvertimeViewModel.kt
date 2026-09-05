@@ -1,9 +1,6 @@
 package com.rudra.smartworktracker.ui.screens.overtime
 
 import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.smartworktracker.data.AppDatabase
@@ -29,7 +26,12 @@ class OvertimeViewModel(application: Application) : AndroidViewModel(application
     val monthlySummary: Flow<OvertimeSummary> = monthlyOvertimeLogs.map { logs -> calculateSummary(logs) }
     val yearlySummary: Flow<OvertimeSummary> = yearlyOvertimeLogs.map { logs -> calculateSummary(logs) }
 
-    var selectedTab by mutableStateOf(0)
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+
+    fun setSelectedTab(tab: Int) {
+        _selectedTab.value = tab
+    }
 
     init {
         val workLogDao = AppDatabase.getDatabase(application).workLogDao()
