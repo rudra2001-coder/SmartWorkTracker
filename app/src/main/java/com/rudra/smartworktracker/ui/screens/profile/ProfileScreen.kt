@@ -30,9 +30,11 @@ fun ProfileScreen(
     onNavigateToSetup: () -> Unit
 ) {
     val context = LocalContext.current
-    val database = AppDatabase.getDatabase(context)
-    val repository = UserProfileRepository(database.userProfileDao())
-    val viewModel: UserProfileViewModel = viewModel(factory = UserProfileViewModel.Factory(repository))
+    val viewModel: UserProfileViewModel = viewModel(
+        factory = UserProfileViewModel.Factory(
+            UserProfileRepository(AppDatabase.getDatabase(context).userProfileDao())
+        )
+    )
     
     val profileState by viewModel.profileState.collectAsState()
 
@@ -156,7 +158,7 @@ fun ProfileContent(profile: UserProfile) {
                 modifier = Modifier.align(Alignment.Start)
             )
             Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(
+            androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -169,20 +171,6 @@ fun ProfileContent(profile: UserProfile) {
             }
         }
     }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun FlowRow(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    content: @Composable () -> Unit
-) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        content = { content() }
-    )
 }
 
 @Composable

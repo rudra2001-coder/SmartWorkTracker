@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.Achievement
+import com.rudra.smartworktracker.ui.components.EmptyStateCard
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
@@ -44,14 +45,23 @@ fun AchievementsScreen(viewModel: AchievementsViewModel = viewModel()) {
     val newlyUnlocked by viewModel.newlyUnlockedAchievement.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(achievements) { achievement ->
-                AchievementItem(achievement = achievement)
+        if (achievements.isEmpty()) {
+            EmptyStateCard(
+                icon = Icons.Default.EmojiEvents,
+                title = "No achievements yet",
+                message = "Complete tasks and build habits to unlock achievements!",
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(achievements) { achievement ->
+                    AchievementItem(achievement = achievement)
+                }
             }
         }
 

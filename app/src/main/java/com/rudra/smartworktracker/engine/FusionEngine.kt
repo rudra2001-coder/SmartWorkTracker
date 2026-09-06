@@ -134,9 +134,16 @@ class FusionEngine(
     suspend fun getSmartAlerts(): List<SmartAlert> {
         val alerts = mutableListOf<SmartAlert>()
         val accounts = accountDao.getAllAccountsList()
-        
+        val transactions = financialTransactionDao.getAllTransactions().first()
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
         accounts.forEach { account ->
-            if (account.balance < LOW_BALANCE_THRESHOLD && account.type == AccountCategory.MOBILE_BANKING) {
+            if (account.balance < LOW_BALANCE_THRESHOLD && account.balance > 0) {
                 alerts.add(
                     SmartAlert.LowBalance(
                         accountName = account.name,
@@ -159,6 +166,34 @@ class FusionEngine(
                     )
                 }
             }
+        }
+
+        val todayExpenses = transactions.filter {
+            it.date >= today && it.type == TransactionType.EXPENSE
+        }
+        val totalTodaySpent = todayExpenses.sumOf { it.amount }
+        if (totalTodaySpent > 5000) {
+            alerts.add(
+                SmartAlert.HighSpending(
+                    accountName = "Overall",
+                    message = "High spending today: ${CurrencyManager.format(totalTodaySpent)}"
+                )
+            )
+        }
+
+        val thisMonth = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+        }.timeInMillis
+        val monthlyTransfers = transactions.filter { it.date >= thisMonth && it.type == TransactionType.TRANSFER }
+        if (monthlyTransfers.size > 20) {
+            alerts.add(
+                SmartAlert.TransferHabit(
+                    message = "Frequent transfers this month: ${monthlyTransfers.size} transfers"
+                )
+            )
         }
 
         return alerts

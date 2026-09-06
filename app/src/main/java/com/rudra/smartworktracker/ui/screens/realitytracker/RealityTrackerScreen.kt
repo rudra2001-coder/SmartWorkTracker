@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.RealityCategory
 import com.rudra.smartworktracker.model.RealityEntry
 import com.rudra.smartworktracker.model.RealityEntryType
+import com.rudra.smartworktracker.ui.components.EmptyStateCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,38 +85,12 @@ fun RealityTrackerScreen(
 
             if (entries.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.TrendingUp,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "No entries yet",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    "Add goals, promises, or plans to start tracking!",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                    }
+                    EmptyStateCard(
+                        icon = Icons.Default.TrendingUp,
+                        title = "No entries yet",
+                        message = "Add goals, promises, or plans to start tracking!",
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             } else {
                 items(items = entries, key = { it.id }) { entry ->

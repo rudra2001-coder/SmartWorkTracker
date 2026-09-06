@@ -2,6 +2,8 @@ package com.rudra.smartworktracker.ui.screens.add_entry
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -11,17 +13,40 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.ExpenseCategory
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.EntryType
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEntryScreen(onNavigateBack: () -> Boolean) {
     val viewModel: AddEntryViewModel = viewModel(factory = AddEntryViewModel.Factory)
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            coroutineScope.launch { snackbarHostState.showSnackbar(it) }
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.isEntrySaved) {
+        if (uiState.isEntrySaved) {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Entry saved successfully") }
+            onNavigateBack()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Add New Entry") }
+                title = { Text("Add New Entry") },
+                navigationIcon = {
+                    IconButton(onClick = { onNavigateBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
         }
     ) { paddingValues ->

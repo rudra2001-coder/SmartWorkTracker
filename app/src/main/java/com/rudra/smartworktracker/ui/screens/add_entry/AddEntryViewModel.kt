@@ -65,8 +65,14 @@ class AddEntryViewModel(
 
     fun saveExpense() {
         viewModelScope.launch {
+            val amount = _uiState.value.expenseAmount.toDoubleOrNull()
+            if (amount == null || amount <= 0) {
+                _uiState.update { it.copy(errorMessage = "Please enter a valid amount") }
+                return@launch
+            }
+            _uiState.update { it.copy(errorMessage = null) }
             val expense = Expense(
-                amount = _uiState.value.expenseAmount.toDoubleOrNull() ?: 0.0,
+                amount = amount,
                 currency = CurrencyManager.getCurrencyCode(),
                 category = _uiState.value.expenseCategory,
                 merchant = null,
@@ -75,6 +81,7 @@ class AddEntryViewModel(
                 imageUri = null
             )
             expenseRepository.insertExpense(expense)
+            _uiState.update { it.copy(isEntrySaved = true) }
         }
     }
 
@@ -92,6 +99,11 @@ class AddEntryViewModel(
 
     fun saveWorkLog() {
         viewModelScope.launch {
+            if (_uiState.value.workStartTime.isBlank() || _uiState.value.workEndTime.isBlank()) {
+                _uiState.update { it.copy(errorMessage = "Please enter start and end times") }
+                return@launch
+            }
+            _uiState.update { it.copy(errorMessage = null) }
             val workLog = WorkLog(
                 id = workLogId ?: 0,
                 date = Date(),
@@ -100,6 +112,7 @@ class AddEntryViewModel(
                 endTime = _uiState.value.workEndTime
             )
             workLogRepository.insertWorkLog(workLog)
+            _uiState.update { it.copy(isEntrySaved = true) }
         }
     }
 
@@ -113,8 +126,14 @@ class AddEntryViewModel(
 
     fun saveMeal() {
         viewModelScope.launch {
+            val amount = _uiState.value.mealAmount.toDoubleOrNull()
+            if (amount == null || amount <= 0) {
+                _uiState.update { it.copy(errorMessage = "Please enter a valid meal amount") }
+                return@launch
+            }
+            _uiState.update { it.copy(errorMessage = null) }
             val mealExpense = Expense(
-                amount = _uiState.value.mealAmount.toDoubleOrNull() ?: 0.0,
+                amount = amount,
                 currency = CurrencyManager.getCurrencyCode(),
                 category = ExpenseCategory.MEAL,
                 merchant = null,
@@ -123,11 +142,16 @@ class AddEntryViewModel(
                 imageUri = null
             )
             expenseRepository.insertExpense(mealExpense)
+            _uiState.update { it.copy(isEntrySaved = true) }
         }
     }
 
     fun onEntryTypeChange(entryType: EntryType) {
-        _uiState.update { it.copy(selectedEntryType = entryType) }
+        _uiState.update { it.copy(selectedEntryType = entryType, errorMessage = null) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     companion object {

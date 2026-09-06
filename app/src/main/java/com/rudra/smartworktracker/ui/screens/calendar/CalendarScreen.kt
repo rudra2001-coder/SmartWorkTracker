@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.AppDatabase
 import com.rudra.smartworktracker.model.WorkType
 import com.rudra.smartworktracker.ui.WorkLogUi
+import com.rudra.smartworktracker.ui.components.LoadingShimmer
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -239,6 +240,13 @@ fun CalendarScreen(
             }
         }
     ) { paddingValues ->
+        if (uiState.isLoading) {
+            LoadingShimmer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            )
+        } else {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -325,6 +333,7 @@ fun CalendarScreen(
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
+        }
         }
     }
 }

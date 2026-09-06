@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.CreditCard
+import com.rudra.smartworktracker.ui.components.EmptyStateCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,12 +98,22 @@ fun CreditCardScreen() {
             }
 
             LazyColumn {
-                items(creditCards) { card ->
-                    CreditCardItem(
-                        card = card,
-                        onAddTransactionClick = { showAddTransactionDialog = card },
-                        onPayBillClick = { showPayBillDialog = card }
-                    )
+                if (creditCards.isEmpty()) {
+                    item {
+                        EmptyStateCard(
+                            icon = Icons.Default.Add,
+                            title = "No credit cards",
+                            message = "Tap + to add your first credit card for tracking."
+                        )
+                    }
+                } else {
+                    items(creditCards) { card ->
+                        CreditCardItem(
+                            card = card,
+                            onAddTransactionClick = { showAddTransactionDialog = card },
+                            onPayBillClick = { showPayBillDialog = card }
+                        )
+                    }
                 }
             }
         }

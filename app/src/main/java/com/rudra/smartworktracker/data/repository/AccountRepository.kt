@@ -70,11 +70,8 @@ class AccountRepository(private val accountDao: AccountDao) {
         }
 
         val effectiveLimit = fromAccount.getEffectiveLimit()
-        if (effectiveLimit != null) {
-            val todayTransferred = 0.0
-            if (todayTransferred + amount > effectiveLimit) {
-                return TransferResult.Error("Daily transfer limit exceeded (${CurrencyManager.format(effectiveLimit)})")
-            }
+        if (effectiveLimit != null && amount > effectiveLimit) {
+            return TransferResult.Error("Amount exceeds daily transfer limit (${CurrencyManager.format(effectiveLimit)})")
         }
 
         val timestamp = System.currentTimeMillis()

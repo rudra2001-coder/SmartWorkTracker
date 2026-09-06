@@ -66,6 +66,9 @@ data class MonthlyFinancialData(
 
 class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     private val _selectedPeriod = MutableStateFlow(AnalyticsPeriod.WEEK)
     val selectedPeriod: StateFlow<AnalyticsPeriod> = _selectedPeriod.asStateFlow()
 
@@ -276,6 +279,8 @@ class AnalyticsViewModel(private val db: AppDatabase) : ViewModel() {
             weeklyPerformance = weeklyPerformance,
             monthlyFinancialData = monthlyFinancialData
         )
+    }.onEach {
+        _isLoading.value = false
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

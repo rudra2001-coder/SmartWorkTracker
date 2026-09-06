@@ -143,7 +143,7 @@ class AccountDetailViewModel(application: Application) : AndroidViewModel(applic
 
     private val db = AppDatabase.getDatabase(application)
     private val accountRepository = AccountRepository(db.accountDao())
-    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao())
+    private val financialTransactionDao = db.financialTransactionDao()
 
     private val _uiState = MutableStateFlow(AccountDetailUiState())
     val uiState: StateFlow<AccountDetailUiState> = _uiState.asStateFlow()
@@ -154,12 +154,20 @@ class AccountDetailViewModel(application: Application) : AndroidViewModel(applic
 
             accountRepository.getAccountByIdFlow(accountId).collect { account ->
                 if (account != null) {
-                    val history = generateBalanceHistory()
-                    
+                    val allTransactions = financialTransactionDao.getAllTransactions().first()
+                    val recentTransactions = allTransactions
+                        .filter {
+                            (it.source.name == account.type.name || it.destination?.name == account.type.name)
+                        }
+                        .take(10)
+
+                    val history = generateBalanceHistory(account.balance)
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             account = account,
+                            recentTransactions = recentTransactions,
                             balanceHistory = history,
                             error = null
                         )
@@ -169,18 +177,19 @@ class AccountDetailViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    private fun generateBalanceHistory(): List<BalanceHistoryItem> {
+    private fun generateBalanceHistory(currentBalance: Double): List<BalanceHistoryItem> {
         val calendar = Calendar.getInstance()
         val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
-        
+
         return (6 downTo 0).map { daysAgo ->
             val date = calendar.apply {
                 add(Calendar.DAY_OF_YEAR, -daysAgo)
             }.timeInMillis
-            
+
+            val variance = if (daysAgo == 0) 0.0 else (currentBalance * 0.05 * (daysAgo % 3 - 1))
             BalanceHistoryItem(
                 date = date,
-                balance = (2500..4000).random().toDouble(),
+                balance = (currentBalance + variance).coerceAtLeast(0.0),
                 dayLabel = dayFormat.format(Date(date))
             )
         }

@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.data.entity.Savings
+import com.rudra.smartworktracker.ui.components.EmptyStateCard
 import com.rudra.smartworktracker.utils.CurrencyManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -191,6 +192,12 @@ fun SavingsScreen() {
                     SavingsHistoryList(
                         history = uiState.filteredHistory,
                         onDelete = { savings -> viewModel.deleteTransaction(savings) }
+                    )
+                } else if (showHistory) {
+                    EmptyStateCard(
+                        icon = Icons.Default.Savings,
+                        title = "No transactions yet",
+                        message = "Add a deposit or withdrawal to start tracking your savings."
                     )
                 }
             }

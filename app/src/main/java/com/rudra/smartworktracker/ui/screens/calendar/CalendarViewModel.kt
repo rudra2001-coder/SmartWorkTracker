@@ -74,7 +74,8 @@ class CalendarViewModel(private val repository: WorkLogRepository) : ViewModel()
             multiSelectedDates = multiSelectedDates,
             activeFilters = activeFilters,
             searchQuery = searchQuery,
-            monthlyStats = monthlyStats
+            monthlyStats = monthlyStats,
+            isLoading = false
         )
     }.stateIn(
         scope = viewModelScope,
@@ -348,5 +349,6 @@ data class CalendarUiState(
     val multiSelectedDates: List<LocalDate> = emptyList(),
     val activeFilters: List<WorkType> = emptyList(),
     val searchQuery: String = "",
-    val monthlyStats: MonthlyStats = MonthlyStats()
+    val monthlyStats: MonthlyStats = MonthlyStats(),
+    val isLoading: Boolean = true
 )

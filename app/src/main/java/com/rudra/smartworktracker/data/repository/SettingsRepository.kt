@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,9 @@ class SettingsRepository(private val context: Context) {
     private val autoBackupKey = booleanPreferencesKey(AUTO_BACKUP)
     private val biometricKey = booleanPreferencesKey(BIOMETRIC)
     private val currencyKey = stringPreferencesKey(CURRENCY)
+    private val fontSizeKey = doublePreferencesKey("font_size")
+    private val accentColorKey = intPreferencesKey("accent_color")
+    private val dynamicColorKey = booleanPreferencesKey("dynamic_color")
 
     val mealRate: Flow<Double> = context.dataStore.data.map {
         it[mealRateKey] ?: 60.0
@@ -90,6 +94,36 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCurrency(currencyCode: String) {
         context.dataStore.edit {
             it[currencyKey] = currencyCode
+        }
+    }
+
+    val fontSize: Flow<Double> = context.dataStore.data.map {
+        it[fontSizeKey] ?: 1.0
+    }
+
+    suspend fun setFontSize(size: Double) {
+        context.dataStore.edit {
+            it[fontSizeKey] = size
+        }
+    }
+
+    val accentColor: Flow<Int> = context.dataStore.data.map {
+        it[accentColorKey] ?: 0
+    }
+
+    suspend fun setAccentColor(index: Int) {
+        context.dataStore.edit {
+            it[accentColorKey] = index
+        }
+    }
+
+    val dynamicColor: Flow<Boolean> = context.dataStore.data.map {
+        it[dynamicColorKey] ?: true
+    }
+
+    suspend fun setDynamicColor(enabled: Boolean) {
+        context.dataStore.edit {
+            it[dynamicColorKey] = enabled
         }
     }
 

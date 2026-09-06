@@ -2,22 +2,17 @@ package com.rudra.smartworktracker.ui.screens.health
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,54 +31,35 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.Egg
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.RemoveRedEye
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Work
-import androidx.compose.material.icons.filled.WorkHistory
 import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -92,7 +68,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -105,12 +80,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -147,7 +118,6 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
     var showVitalsPopup by remember { mutableStateOf(false) }
     var showExercisePopup by remember { mutableStateOf(false) }
 
-    // Premium background with subtle mesh gradient effect
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
@@ -165,7 +135,6 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Enhanced Header with premium feel
             WorkHealthHeader(
                 dailyStreak = healthAnalytics.dailyStreak,
                 workHoursToday = dailyWorkRoutine.currentWorkHours,
@@ -175,7 +144,6 @@ fun HealthMetricsScreen(viewModel: HealthMetricsViewModel = viewModel()) {
                     .padding(16.dp)
             )
 
-            // Modern Tab Row with better styling
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
@@ -380,14 +348,13 @@ fun WorkHealthHeader(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "${LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"))} • Today: ${workHoursToday}h",
+                    "${LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"))} \u2022 Today: ${workHoursToday}h",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Break timer with animated ring
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = { nextBreakIn / 50f },
@@ -406,7 +373,6 @@ fun WorkHealthHeader(
                     }
                 }
 
-                // Streak badge with glassmorphism feel
                 Box(
                     modifier = Modifier
                         .size(56.dp)
@@ -453,7 +419,6 @@ fun DashboardTab(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(16.dp)
     ) {
-        // Mood & Stress Row
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -472,7 +437,6 @@ fun DashboardTab(
             }
         }
 
-        // Quick Stats Row
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -481,7 +445,7 @@ fun DashboardTab(
                 HealthStatCard(
                     title = "Screen Time",
                     value = "${String.format(Locale.getDefault(), "%.1f", dailyRoutine.screenTimeHours)}h",
-                    target = "≤8h",
+                    target = "\u22648h",
                     icon = Icons.Outlined.Computer,
                     color = Color(0xFF4A90E2),
                     trend = dailyRoutine.screenTimeTrend,
@@ -500,7 +464,6 @@ fun DashboardTab(
             }
         }
 
-        // Productivity Gauge Section
         item {
             ProductivitySection(
                 productivityScore = dailyRoutine.productivityScore,
@@ -511,10 +474,9 @@ fun DashboardTab(
             )
         }
 
-        // Hydration & Steps Row
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                modifier = Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 HydrationCard(
@@ -533,7 +495,6 @@ fun DashboardTab(
             }
         }
 
-        // Vitals Quick View
         item {
             VitalsQuickCard(
                 vitalData = healthData.vitalData,
@@ -542,7 +503,6 @@ fun DashboardTab(
             )
         }
 
-        // Quick Actions Grid
         item {
             QuickWorkActions(
                 onLogBreak = onAddBreak,
@@ -556,7 +516,6 @@ fun DashboardTab(
             )
         }
 
-        // Eye Health Detail
         item {
             EyeHealthSection(
                 eyeStrainLevel = dailyRoutine.eyeStrainLevel,
@@ -567,7 +526,6 @@ fun DashboardTab(
             )
         }
 
-        // Recommendations
         if (healthAnalytics.recommendations.isNotEmpty()) {
             item {
                 RecommendationsCard(
@@ -682,80 +640,6 @@ fun ProductivitySection(
 }
 
 @Composable
-fun HydrationCard(
-    currentWater: Double,
-    targetWater: Double,
-    onAddWater: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val progress = (currentWater / targetWater).toFloat().coerceIn(0f, 1f)
-    Card(
-        modifier = modifier.clickable(onClick = onAddWater),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3).copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, Color(0xFF2196F3).copy(alpha = 0.15f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocalDrink, null, tint = Color(0xFF2196F3), modifier = Modifier.size(24.dp))
-                Surface(color = Color(0xFF2196F3).copy(alpha = 0.1f), shape = CircleShape) {
-                    Text("${(progress * 100).toInt()}%", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2196F3), fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            Text("${currentWater.toInt()}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = Color(0xFF2196F3))
-            Text("/ ${targetWater.toInt()} ml", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2196F3).copy(alpha = 0.7f))
-            Spacer(Modifier.weight(1f))
-            Text("Tap to add 250ml", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2196F3).copy(alpha = 0.5f), fontStyle = FontStyle.Italic)
-        }
-    }
-}
-
-@Composable
-fun NutritionCard(
-    caloriesConsumed: Double,
-    caloriesTarget: Double,
-    proteinIntake: Double,
-    proteinTarget: Double,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.15f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Restaurant, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Nutrition", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
-            }
-            
-            NutritionProgressMiniRow("Calories", caloriesConsumed, caloriesTarget, Color(0xFF4CAF50), "kcal")
-            NutritionProgressMiniRow("Protein", proteinIntake, proteinTarget, Color(0xFFFF9800), "g")
-        }
-    }
-}
-
-@Composable
-fun NutritionProgressMiniRow(label: String, current: Double, target: Double, color: Color, unit: String) {
-    Column {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${current.toInt()}/ ${target.toInt()} $unit", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(4.dp))
-        LinearProgressIndicator(
-            progress = { (current / target).toFloat().coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-            color = color,
-            trackColor = color.copy(alpha = 0.1f)
-        )
-    }
-}
-
-@Composable
 fun QuickWorkActions(
     onLogBreak: () -> Unit,
     onStretch: () -> Unit,
@@ -774,7 +658,7 @@ fun QuickWorkActions(
         Column(modifier = Modifier.padding(20.dp)) {
             Text("Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     ActionTile("Break", Icons.Default.Coffee, Color(0xFFFF9800), onLogBreak, Modifier.weight(1f))
@@ -799,7 +683,7 @@ fun QuickWorkActions(
 
 @Composable
 fun ActionTile(label: String, icon: ImageVector, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
+    androidx.compose.material3.Surface(
         modifier = modifier
             .height(85.dp)
             .clickable(onClick = onClick),
@@ -815,50 +699,6 @@ fun ActionTile(label: String, icon: ImageVector, color: Color, onClick: () -> Un
             Icon(icon, null, tint = color, modifier = Modifier.size(26.dp))
             Spacer(Modifier.height(8.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = color)
-        }
-    }
-}
-
-@Composable
-fun EyeHealthSection(
-    eyeStrainLevel: Int,
-    lastEyeBreak: Int,
-    recommendedEyeExercises: List<String>,
-    onDoExercise: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.05f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Eye Health Guard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Surface(
-                    color = if (eyeStrainLevel == 1) Color(0xFF4CAF50) else if (eyeStrainLevel == 2) Color(0xFFFF9800) else Color(0xFFF44336),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("STRAIN: LVL $eyeStrainLevel", modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.History, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(8.dp))
-                Text("Last break: $lastEyeBreak minutes ago", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = onDoExercise,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
-            ) {
-                Icon(Icons.Default.RemoveRedEye, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Start Relief Exercise")
-            }
         }
     }
 }
@@ -910,548 +750,6 @@ fun DailyGoalsProgress(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun DailyLogTab(
-    recentEntries: List<HealthMetricEntry>,
-    workSessionStats: WorkSessionStats,
-    onLogCustom: (HealthMetricType) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Session Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        MetricItem("Screen", "${String.format("%.1f", workSessionStats.totalScreenTime / 60)}h", Icons.Default.Computer, Color(0xFF2196F3))
-                        MetricItem("Focus", "${String.format("%.1f", workSessionStats.totalFocusTime / 60)}h", Icons.Default.Timer, Color(0xFF4CAF50))
-                        MetricItem("Breaks", "${workSessionStats.totalBreaks}", Icons.Default.Coffee, Color(0xFFFF9800))
-                    }
-                }
-            }
-        }
-
-        item {
-            Text("Recent Activity", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-        }
-
-        items(recentEntries) { entry ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(getMetricIcon(entry.type), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(entry.type.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        Text(Instant.ofEpochMilli(entry.timestamp).atZone(ZoneId.systemDefault()).toLocalDateTime().format(DateTimeFormatter.ofPattern("MMM d, hh:mm a")), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text("${entry.value}${entry.type.unit}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-    }
-}
-
-fun getMetricIcon(type: HealthMetricType): ImageVector = when(type) {
-    HealthMetricType.WATER -> Icons.Default.LocalDrink
-    HealthMetricType.SLEEP -> Icons.Default.Bedtime
-    HealthMetricType.EXERCISE -> Icons.Default.FitnessCenter
-    HealthMetricType.CALORIES -> Icons.Default.LocalFireDepartment
-    HealthMetricType.SCREEN_TIME -> Icons.Default.Computer
-    else -> Icons.Default.History
-}
-
-@Composable
-fun NutritionTab(
-    nutritionData: NutritionData,
-    dailyGoals: NutritionGoals,
-    onAddMeal: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Card(
-            modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(28.dp)),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text("Nutrition Balance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Today's consumption breakdown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                DetailedNutritionRow("Calories", nutritionData.calories, dailyGoals.caloriesTarget, "kcal", Color(0xFF4CAF50), Icons.Default.LocalFireDepartment)
-                DetailedNutritionRow("Protein", nutritionData.protein, dailyGoals.proteinTarget, "g", Color(0xFF2196F3), Icons.Default.Egg)
-                DetailedNutritionRow("Fiber", nutritionData.fiber, dailyGoals.fiberTarget, "g", Color(0xFFFF9800), Icons.Default.Grass)
-            }
-        }
-        
-        Button(
-            onClick = onAddMeal,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            elevation = ButtonDefaults.buttonElevation(4.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Log New Meal Entry", fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-fun DetailedNutritionRow(label: String, current: Double, target: Double, unit: String, color: Color, icon: ImageVector) {
-    Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            }
-            Text("${current.toInt()} / ${target.toInt()} $unit", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { if (target > 0) (current / target).toFloat().coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-            color = color,
-            trackColor = color.copy(alpha = 0.1f)
-        )
-    }
-}
-
-@Composable
-fun ProgressTab(
-    weightProgress: List<Pair<LocalDate, Double>>,
-    productivityTrend: List<Pair<LocalDate, Double>>,
-    sleepPattern: List<Pair<LocalDate, Double>>,
-    workHoursTrend: List<Pair<LocalDate, Double>>,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        item { SectionTitle("Trends & Analysis") }
-        item { TrendChartCard("Weight Journey (kg)", weightProgress, Color(0xFFE91E63), Icons.Default.MonitorWeight) }
-        item { TrendChartCard("Work Hours (h)", workHoursTrend, Color(0xFF2196F3), Icons.Default.WorkHistory) }
-        item { TrendChartCard("Focus Efficiency (min)", productivityTrend, Color(0xFF4CAF50), Icons.Default.Psychology) }
-        item { TrendChartCard("Sleep Consistency (h)", sleepPattern, Color(0xFF673AB7), Icons.Default.Bedtime) }
-    }
-}
-
-@Composable
-fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.ExtraBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
-}
-
-@Composable
-fun TrendChartCard(title: String, data: List<Pair<LocalDate, Double>>, color: Color, icon: ImageVector) {
-    Card(
-        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            if (data.size >= 2) {
-                AnimatedLineChart(dataPoints = data, color = color, modifier = Modifier.fillMaxWidth().height(180.dp))
-            } else {
-                Box(modifier = Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Analytics, null, tint = Color.Gray.copy(alpha = 0.3f), modifier = Modifier.size(48.dp))
-                        Text("Not enough data to plot trend", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun getProductivityColor(score: Int): Color = when {
-    score >= 80 -> Color(0xFF4CAF50)
-    score >= 60 -> Color(0xFFFF9800)
-    else -> Color(0xFFF44336)
-}
-
-@Composable
-fun getEyeStrainColor(level: Int): Color = when (level) {
-    1 -> Color(0xFF4CAF50)
-    2 -> Color(0xFFFF9800)
-    3 -> Color(0xFFF44336)
-    else -> MaterialTheme.colorScheme.outline
-}
-
-@Composable
-fun HealthInputDialog(
-    metricType: HealthMetricType,
-    onSave: (Double) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var value by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier.padding(16.dp).fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(getMetricIcon(metricType), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Log ${metricType.displayName}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    label = { Text("Enter ${metricType.displayName} (${metricType.unit})") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = { value.toDoubleOrNull()?.let { onSave(it) } },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MealInputDialog(
-    onSave: (Double, Double, Double, Double, Double?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var calories by remember { mutableStateOf("") }
-    var protein by remember { mutableStateOf("") }
-    var carbs by remember { mutableStateOf("") }
-    var fiber by remember { mutableStateOf("") }
-    var fat by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier.padding(16.dp).fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(Icons.Default.Restaurant, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Log Meal",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-
-                OutlinedTextField(
-                    value = calories,
-                    onValueChange = { calories = it },
-                    label = { Text("Calories (kcal)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = protein,
-                    onValueChange = { protein = it },
-                    label = { Text("Protein (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = carbs,
-                    onValueChange = { carbs = it },
-                    label = { Text("Carbs (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = fiber,
-                    onValueChange = { fiber = it },
-                    label = { Text("Fiber (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = fat,
-                    onValueChange = { fat = it },
-                    label = { Text("Fat (g) - Optional") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = {
-                            onSave(
-                                calories.toDoubleOrNull() ?: 0.0,
-                                protein.toDoubleOrNull() ?: 0.0,
-                                carbs.toDoubleOrNull() ?: 0.0,
-                                fiber.toDoubleOrNull() ?: 0.0,
-                                fat.toDoubleOrNull()
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AnimatedLineChart(
-    dataPoints: List<Pair<LocalDate, Double>>,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    val animatable = remember { Animatable(0f) }
-
-    LaunchedEffect(dataPoints) {
-        animatable.animateTo(1f, animationSpec = tween(durationMillis = 1500, easing = EaseInOutCubic))
-    }
-
-    Canvas(modifier = modifier) {
-        if (dataPoints.isEmpty()) return@Canvas
-        val path = Path()
-        val xMin = dataPoints.first().first.toEpochDay().toFloat()
-        val xMax = dataPoints.last().first.toEpochDay().toFloat()
-        val yMin = dataPoints.minOf { it.second }.toFloat()
-        val yMax = dataPoints.maxOf { it.second }.toFloat()
-        val xRange = if (xMax == xMin) 1f else xMax - xMin
-        val yRange = if (yMax == yMin) 1f else yMax - yMin
-
-        dataPoints.forEachIndexed { index, pair ->
-            val x = (pair.first.toEpochDay().toFloat() - xMin) / xRange * size.width
-            val y = (1 - (pair.second.toFloat() - yMin) / yRange) * size.height
-            if (index == 0) {
-                path.moveTo(x, y)
-            } else {
-                path.lineTo(x, y)
-            }
-        }
-
-        drawPath(
-            path = path,
-            color = color,
-            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-            alpha = animatable.value
-        )
-        
-        // Gradient fill below the line
-        val fillPath = path.apply {
-            lineTo(size.width, size.height)
-            lineTo(0f, size.height)
-            close()
-        }
-        drawPath(
-            path = fillPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(color.copy(alpha = 0.3f * animatable.value), Color.Transparent)
-            )
-        )
-    }
-}
-
-@Composable
-fun WaterLogPopup(
-    onLogWater: (Double) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.LocalDrink, null, tint = Color(0xFF2196F3), modifier = Modifier.size(48.dp))
-                Spacer(Modifier.height(16.dp))
-                Text("Stay Hydrated!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Select your serving size", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                Spacer(modifier = Modifier.height(32.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    WaterLogTile(250.0, "Glass", Icons.Default.LocalDrink, Modifier.weight(1f), onLogWater)
-                    WaterLogTile(500.0, "Bottle", Icons.Default.LocalDrink, Modifier.weight(1f), onLogWater)
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                TextButton(onClick = onDismiss) { Text("Dismiss", color = Color.Gray) }
-            }
-        }
-    }
-}
-
-@Composable
-fun WaterLogTile(amount: Double, label: String, icon: ImageVector, modifier: Modifier, onLogWater: (Double) -> Unit) {
-    Surface(
-        modifier = modifier.clickable { onLogWater(amount) },
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF2196F3).copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, Color(0xFF2196F3).copy(alpha = 0.2f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = Color(0xFF2196F3), modifier = Modifier.size(24.dp))
-            Spacer(Modifier.height(8.dp))
-            Text("${amount.toInt()}ml", fontWeight = FontWeight.ExtraBold, color = Color(0xFF2196F3))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF2196F3))
-        }
-    }
-}
-
-@Composable
-fun BreakReminderPopup(
-    breakType: String,
-    onTakeBreak: () -> Unit,
-    onSnooze: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.size(64.dp).clip(CircleShape).background(Color(0xFFFF9800).copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Timer, null, tint = Color(0xFFFF9800), modifier = Modifier.size(32.dp))
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Time for a $breakType!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Refresh your mind and body to maintain peak focus.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
-                Spacer(modifier = Modifier.height(32.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onSnooze, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
-                        Text("Snooze")
-                    }
-                    Button(onClick = onTakeBreak, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
-                        Text("Take Break")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MetricItem(
-    label: String,
-    value: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            icon,
-            contentDescription = label,
-            tint = color,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -1648,343 +946,160 @@ fun MindBodyTab(
     }
 }
 
-@Composable
-fun MoodCard(
-    currentMood: MoodType?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFB74D).copy(alpha = 0.1f)),
-        border = BorderStroke(1.dp, Color(0xFFFFB74D).copy(alpha = 0.3f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(currentMood?.emoji ?: "🙂", style = MaterialTheme.typography.headlineLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Mood", style = MaterialTheme.typography.labelMedium, color = Color(0xFFFF9800))
-            Text(currentMood?.label ?: "Tap to log", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF9800).copy(alpha = 0.7f))
-        }
-    }
+fun getMetricIcon(type: HealthMetricType): ImageVector = when(type) {
+    HealthMetricType.WATER -> Icons.Default.LocalDrink
+    HealthMetricType.SLEEP -> Icons.Default.Bedtime
+    HealthMetricType.EXERCISE -> Icons.Default.FitnessCenter
+    HealthMetricType.CALORIES -> Icons.Default.LocalFireDepartment
+    HealthMetricType.SCREEN_TIME -> Icons.Default.Computer
+    else -> Icons.Default.History
 }
 
 @Composable
-fun StressCard(
-    currentStress: Int?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val stressColor = when {
-        currentStress == null -> Color(0xFF9E9E9E)
-        currentStress <= 3 -> Color(0xFF4CAF50)
-        currentStress <= 6 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
-    }
-    
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = stressColor.copy(alpha = 0.1f)),
-        border = BorderStroke(1.dp, stressColor.copy(alpha = 0.3f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("⚡", style = MaterialTheme.typography.headlineLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Stress", style = MaterialTheme.typography.labelMedium, color = stressColor)
-            Text(currentStress?.let { "$it/10" } ?: "Tap to log", style = MaterialTheme.typography.labelSmall, color = stressColor.copy(alpha = 0.7f))
-        }
-    }
+fun getProductivityColor(score: Int): Color = when {
+    score >= 80 -> Color(0xFF4CAF50)
+    score >= 60 -> Color(0xFFFF9800)
+    else -> Color(0xFFF44336)
 }
 
 @Composable
-fun MoodCardLarge(
-    moodTrend: List<Pair<LocalDate, MoodType>>,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+fun getEyeStrainColor(level: Int): Color = when (level) {
+    1 -> Color(0xFF4CAF50)
+    2 -> Color(0xFFFF9800)
+    3 -> Color(0xFFF44336)
+    else -> MaterialTheme.colorScheme.outline
+}
+
+@Composable
+fun HealthInputDialog(
+    metricType: HealthMetricType,
+    onSave: (Double) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFB74D).copy(alpha = 0.1f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("😊", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Mood", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            if (moodTrend.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    moodTrend.takeLast(7).forEach { (date, mood) ->
-                        Text(mood.emoji, style = MaterialTheme.typography.bodyMedium)
+    var value by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.padding(16.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(getMetricIcon(metricType), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Log ${metricType.displayName}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text("Enter ${metricType.displayName} (${metricType.unit})") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = { value.toDoubleOrNull()?.let { onSave(it) } },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Save")
                     }
                 }
-            } else {
-                Text("Tap to track your mood", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Track how you feel", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF9800))
-        }
-    }
-}
-
-@Composable
-fun StressCardLarge(
-    stressTrend: List<Pair<LocalDate, Int>>,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val avgStress = if (stressTrend.isNotEmpty()) stressTrend.map { it.second }.average().toInt() else null
-    val stressColor = when {
-        avgStress == null -> Color(0xFF9E9E9E)
-        avgStress <= 3 -> Color(0xFF4CAF50)
-        avgStress <= 6 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
-    }
-    
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = stressColor.copy(alpha = 0.1f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⚡", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Stress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(avgStress?.let { "$it/10" } ?: "--", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = stressColor)
-            Text("Average this week", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Tap to log stress level", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF9800))
-        }
-    }
-}
-
-@Composable
-fun MeditationCard(
-    totalMinutes: Double,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE91E63).copy(alpha = 0.1f))
-    ) {
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFFE91E63).copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.SelfImprovement, null, tint = Color(0xFFE91E63), modifier = Modifier.size(32.dp))
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Meditation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Today's: ${totalMinutes.toInt()} minutes", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-            }
-            Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFFE91E63))
-        }
-    }
-}
-
-@Composable
-fun SleepCard(
-    lastSleep: Double,
-    sleepPattern: List<Pair<LocalDate, Double>>,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val sleepColor = when {
-        lastSleep < 6 -> Color(0xFFF44336)
-        lastSleep < 7 -> Color(0xFFFF9800)
-        else -> Color(0xFF4CAF50)
-    }
-    
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF673AB7).copy(alpha = 0.1f))
-    ) {
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFF673AB7).copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Bedtime, null, tint = Color(0xFF673AB7), modifier = Modifier.size(32.dp))
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Sleep", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("${String.format("%.1f", lastSleep)} hours last night", style = MaterialTheme.typography.bodyMedium, color = sleepColor)
-            }
-            Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF673AB7))
-        }
-    }
-}
-
-@Composable
-fun VitalsCard(
-    vitalData: VitalData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Vital Signs", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                TextButton(onClick = onClick) {
-                    Text("Update")
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                VitalItem("Heart Rate", vitalData.heartRate?.toInt()?.toString() ?: "--", "bpm", Color(0xFFF44336))
-                VitalItem("Blood Pressure", vitalData.bloodPressure ?: "--", "mmHg", Color(0xFF2196F3))
-                VitalItem("SpO2", vitalData.bloodOxygen?.toInt()?.toString() ?: "--", "%", Color(0xFF4CAF50))
-                VitalItem("Steps", vitalData.steps.toString(), "steps", Color(0xFFFF9800))
             }
         }
     }
 }
 
 @Composable
-fun VitalItem(label: String, value: String, unit: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-        Text(unit, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-fun StepsCard(
-    currentSteps: Int,
-    targetSteps: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+fun BreakReminderPopup(
+    breakType: String,
+    onTakeBreak: () -> Unit,
+    onSnooze: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    val progress = (currentSteps.toFloat() / targetSteps).coerceIn(0f, 1f)
-    val stepsColor = when {
-        progress >= 1f -> Color(0xFF4CAF50)
-        progress >= 0.5f -> Color(0xFFFF9800)
-        else -> Color(0xFF2196F3)
-    }
-    
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3).copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, Color(0xFF2196F3).copy(alpha = 0.15f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.DirectionsWalk, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(24.dp))
-                Surface(color = stepsColor.copy(alpha = 0.1f), shape = CircleShape) {
-                    Text("${(progress * 100).toInt()}%", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = stepsColor, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text("$currentSteps", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = Color(0xFF2196F3))
-            Text("/ $targetSteps steps", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2196F3).copy(alpha = 0.7f))
-            Spacer(modifier = Modifier.weight(1f))
-            Text("Tap to add steps", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2196F3).copy(alpha = 0.5f), fontStyle = FontStyle.Italic)
-        }
-    }
-}
-
-@Composable
-fun VitalsQuickCard(
-    vitalData: VitalData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(12.dp)
         ) {
-            vitalData.heartRate?.let {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Favorite, contentDescription = null, tint = Color(0xFFF44336), modifier = Modifier.size(20.dp))
-                    Text("${it.toInt()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("bpm", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.size(64.dp).clip(CircleShape).background(Color(0xFFFF9800).copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Timer, null, tint = Color(0xFFFF9800), modifier = Modifier.size(32.dp))
                 }
-            }
-            vitalData.bloodPressure?.let {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Speed, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(20.dp))
-                    Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("BP", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Time for a $breakType!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Refresh your mind and body to maintain peak focus.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onSnooze, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                        Text("Snooze")
+                    }
+                    Button(onClick = onTakeBreak, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                        Text("Take Break")
+                    }
                 }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.DirectionsWalk, contentDescription = null, tint = Color(0xFFFF9800), modifier = Modifier.size(20.dp))
-                Text("${vitalData.steps}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("steps", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
-            TextButton(onClick = onClick) {
-                Text("More", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
 }
 
 @Composable
-fun QuickWellnessActions(
-    onMood: () -> Unit,
-    onStress: () -> Unit,
-    onMeditation: () -> Unit,
+fun MetricItem(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Column(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text("Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                ActionTile("Mood", "😊", Color(0xFFFFB74D), onMood, Modifier.weight(1f))
-                ActionTile("Stress", "⚡", Color(0xFFFF9800), onStress, Modifier.weight(1f))
-                ActionTile("Meditate", "🧘", Color(0xFFE91E63), onMeditation, Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-fun ActionTile(label: String, emoji: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.15f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(emoji, style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = color)
-        }
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -2010,305 +1125,6 @@ fun RecommendationsCard(
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(recommendation, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MoodInputDialog(
-    onSave: (MoodType, String?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var selectedMood by remember { mutableStateOf<MoodType?>(null) }
-    var notes by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("How are you feeling?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                LazyColumn(
-                    modifier = Modifier.height(200.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(MoodType.entries.chunked(3)) { rowItems ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowItems.forEach { mood ->
-                                Surface(
-                                    modifier = Modifier.weight(1f).clickable { selectedMood = mood },
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = if (selectedMood == mood) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(mood.emoji, style = MaterialTheme.typography.headlineSmall)
-                                        Text(mood.label, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = { selectedMood?.let { onSave(it, notes.takeIf { n -> n.isNotBlank() }) } },
-                        enabled = selectedMood != null,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StressInputDialog(
-    onSave: (Int, String?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var stressLevel by remember { mutableIntStateOf(5) }
-    var notes by remember { mutableStateOf("") }
-    
-    val stressColor = when {
-        stressLevel <= 3 -> Color(0xFF4CAF50)
-        stressLevel <= 6 -> Color(0xFFFF9800)
-        else -> Color(0xFFF44336)
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Stress Level", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Text("$stressLevel", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold, color = stressColor)
-                Text("/10", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Slider(
-                    value = stressLevel.toFloat(),
-                    onValueChange = { stressLevel = it.toInt() },
-                    valueRange = 1f..10f,
-                    steps = 8,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Low", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4CAF50))
-                    Text("High", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF44336))
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("What's causing stress? (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = { onSave(stressLevel, notes.takeIf { it.isNotBlank() }) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun VitalsInputDialog(
-    onSave: (Double?, Double?, Double?, Double?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var heartRate by remember { mutableStateOf("") }
-    var systolic by remember { mutableStateOf("") }
-    var diastolic by remember { mutableStateOf("") }
-    var oxygen by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Log Vitals", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                OutlinedTextField(
-                    value = heartRate,
-                    onValueChange = { heartRate = it },
-                    label = { Text("Heart Rate (bpm)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = systolic,
-                        onValueChange = { systolic = it },
-                        label = { Text("Systolic") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = diastolic,
-                        onValueChange = { diastolic = it },
-                        label = { Text("Diastolic") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                OutlinedTextField(
-                    value = oxygen,
-                    onValueChange = { oxygen = it },
-                    label = { Text("Blood Oxygen (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = {
-                            onSave(
-                                heartRate.toDoubleOrNull(),
-                                systolic.toDoubleOrNull(),
-                                diastolic.toDoubleOrNull(),
-                                oxygen.toDoubleOrNull()
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ExerciseInputDialog(
-    onSave: (Double, String?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var minutes by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf<ExerciseType?>(null) }
-    var isExpanded by remember { mutableStateOf(false) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Log Exercise", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                OutlinedTextField(
-                    value = minutes,
-                    onValueChange = { minutes = it },
-                    label = { Text("Duration (minutes)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                ExposedDropdownMenuBox(
-                    expanded = isExpanded,
-                    onExpandedChange = { isExpanded = !isExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedType?.label ?: "Select type",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Exercise Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = isExpanded,
-                        onDismissRequest = { isExpanded = false }
-                    ) {
-                        ExerciseType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.label) },
-                                onClick = {
-                                    selectedType = type
-                                    isExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = {
-                            val mins = minutes.toDoubleOrNull() ?: 0.0
-                            if (mins > 0) {
-                                onSave(mins, selectedType?.label)
-                            }
-                        },
-                        enabled = (minutes.toDoubleOrNull() ?: 0.0) > 0,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save")
-                    }
                 }
             }
         }

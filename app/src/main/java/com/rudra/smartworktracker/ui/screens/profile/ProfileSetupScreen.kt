@@ -26,9 +26,11 @@ fun ProfileSetupScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val database = AppDatabase.getDatabase(context)
-    val repository = UserProfileRepository(database.userProfileDao())
-    val viewModel: UserProfileViewModel = viewModel(factory = UserProfileViewModel.Factory(repository))
+    val viewModel: UserProfileViewModel = viewModel(
+        factory = UserProfileViewModel.Factory(
+            UserProfileRepository(AppDatabase.getDatabase(context).userProfileDao())
+        )
+    )
     
     val profileState by viewModel.profileState.collectAsState()
     

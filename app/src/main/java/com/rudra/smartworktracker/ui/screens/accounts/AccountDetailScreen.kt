@@ -80,7 +80,7 @@ fun AccountDetailScreen(
                     }
 
                     item {
-                        RecentTransactionsSection()
+                        RecentTransactionsSection(transactions = uiState.recentTransactions)
                     }
 
                     item {
@@ -254,7 +254,7 @@ fun BalanceHistoryChart(history: List<BalanceHistoryItem>) {
 }
 
 @Composable
-fun RecentTransactionsSection() {
+fun RecentTransactionsSection(transactions: List<com.rudra.smartworktracker.data.entity.FinancialTransaction>) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -269,71 +269,62 @@ fun RecentTransactionsSection() {
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            val transactions = listOf(
-                TransactionItem("Today, 6:45 PM", "To Cash Wallet", "- ৳ 500", "Dinner", isExpense = true),
-                TransactionItem("Yesterday, 10:15 AM", "From DBBL Bank", "+ ৳ 2,000", "Salary transfer", isExpense = false),
-                TransactionItem("Apr 26, 2:30 PM", "To Nagad", "- ৳ 300", "Recharge", isExpense = true),
-                TransactionItem("Apr 25, 11:00 AM", "From bKash", "+ ৳ 1,500", "Received", isExpense = false)
-            )
+            if (transactions.isEmpty()) {
+                Text(
+                    text = "No transactions yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                val dateFormat = remember { SimpleDateFormat("MMM dd, h:mm a", Locale.getDefault()) }
+                transactions.forEachIndexed { index, transaction ->
+                    val isIncome = transaction.type == com.rudra.smartworktracker.data.entity.TransactionType.INCOME ||
+                            transaction.type == com.rudra.smartworktracker.data.entity.TransactionType.LOAN_RECEIVE
+                    val amountPrefix = if (isIncome) "+ " else "- "
+                    val amountColor = if (isIncome) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    val icon = if (isIncome) Icons.Default.ArrowBack else Icons.Default.ArrowForward
 
-            transactions.forEach { transaction ->
-                TransactionRow(transaction = transaction)
-                if (transaction != transactions.last()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = dateFormat.format(Date(transaction.date)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = amountColor
+                                )
+                                Text(
+                                    text = transaction.note.ifEmpty { transaction.type.name },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        Text(
+                            text = "$amountPrefix৳ ${String.format(Locale.getDefault(), "%,.0f", transaction.amount)}",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = amountColor
+                            )
+                        )
+                    }
+                    if (index < transactions.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
                 }
             }
         }
-    }
-}
-
-data class TransactionItem(
-    val time: String,
-    val description: String,
-    val amount: String,
-    val note: String,
-    val isExpense: Boolean
-)
-
-@Composable
-fun TransactionRow(transaction: TransactionItem) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = transaction.time,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    if (transaction.isExpense) Icons.Default.ArrowForward else Icons.Default.ArrowBack,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = if (transaction.isExpense) Color(0xFFF44336) else Color(0xFF4CAF50)
-                )
-                Text(
-                    text = transaction.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            Text(
-                text = transaction.note,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            text = transaction.amount,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = if (transaction.isExpense) Color(0xFFF44336) else Color(0xFF4CAF50)
-            )
-        )
     }
 }

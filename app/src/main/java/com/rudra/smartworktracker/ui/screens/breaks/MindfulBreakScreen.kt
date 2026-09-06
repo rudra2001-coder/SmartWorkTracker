@@ -13,15 +13,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,23 +38,22 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlinx.coroutines.isActive
 
 @Composable
-fun MindfulBreakScreen() {
+fun MindfulBreakScreen(
+    onNavigateBack: () -> Unit = {}
+) {
     val breathingState = remember { Animatable(0.3f) }
     val pulseState = remember { Animatable(0f) }
     var instruction by remember { mutableStateOf("Breathe In") }
-    var cycleCount by remember { mutableStateOf(1) }
+    var cycleCount by remember { mutableIntStateOf(1) }
+    var isRunning by remember { mutableStateOf(true) }
 
-    // Background gradient
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(
             Color(0xFF667eea),
@@ -57,64 +63,62 @@ fun MindfulBreakScreen() {
     )
 
     // Breathing cycle logic
-    LaunchedEffect(Unit) {
-        while (true) {
-            // Breathe In
-            instruction = "Breathe In"
-            breathingState.animateTo(1f, animationSpec = tween(4000, easing = LinearEasing))
-
-            // Hold
-            instruction = "Hold"
-            delay(4000)
-
-            // Breathe Out
-            instruction = "Breathe Out"
-            breathingState.animateTo(0.3f, animationSpec = tween(6000, easing = LinearEasing))
-
-            // Short pause
-            instruction = "Rest"
-            delay(1000)
-
-            cycleCount++
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            while (isActive) {
+                instruction = "Breathe In"
+                breathingState.animateTo(1f, animationSpec = tween(4000, easing = LinearEasing))
+                instruction = "Hold"
+                delay(4000)
+                instruction = "Breathe Out"
+                breathingState.animateTo(0.3f, animationSpec = tween(6000, easing = LinearEasing))
+                instruction = "Rest"
+                delay(1000)
+                cycleCount++
+            }
         }
     }
 
-    // Pulse animation for additional visual interest
-    LaunchedEffect(Unit) {
-        pulseState.animateTo(
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(2000),
-                repeatMode = RepeatMode.Reverse
+    // Pulse animation
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            pulseState.animateTo(
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000),
+                    repeatMode = RepeatMode.Reverse
+                )
             )
-        )
+        }
     }
 
-    // UI
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundGradient),
         contentAlignment = Alignment.Center
     ) {
-        // Animated background elements
-
+        // Top-left back button
+        IconButton(
+            onClick = onNavigateBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White
+            )
+        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Breathing visualization with multiple elements
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                // Outer pulsing circle
+            Box(contentAlignment = Alignment.Center) {
                 PulsingCircle(progress = pulseState.value)
-
-                // Main breathing circle
                 BreathingCircle(progress = breathingState.value)
-
-                // Central icon
                 Icon(
                     imageVector = Icons.Default.SelfImprovement,
                     contentDescription = "Mindfulness",
@@ -125,7 +129,6 @@ fun MindfulBreakScreen() {
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Instruction with emphasis
             Text(
                 text = instruction,
                 fontSize = 32.sp,
@@ -136,7 +139,6 @@ fun MindfulBreakScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Cycle counter
             Text(
                 text = "Cycle $cycleCount",
                 fontSize = 16.sp,
@@ -144,9 +146,8 @@ fun MindfulBreakScreen() {
                 color = Color.White.copy(alpha = 0.8f)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Breathing guide text
             Text(
                 text = getBreathingGuide(instruction),
                 fontSize = 14.sp,
@@ -154,6 +155,19 @@ fun MindfulBreakScreen() {
                 color = Color.White.copy(alpha = 0.7f),
                 lineHeight = 20.sp
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Pause/Resume button
+            FilledTonalButton(onClick = { isRunning = !isRunning }) {
+                Icon(
+                    if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isRunning) "Pause" else "Resume",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.padding(4.dp))
+                Text(if (isRunning) "Pause" else "Resume")
+            }
         }
     }
 }
@@ -167,7 +181,6 @@ fun BreathingCircle(progress: Float) {
     Canvas(modifier = Modifier.size(size)) {
         val radius = (this.size.minDimension / 2f) * progress
 
-        // Gradient for the circle
         val gradient = Brush.radialGradient(
             colors = listOf(
                 primaryColor.copy(alpha = 0.8f),
@@ -178,24 +191,9 @@ fun BreathingCircle(progress: Float) {
             radius = radius
         )
 
-        // Glow effect
-        drawCircle(
-            brush = gradient,
-            radius = radius * 1.1f
-        )
-
-        // Main circle
-        drawCircle(
-            color = primaryColor,
-            style = Stroke(width = 6.dp.toPx()),
-            radius = radius
-        )
-
-        // Inner glow
-        drawCircle(
-            color = primaryColor.copy(alpha = 0.3f),
-            radius = radius * 0.7f
-        )
+        drawCircle(brush = gradient, radius = radius * 1.1f)
+        drawCircle(color = primaryColor, style = Stroke(width = 6.dp.toPx()), radius = radius)
+        drawCircle(color = primaryColor.copy(alpha = 0.3f), radius = radius * 0.7f)
     }
 }
 
@@ -206,16 +204,9 @@ fun PulsingCircle(progress: Float) {
 
     Canvas(modifier = Modifier.size(size)) {
         val radius = (this.size.minDimension / 2f) * (0.8f + progress * 0.2f)
-
-        drawCircle(
-            color = pulseColor,
-            style = Stroke(width = 3.dp.toPx()),
-            radius = radius
-        )
+        drawCircle(color = pulseColor, style = Stroke(width = 3.dp.toPx()), radius = radius)
     }
 }
-
-
 
 private fun getBreathingGuide(instruction: String): String {
     return when (instruction) {
@@ -224,13 +215,5 @@ private fun getBreathingGuide(instruction: String): String {
         "Breathe Out" -> "Release slowly and completely\nLet go of tension"
         "Rest" -> "Notice the stillness\nPrepare for next cycle"
         else -> "Follow the breathing pattern"
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MindfulBreakScreenPreview() {
-    MaterialTheme {
-        MindfulBreakScreen()
     }
 }

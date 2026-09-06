@@ -1,8 +1,8 @@
 package com.rudra.smartworktracker.ui.screens.habit
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -29,41 +30,75 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.Habit
 import com.rudra.smartworktracker.model.HabitDifficulty
+import com.rudra.smartworktracker.ui.components.EmptyStateCard
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitScreen(viewModel: HabitViewModel = viewModel()) {
+fun HabitScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: HabitViewModel = viewModel()
+) {
     val habits by viewModel.habits.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Habits") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Habit")
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        if (habits.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                EmptyStateCard(
+                    icon = Icons.Default.LocalFireDepartment,
+                    title = "No habits yet",
+                    message = "Tap + to create your first habit and start building streaks!"
+                )
+            }
+        } else {
+            LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -74,12 +109,13 @@ fun HabitScreen(viewModel: HabitViewModel = viewModel()) {
                     habit = habit,
                     onComplete = {
                         viewModel.completeHabit(habit)
-                        Toast.makeText(context, "'${habit.name}' completed!", Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch { snackbarHostState.showSnackbar("'${habit.name}' completed!") }
                     },
                     onDelete = { viewModel.heavyDeleteHabit(habit) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
         }
 
         if (showDialog) {

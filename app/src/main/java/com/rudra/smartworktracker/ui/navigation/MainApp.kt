@@ -258,7 +258,7 @@ fun MainApp() {
                         },
                         onNavigateToIncome = { navController.navigate(NavigationItem.Income.route) },
                         onNavigateToExpense = { navController.navigate(NavigationItem.Expense.route) },
-                        onNavigateToLoan = { navController.navigate(NavigationItem.Loans.route) }
+                        onNavigateToAccounts = { navController.navigate(NavigationItem.Accounts.route) }
                     )
                 }
 
@@ -365,7 +365,7 @@ fun MainApp() {
                     popEnterTransition = { defaultPopEnterTransition() },
                     popExitTransition = { defaultPopExitTransition() }
                 ) {
-                    HabitScreen()
+                    HabitScreen(onNavigateBack = { navController.popBackStack() })
                 }
 
                 composable(
@@ -600,7 +600,8 @@ popExitTransition = { defaultPopExitTransition() }
                         billSplits = billSplits,
                         onAddBillSplit = { viewModel.addBillSplit(it) },
                         onMarkSettled = { viewModel.markSettled(it) },
-                        onDelete = { viewModel.deleteBillSplit(it) }
+                        onDelete = { viewModel.deleteBillSplit(it) },
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
                 composable(
