@@ -21,6 +21,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY timestamp DESC LIMIT 5")
     fun getLatest5Expenses(): Flow<List<Expense>>
 
+    @Query("SELECT * FROM expenses ORDER BY timestamp DESC LIMIT :limit")
+    fun getLatestExpenses(limit: Int): Flow<List<Expense>>
+
     @Query("SELECT * FROM expenses ORDER BY timestamp DESC LIMIT :pageSize OFFSET :offset")
     fun getPaginatedExpenses(offset: Int, pageSize: Int): Flow<List<Expense>>
 
@@ -50,6 +53,9 @@ interface ExpenseDao {
 
     @Delete
     suspend fun deleteExpense(expense: Expense)
+
+    @Query("SELECT * FROM expenses WHERE id = :expenseId")
+    suspend fun getExpenseById(expenseId: String): Expense?
 
     @Query("DELETE FROM expenses WHERE id = :expenseId")
     suspend fun deleteExpenseById(expenseId: String)

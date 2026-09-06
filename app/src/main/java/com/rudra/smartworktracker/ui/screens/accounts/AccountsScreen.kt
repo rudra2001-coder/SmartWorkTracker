@@ -1,15 +1,14 @@
 package com.rudra.smartworktracker.ui.screens.accounts
 
-import android.app.Application
-import android.app.Activity
 import android.widget.Toast
-import java.util.Calendar
-import java.util.Locale
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,8 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,8 +34,26 @@ import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.AccountCategory
 import com.rudra.smartworktracker.data.entity.AccountProvider
 import com.rudra.smartworktracker.data.entity.displayName
-import com.rudra.smartworktracker.data.entity.icon
-import com.rudra.smartworktracker.engine.SmartAlert
+import java.util.*
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
+private val SlateGray = Color(0xFF64748B)
+
+private val GreenSurface = Color(0xFFE6FBF4)
+private val RedSurface = Color(0xFFFFEDED)
+private val BlueSurface = Color(0xFFEFF6FF)
+private val AmberSurface = Color(0xFFFFFBEB)
+private val PurpleSurface = Color(0xFFF5F3FF)
+private val DeleteRed = Color(0xFFE53935)
+private val EditBlue = Color(0xFF1E88E5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,15 +68,19 @@ fun AccountsScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf<Account?>(null) }
-    var showDeleteDialog by remember { mutableStateOf<Account?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<Pair<Account, Boolean>?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Column {
                         Text("Accounts", fontWeight = FontWeight.Bold)
-                        Text("${uiState.accounts.size} accounts", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "${uiState.accounts.size} accounts",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 actions = {
@@ -70,13 +92,12 @@ fun AccountsScreen(
                     }
                 }
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -85,93 +106,121 @@ fun AccountsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(paddingValues),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
             ) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    NetWorthCard(netWorth = uiState.totalNetWorth)
-                }
+                item { NetWorthHeroCard(netWorth = uiState.totalNetWorth) }
 
                 if (uiState.smartAlerts.isNotEmpty()) {
+                    item { SmartAlertsSection(alerts = uiState.smartAlerts) }
+                }
+
+                if (uiState.wallets.isNotEmpty()) {
                     item {
-                        SmartAlertsSection(alerts = uiState.smartAlerts)
+                        AccountCategorySection(
+                            title = "WALLETS",
+                            accounts = uiState.wallets,
+                            total = uiState.walletTotal,
+                            onAccountClick = onNavigateToAccountDetail,
+                            onEdit = { showEditDialog = it },
+                            onDelete = { account ->
+                                showDeleteDialog = account to (account.balance > 0)
+                            }
+                        )
+                    }
+                }
+
+                if (uiState.bankAccounts.isNotEmpty()) {
+                    item {
+                        AccountCategorySection(
+                            title = "BANK ACCOUNTS",
+                            accounts = uiState.bankAccounts,
+                            total = uiState.bankTotal,
+                            onAccountClick = onNavigateToAccountDetail,
+                            onEdit = { showEditDialog = it },
+                            onDelete = { account ->
+                                showDeleteDialog = account to (account.balance > 0)
+                            }
+                        )
+                    }
+                }
+
+                if (uiState.mobileBankingAccounts.isNotEmpty()) {
+                    item {
+                        AccountCategorySection(
+                            title = "MOBILE BANKING",
+                            accounts = uiState.mobileBankingAccounts,
+                            total = uiState.mobileBankingTotal,
+                            onAccountClick = onNavigateToAccountDetail,
+                            onEdit = { showEditDialog = it },
+                            onDelete = { account ->
+                                showDeleteDialog = account to (account.balance > 0)
+                            }
+                        )
                     }
                 }
 
                 item {
-                    WalletSection(
-                        wallets = uiState.wallets,
-                        total = uiState.walletTotal,
-                        onAccountClick = onNavigateToAccountDetail,
-                        onEditClick = { showEditDialog = it },
-                        onDeleteClick = { showDeleteDialog = it }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = onNavigateToTransfer,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Transfer")
+                        }
+                        OutlinedButton(
+                            onClick = { showAddDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Add Account")
+                        }
+                    }
                 }
 
-                item {
-                    BankAccountsSection(
-                        accounts = uiState.bankAccounts,
-                        total = uiState.bankTotal,
-                        onAccountClick = onNavigateToAccountDetail,
-                        onEditClick = { showEditDialog = it },
-                        onDeleteClick = { showDeleteDialog = it }
-                    )
-                }
-
-                item {
-                    MobileBankingSection(
-                        accounts = uiState.mobileBankingAccounts,
-                        total = uiState.mobileBankingTotal,
-                        onAccountClick = onNavigateToAccountDetail,
-                        onEditClick = { showEditDialog = it },
-                        onDeleteClick = { showDeleteDialog = it }
-                    )
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    QuickActionsSection(
-                        onTransfer = onNavigateToTransfer,
-                        onAddAccount = { showAddDialog = true }
-                    )
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
+                item { Spacer(Modifier.height(16.dp)) }
             }
         }
+    }
 
-        if (showAddDialog) {
-            AddAccountDialog(
-                accounts = uiState.accounts,
-                onDismiss = { showAddDialog = false },
-                onConfirm = { name, category, provider, number, nickname, balance, maxBalance, hasLimit, dailyLimit ->
-                    viewModel.createAccount(name, category, provider, number, nickname, balance, maxBalance, hasLimit, dailyLimit) { success, message ->
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        if (success) showAddDialog = false
-                    }
+    if (showAddDialog) {
+        AddAccountDialog(
+            accounts = uiState.accounts,
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, category, provider, number, nickname, balance, maxBalance, hasLimit, dailyLimit ->
+                viewModel.createAccount(name, category, provider, number, nickname, balance, maxBalance, hasLimit, dailyLimit) { success, message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    if (success) showAddDialog = false
                 }
-            )
-        }
+            }
+        )
+    }
 
-        showEditDialog?.let { account ->
-            EditAccountDialog(
-                account = account,
-                onDismiss = { showEditDialog = null },
-                onConfirm = { updatedAccount ->
-                    viewModel.updateAccount(updatedAccount) { success, message ->
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        if (success) showEditDialog = null
-                    }
+    showEditDialog?.let { account ->
+        EditAccountDialog(
+            account = account,
+            onDismiss = { showEditDialog = null },
+            onConfirm = { updatedAccount ->
+                viewModel.updateAccount(updatedAccount) { success, message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    if (success) showEditDialog = null
                 }
-            )
-        }
+            }
+        )
+    }
 
-        showDeleteDialog?.let { account ->
-            DeleteAccountDialog(
+    showDeleteDialog?.let { (account, hasBalance) ->
+        if (hasBalance) {
+            DeleteAccountWithTransferDialog(
                 account = account,
                 accounts = uiState.accounts.filter { it.id != account.id },
                 onDismiss = { showDeleteDialog = null },
@@ -182,244 +231,313 @@ fun AccountsScreen(
                     }
                 }
             )
+        } else {
+            DeleteAccountConfirmDialog(
+                account = account,
+                onDismiss = { showDeleteDialog = null },
+                onConfirm = {
+                    viewModel.deleteAccountDirectly(account.id)
+                    showDeleteDialog = null
+                    Toast.makeText(context, "Account deleted", Toast.LENGTH_SHORT).show()
+                }
+            )
         }
     }
 }
 
 @Composable
-fun NetWorthCard(netWorth: Double) {
-    val greeting = getGreeting()
-    
+fun NetWorthHeroCard(netWorth: Double) {
+    val greeting = remember {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        when {
+            hour < 12 -> "Good Morning"
+            hour < 17 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+    }
+
+    var animatedNetWorth by remember { mutableDoubleStateOf(0.0) }
+    val animatedValue by animateFloatAsState(
+        targetValue = animatedNetWorth.toFloat(),
+        animationSpec = tween(durationMillis = 1200),
+        label = "networth"
+    )
+    LaunchedEffect(netWorth) {
+        animatedNetWorth = netWorth
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        shape = RoundedCornerShape(16.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(12.dp, CardShape, clip = false),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.AccountBalance,
+                    contentDescription = null,
+                    tint = SlateGray,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    greeting,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = greeting,
+                "Total Net Worth",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = "Total Net Worth",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                "৳ ${formatAmount(animatedValue.toDouble())}",
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (netWorth >= 0) EmeraldGreen else CoralRed
             )
-            Text(
-                text = "৳ ${formatAmount(netWorth)}",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                shape = PillShape,
+                color = if (netWorth >= 0) GreenSurface else RedSurface
+            ) {
+                Text(
+                    if (netWorth >= 0) "Healthy finances" else "Review your accounts",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = if (netWorth >= 0) EmeraldGreen else CoralRed,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun SmartAlertsSection(alerts: List<SmartAlert>) {
+fun SmartAlertsSection(alerts: List<com.rudra.smartworktracker.engine.SmartAlert>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         alerts.take(2).forEach { alert ->
-            AlertItem(alert = alert)
+            val (icon, color, message) = when (alert) {
+                is com.rudra.smartworktracker.engine.SmartAlert.LowBalance -> Triple(
+                    Icons.Default.Warning, GoldenAmber, alert.message
+                )
+                is com.rudra.smartworktracker.engine.SmartAlert.ApproachingLimit -> Triple(
+                    Icons.Default.TrendingUp, GoldenAmber, alert.message
+                )
+                is com.rudra.smartworktracker.engine.SmartAlert.HighSpending -> Triple(
+                    Icons.Default.TrendingDown, CoralRed, alert.message
+                )
+                is com.rudra.smartworktracker.engine.SmartAlert.TransferHabit -> Triple(
+                    Icons.Default.SwapHoriz, SapphireBlue, alert.message
+                )
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(icon, contentDescription = null, tint = color)
+                    Text(message, style = MaterialTheme.typography.bodyMedium, color = color)
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertItem(alert: SmartAlert) {
-    val (icon, color, message) = when (alert) {
-        is SmartAlert.LowBalance -> Triple(
-            Icons.Default.Warning,
-            Color(0xFFFF9800),
-            alert.message
-        )
-        is SmartAlert.ApproachingLimit -> Triple(
-            Icons.Default.TrendingUp,
-            Color(0xFFFFC107),
-            alert.message
-        )
-        is SmartAlert.HighSpending -> Triple(
-            Icons.Default.TrendingDown,
-            Color(0xFFF44336),
-            alert.message
-        )
-        is SmartAlert.TransferHabit -> Triple(
-            Icons.Default.SwapHoriz,
-            Color(0xFF2196F3),
-            alert.message
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(icon, contentDescription = null, tint = color)
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = color
-            )
-        }
-    }
-}
-
-@Composable
-fun WalletSection(
-    wallets: List<Account>,
-    total: Double,
-    onAccountClick: (Long) -> Unit,
-    onEditClick: (Account) -> Unit,
-    onDeleteClick: (Account) -> Unit
-) {
-    AccountSection(
-        title = "💳 WALLETS",
-        accounts = wallets,
-        total = total,
-        onAccountClick = onAccountClick,
-        onEditClick = onEditClick,
-        onDeleteClick = onDeleteClick
-    )
-}
-
-@Composable
-fun BankAccountsSection(
-    accounts: List<Account>,
-    total: Double,
-    onAccountClick: (Long) -> Unit,
-    onEditClick: (Account) -> Unit,
-    onDeleteClick: (Account) -> Unit
-) {
-    AccountSection(
-        title = "🏦 BANK ACCOUNTS",
-        accounts = accounts,
-        total = total,
-        onAccountClick = onAccountClick,
-        onEditClick = onEditClick,
-        onDeleteClick = onDeleteClick
-    )
-}
-
-@Composable
-fun MobileBankingSection(
-    accounts: List<Account>,
-    total: Double,
-    onAccountClick: (Long) -> Unit,
-    onEditClick: (Account) -> Unit,
-    onDeleteClick: (Account) -> Unit
-) {
-    AccountSection(
-        title = "📱 MOBILE BANKING",
-        accounts = accounts,
-        total = total,
-        onAccountClick = onAccountClick,
-        onEditClick = onEditClick,
-        onDeleteClick = onDeleteClick
-    )
-}
-
-@Composable
-fun AccountSection(
+fun AccountCategorySection(
     title: String,
     accounts: List<Account>,
     total: Double,
     onAccountClick: (Long) -> Unit,
-    onEditClick: (Account) -> Unit,
-    onDeleteClick: (Account) -> Unit
+    onEdit: (Account) -> Unit,
+    onDelete: (Account) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+            Surface(shape = PillShape, color = SapphireBlue.copy(alpha = 0.1f)) {
+                Text(
+                    "৳ ${formatAmount(total)}",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SapphireBlue,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
-            )
-            Text(
-                text = "৳ ${formatAmount(total)}",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
+            }
         }
 
         accounts.forEach { account ->
-            AccountCard(
+            SwipeableAccountCard(
                 account = account,
                 onClick = { onAccountClick(account.id) },
-                onEditClick = { onEditClick(account) },
-                onDeleteClick = { onDeleteClick(account) }
+                onEdit = { onEdit(account) },
+                onDelete = { onDelete(account) }
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeableAccountCard(
+    account: Account,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onEdit()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDelete()
+                    false
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
+
+    val bgColor by animateColorAsState(
+        targetValue = when (dismissState.targetValue) {
+            SwipeToDismissBoxValue.StartToEnd -> EditBlue.copy(alpha = 0.15f)
+            SwipeToDismissBoxValue.EndToStart -> DeleteRed.copy(alpha = 0.15f)
+            SwipeToDismissBoxValue.Settled -> Color.Transparent
+        },
+        label = "bg"
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CardShape)
+                    .background(bgColor)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                when (dismissState.targetValue) {
+                    SwipeToDismissBoxValue.StartToEnd -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = EditBlue)
+                            Text("Edit", color = EditBlue, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    SwipeToDismissBoxValue.EndToStart -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = DeleteRed)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete", color = DeleteRed, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    SwipeToDismissBoxValue.Settled -> { }
+                }
+            }
+        },
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true
+    ) {
+        AccountCard(account = account, onClick = onClick)
     }
 }
 
 @Composable
 fun AccountCard(
     account: Account,
-    onClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    
-    val cardColor = getAccountCardColor(account)
-    val balancePercentage = account.getBalancePercentage()
+    val cardColor = when (account.type) {
+        AccountCategory.WALLET -> PurpleSurface
+        AccountCategory.BANK -> BlueSurface
+        AccountCategory.MOBILE_BANKING -> AmberSurface
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(6.dp, CardShape, clip = false)
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Column {
-                        Text(
-                            text = account.nickname ?: account.name,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.SemiBold
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                brush = Brush.linearGradient(
+                                    when (account.type) {
+                                        AccountCategory.WALLET -> listOf(VioletPurple, SapphireBlue)
+                                        AccountCategory.BANK -> listOf(SapphireBlue, EmeraldGreen)
+                                        AccountCategory.MOBILE_BANKING -> listOf(GoldenAmber, CoralRed)
+                                    }
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            when (account.type) {
+                                AccountCategory.WALLET -> Icons.Default.AccountBalance
+                                AccountCategory.BANK -> Icons.Default.AccountBalance
+                                AccountCategory.MOBILE_BANKING -> Icons.Default.PhoneAndroid
+                            },
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            account.nickname ?: account.name,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Row(
@@ -427,158 +545,81 @@ Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = account.provider.displayName(),
+                                account.provider.displayName(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             if (account.hasLimit && account.dailyTransferLimit != null) {
-                                Text(
-                                    text = "• ${account.dailyTransferLimit.toInt()} limit",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Surface(
+                                    shape = ChipShape,
+                                    color = SapphireBlue.copy(alpha = 0.1f)
+                                ) {
+                                    Text(
+                                        " ${account.dailyTransferLimit.toInt()} limit",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = SapphireBlue,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                         Text(
-                            text = maskAccountNumber(account.accountNumber),
+                            maskAccountNumber(account.accountNumber),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
-                
+
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "৳ ${formatAmount(account.balance)}",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        "৳ ${formatAmount(account.balance)}",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (account.balance >= 0) MaterialTheme.colorScheme.onSurface else CoralRed
                     )
                     account.maxBalance?.let { max ->
                         Text(
-                            text = "of ৳ ${formatAmount(max)}",
+                            "of ৳ ${formatAmount(max)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.MoreVert, 
-                                contentDescription = "Options",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit") },
-                                onClick = { 
-                                    showMenu = false
-                                    onEditClick() 
-                                },
-                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete") },
-                                onClick = { 
-                                    showMenu = false
-                                    onDeleteClick() 
-                                },
-                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
-                            )
-                        }
-                    }
                 }
             }
-            
+
             if (account.maxBalance != null && account.maxBalance > 0) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
+                val progress = account.getBalancePercentage()
                 LinearProgressIndicator(
-                    progress = { balancePercentage },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = getProgressColor(balancePercentage),
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                    color = when {
+                        progress >= 0.9f -> CoralRed
+                        progress >= 0.7f -> GoldenAmber
+                        progress >= 0.5f -> Color(0xFFFFC107)
+                        else -> EmeraldGreen
+                    },
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${(balancePercentage * 100).toInt()}% used",
+                        "${(progress * 100).toInt()}% used",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (account.maxBalance - account.balance > 0) {
                         Text(
-                            text = "৳ ${formatAmount(account.maxBalance - account.balance)} left",
+                            "৳ ${formatAmount(account.maxBalance - account.balance)} left",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun getProgressColor(percentage: Float): Color {
-    return when {
-        percentage >= 0.9f -> Color(0xFFF44336)
-        percentage >= 0.7f -> Color(0xFFFF9800)
-        percentage >= 0.5f -> Color(0xFFFFC107)
-        else -> Color(0xFF4CAF50)
-    }
-}
-
-fun getAccountCardColor(account: Account): Color {
-    return when (account.type) {
-        AccountCategory.WALLET -> Color(0xFFF8F5FF)
-        AccountCategory.BANK -> Color(0xFFE8F5E9)
-        AccountCategory.MOBILE_BANKING -> Color(0xFFFFF3E0)
-    }
-}
-
-@Composable
-fun QuickActionsSection(
-    onTransfer: () -> Unit,
-    onAddAccount: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Button(
-            onClick = onTransfer,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.SwapHoriz, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Transfer")
-        }
-        
-        OutlinedButton(
-            onClick = onAddAccount,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Account")
         }
     }
 }
@@ -604,20 +645,22 @@ fun AddAccountDialog(
 
     val providersForCategory = when (selectedCategory) {
         AccountCategory.WALLET -> listOf(AccountProvider.CASH)
-        AccountCategory.BANK -> listOf(AccountProvider.BANK, AccountProvider.SAVINGS, AccountProvider.CREDIT_CARD, AccountProvider.LOAN, AccountProvider.DBBL, AccountProvider.CITY_BANK, AccountProvider.BRAC_BANK, AccountProvider.BKB, AccountProvider.SONALI_BANK)
-        AccountCategory.MOBILE_BANKING -> listOf(AccountProvider.BKASH, AccountProvider.NAGAD, AccountProvider.ROCKET, AccountProvider.UCASH)
+        AccountCategory.BANK -> listOf(
+            AccountProvider.BANK, AccountProvider.SAVINGS, AccountProvider.CREDIT_CARD,
+            AccountProvider.LOAN, AccountProvider.DBBL, AccountProvider.CITY_BANK,
+            AccountProvider.BRAC_BANK, AccountProvider.BKB, AccountProvider.SONALI_BANK
+        )
+        AccountCategory.MOBILE_BANKING -> listOf(
+            AccountProvider.BKASH, AccountProvider.NAGAD, AccountProvider.ROCKET, AccountProvider.UCASH
+        )
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text("➕ Add New Account", fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Add New Account", fontWeight = FontWeight.Bold) },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("Account Type", style = MaterialTheme.typography.labelMedium)
@@ -629,9 +672,7 @@ fun AddAccountDialog(
                         value = selectedCategory.displayName(),
                         onValueChange = {},
                         readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) }
                     )
                     ExposedDropdownMenu(
@@ -664,9 +705,7 @@ fun AddAccountDialog(
                         value = selectedProvider.displayName(),
                         onValueChange = {},
                         readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded) }
                     )
                     ExposedDropdownMenu(
@@ -718,21 +757,17 @@ fun AddAccountDialog(
                         Text("Set Max Balance", style = MaterialTheme.typography.labelMedium)
                         Text("Show progress bar", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
-                        checked = showMaxBalanceField,
-                        onCheckedChange = { showMaxBalanceField = it }
-                    )
+                    Switch(checked = showMaxBalanceField, onCheckedChange = { showMaxBalanceField = it })
                 }
 
                 if (showMaxBalanceField) {
                     OutlinedTextField(
                         value = maxBalance,
                         onValueChange = { if (it.isEmpty() || it.all { c -> c.isDigit() }) maxBalance = it },
-                        label = { Text("Max Balance (for progress bar)") },
+                        label = { Text("Max Balance") },
                         prefix = { Text("৳ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        placeholder = { Text("e.g., 50000") }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
 
@@ -745,12 +780,9 @@ fun AddAccountDialog(
                 ) {
                     Column {
                         Text("Daily Transfer Limit", style = MaterialTheme.typography.labelMedium)
-                        Text("Set a limit for daily transfers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Set limit for daily transfers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
-                        checked = hasLimit,
-                        onCheckedChange = { hasLimit = it }
-                    )
+                    Switch(checked = hasLimit, onCheckedChange = { hasLimit = it })
                 }
 
                 if (hasLimit) {
@@ -760,8 +792,7 @@ fun AddAccountDialog(
                         label = { Text("Limit Amount") },
                         prefix = { Text("৳ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        placeholder = { Text("e.g., 25000") }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
             }
@@ -772,27 +803,13 @@ fun AddAccountDialog(
                     val balance = initialBalance.toDoubleOrNull() ?: 0.0
                     val max = if (showMaxBalanceField && maxBalance.isNotBlank()) maxBalance.toDoubleOrNull() else null
                     val limit = if (hasLimit && dailyLimit.isNotBlank()) dailyLimit.toDoubleOrNull() else null
-                    onConfirm(
-                        selectedProvider.displayName(),
-                        selectedCategory,
-                        selectedProvider,
-                        accountNumber,
-                        nickname.ifEmpty { null },
-                        balance,
-                        max,
-                        hasLimit,
-                        limit
-                    )
+                    onConfirm(selectedProvider.displayName(), selectedCategory, selectedProvider, accountNumber, nickname.ifEmpty { null }, balance, max, hasLimit, limit)
                 },
-                enabled = accountNumber.isNotBlank() && (!hasLimit || dailyLimit.isNotBlank())
-            ) {
-                Text("Add Account")
-            }
+                enabled = accountNumber.isNotBlank()
+            ) { Text("Add") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
@@ -814,27 +831,24 @@ fun EditAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text("✏️ Edit Account", fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Edit Account", fontWeight = FontWeight.Bold) },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(account.provider.icon(), fontSize = 32.sp)
+                        Box(
+                            modifier = Modifier.size(40.dp).background(SapphireBlue, RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AccountBalance, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
                         Column {
                             Text(account.name, fontWeight = FontWeight.Medium)
                             Text(account.type.displayName(), style = MaterialTheme.typography.bodySmall)
@@ -860,7 +874,7 @@ fun EditAccountDialog(
                 OutlinedTextField(
                     value = balance,
                     onValueChange = { if (it.isEmpty() || it.all { c -> c.isDigit() || c == '.' }) balance = it },
-                    label = { Text("Current Balance") },
+                    label = { Text("Balance") },
                     prefix = { Text("৳ ") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -872,17 +886,10 @@ fun EditAccountDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Set Max Balance", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            if (account.maxBalance != null) "Current: ৳ ${account.maxBalance.toInt()}" else "For progress bar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("Max Balance", style = MaterialTheme.typography.labelMedium)
+                        Text("For progress bar", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
-                        checked = showMaxBalance,
-                        onCheckedChange = { showMaxBalance = it }
-                    )
+                    Switch(checked = showMaxBalance, onCheckedChange = { showMaxBalance = it })
                 }
 
                 if (showMaxBalance) {
@@ -892,8 +899,7 @@ fun EditAccountDialog(
                         label = { Text("Max Balance") },
                         prefix = { Text("৳ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        placeholder = { Text("e.g., 50000") }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
 
@@ -906,16 +912,9 @@ fun EditAccountDialog(
                 ) {
                     Column {
                         Text("Daily Transfer Limit", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            if (account.getEffectiveLimit() != null) "Current: ৳ ${account.getEffectiveLimit()?.toInt()}" else "No limit set",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("For daily transfers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
-                        checked = hasLimit,
-                        onCheckedChange = { hasLimit = it }
-                    )
+                    Switch(checked = hasLimit, onCheckedChange = { hasLimit = it })
                 }
 
                 if (hasLimit) {
@@ -925,8 +924,7 @@ fun EditAccountDialog(
                         label = { Text("Limit Amount") },
                         prefix = { Text("৳ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        placeholder = { Text("e.g., 25000") }
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
             }
@@ -937,7 +935,7 @@ fun EditAccountDialog(
                     val newBalance = balance.toDoubleOrNull() ?: account.balance
                     val max = if (showMaxBalance && maxBalance.isNotBlank()) maxBalance.toDoubleOrNull() else null
                     val limit = if (hasLimit && dailyLimit.isNotBlank()) dailyLimit.toDoubleOrNull() else null
-                    val updatedAccount = account.copy(
+                    onConfirm(account.copy(
                         nickname = nickname.ifEmpty { null },
                         accountNumber = accountNumber,
                         balance = newBalance,
@@ -945,24 +943,65 @@ fun EditAccountDialog(
                         hasLimit = hasLimit,
                         dailyTransferLimit = limit,
                         lastUpdated = System.currentTimeMillis()
-                    )
-                    onConfirm(updatedAccount)
+                    ))
                 }
-            ) {
-                Text("Save")
-            }
+            ) { Text("Save") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeleteAccountDialog(
+fun DeleteAccountConfirmDialog(
+    account: Account,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Account", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = RedSurface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = CoralRed)
+                        Column {
+                            Text(account.nickname ?: account.name, fontWeight = FontWeight.Medium)
+                            Text("Balance: ৳ ${formatAmount(account.balance)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                Text(
+                    "This account has zero balance and will be permanently removed.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = DeleteRed)
+            ) { Text("Delete") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeleteAccountWithTransferDialog(
     account: Account,
     accounts: List<Account>,
     onDismiss: () -> Unit,
@@ -970,31 +1009,22 @@ fun DeleteAccountDialog(
 ) {
     var selectedTargetAccount by remember { mutableStateOf<Account?>(null) }
     var targetExpanded by remember { mutableStateOf(false) }
-    val canDeleteDirectly = account.balance == 0.0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text("🗑️ Delete Account", fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Delete & Transfer", fontWeight = FontWeight.Bold) },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = RedSurface),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(account.provider.icon(), fontSize = 32.sp)
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = CoralRed)
                         Column {
                             Text(account.nickname ?: account.name, fontWeight = FontWeight.Medium)
                             Text("Balance: ৳ ${formatAmount(account.balance)}", style = MaterialTheme.typography.bodySmall)
@@ -1002,87 +1032,75 @@ fun DeleteAccountDialog(
                     }
                 }
 
-                if (!canDeleteDirectly) {
-                    Text(
-                        text = "⚠️ This account has balance. Transfer to another account first:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                Text(
+                    "This account has a balance of ৳ ${formatAmount(account.balance)}. Transfer the balance to another account before deleting:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
 
-                    ExposedDropdownMenuBox(
+                ExposedDropdownMenuBox(
+                    expanded = targetExpanded,
+                    onExpandedChange = { targetExpanded = !targetExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedTargetAccount?.nickname ?: selectedTargetAccount?.name ?: "Select target account",
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded) }
+                    )
+                    ExposedDropdownMenu(
                         expanded = targetExpanded,
-                        onExpandedChange = { targetExpanded = !targetExpanded }
+                        onDismissRequest = { targetExpanded = false }
                     ) {
-                        OutlinedTextField(
-                            value = selectedTargetAccount?.nickname ?: selectedTargetAccount?.name ?: "Select target account",
-                            onValueChange = {},
-                            readOnly = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded) }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = targetExpanded,
-                            onDismissRequest = { targetExpanded = false }
-                        ) {
-                            accounts.forEach { targetAccount ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Column {
-                                            Text(targetAccount.nickname ?: targetAccount.name)
-                                            Text("Balance: ৳ ${formatAmount(targetAccount.balance)}", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                    },
-                                    onClick = {
-                                        selectedTargetAccount = targetAccount
-                                        targetExpanded = false
+                        accounts.forEach { targetAccount ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(targetAccount.nickname ?: targetAccount.name)
+                                        Text("Balance: ৳ ${formatAmount(targetAccount.balance)}", style = MaterialTheme.typography.bodySmall)
                                     }
-                                )
-                            }
+                                },
+                                onClick = {
+                                    selectedTargetAccount = targetAccount
+                                    targetExpanded = false
+                                }
+                            )
                         }
                     }
-                } else {
-                    Text(
-                        text = "✅ This account has zero balance. You can delete it directly.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                }
+
+                selectedTargetAccount?.let { target ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = GreenSurface),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(16.dp))
+                            Text(
+                                "Will transfer ৳ ${formatAmount(account.balance)} → ${target.nickname ?: target.name}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    if (canDeleteDirectly) {
-                        onConfirm(-1)
-                    } else {
-                        selectedTargetAccount?.let { onConfirm(it.id) }
-                    }
-                },
-                enabled = canDeleteDirectly || selectedTargetAccount != null,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("Delete")
-            }
+                onClick = { selectedTargetAccount?.let { onConfirm(it.id) } },
+                enabled = selectedTargetAccount != null,
+                colors = ButtonDefaults.buttonColors(containerColor = DeleteRed)
+            ) { Text("Delete & Transfer") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
-}
-
-private fun getGreeting(): String {
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    return when {
-        hour < 12 -> "👋 Good morning"
-        hour < 17 -> "☀️ Good afternoon"
-        else -> "🌙 Good evening"
-    }
 }
 
 private fun formatAmount(amount: Double): String {
@@ -1090,9 +1108,5 @@ private fun formatAmount(amount: Double): String {
 }
 
 private fun maskAccountNumber(number: String): String {
-    return if (number.length > 4) {
-        "****${number.takeLast(4)}"
-    } else {
-        number
-    }
+    return if (number.length > 4) "****${number.takeLast(4)}" else number
 }

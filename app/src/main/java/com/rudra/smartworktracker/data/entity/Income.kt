@@ -12,7 +12,6 @@ data class Income(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     
-    // UUID field for future primary key transition - Rule 1.1
     val uuid: String? = null,
 
     val amount: Double,
@@ -21,7 +20,8 @@ data class Income(
     val timestamp: Long,
     val source: String,
 
-    // Audit fields - Rule 1.2
+    val accountId: Long = 0,
+
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),
     override val isDeleted: Boolean = false,

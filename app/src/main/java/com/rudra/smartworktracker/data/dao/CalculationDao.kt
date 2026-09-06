@@ -12,7 +12,7 @@ interface CalculationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(calculation: Calculation)
 
-    @Query("SELECT * FROM calculations WHERE id = 1")
+    @Query("SELECT * FROM calculations LIMIT 1")
     fun getCalculation(): Flow<Calculation?>
 
     @Query("SELECT * FROM calculations")

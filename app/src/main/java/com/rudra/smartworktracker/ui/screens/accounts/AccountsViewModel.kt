@@ -80,19 +80,48 @@ class AccountsViewModel(application: Application) : AndroidViewModel(application
         _selectedAccount.value = null
     }
 
-    fun deleteAccount(accountId: Long) {
+    fun deleteAccountWithTransfer(
+        accountId: Long,
+        targetAccountId: Long,
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
-            accountRepository.deleteAccountById(accountId)
+            try {
+                val account = accountRepository.getAccountById(accountId)
+                if (account == null) {
+                    onResult(false, "Account not found")
+                    return@launch
+                }
+
+                if (account.balance > 0 && targetAccountId > 0) {
+                    val result = fusionEngine.processTransfer(
+                        fromAccountId = accountId,
+                        toAccountId = targetAccountId,
+                        amount = account.balance,
+                        note = "Balance transfer before deleting account: ${account.name}"
+                    )
+                    when (result) {
+                        is com.rudra.smartworktracker.engine.FusionResult.Error -> {
+                            onResult(false, "Transfer failed: ${result.message}")
+                            return@launch
+                        }
+                        is com.rudra.smartworktracker.engine.FusionResult.Success -> { }
+                    }
+                }
+
+                accountRepository.deleteAccountById(accountId)
+                onResult(true, "Account deleted successfully. Balance transferred.")
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Failed to delete account")
+            }
         }
     }
 
-    fun deleteAccountWithTransfer(accountId: Long, targetAccountId: Long, onResult: (Boolean, String) -> Unit) {
+    fun deleteAccountDirectly(accountId: Long) {
         viewModelScope.launch {
-            val result = accountRepository.deleteAccountWithTransfer(accountId, targetAccountId)
-            when (result) {
-                is com.rudra.smartworktracker.data.repository.DeleteResult.Success -> onResult(true, "Account deleted successfully")
-                is com.rudra.smartworktracker.data.repository.DeleteResult.Error -> onResult(false, result.message)
-            }
+            try {
+                accountRepository.deleteAccountById(accountId)
+            } catch (_: Exception) { }
         }
     }
 
@@ -143,7 +172,7 @@ class AccountDetailViewModel(application: Application) : AndroidViewModel(applic
 
     private val db = AppDatabase.getDatabase(application)
     private val accountRepository = AccountRepository(db.accountDao())
-    private val fusionEngine = FusionEngine(db.accountDao(), db.financialTransactionDao())
+    private val financialTransactionDao = db.financialTransactionDao()
 
     private val _uiState = MutableStateFlow(AccountDetailUiState())
     val uiState: StateFlow<AccountDetailUiState> = _uiState.asStateFlow()
@@ -152,35 +181,62 @@ class AccountDetailViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            accountRepository.getAccountByIdFlow(accountId).collect { account ->
+            combine(
+                accountRepository.getAccountByIdFlow(accountId),
+                financialTransactionDao.getTransactionsForAccount(accountId)
+            ) { account, transactions ->
                 if (account != null) {
-                    val history = generateBalanceHistory()
-                    
+                    val history = buildBalanceHistory(account, transactions)
+                    val totalInflow = transactions.filter { it.destinationAccountId == accountId }.sumOf { it.amount }
+                    val totalOutflow = transactions.filter { it.sourceAccountId == accountId }.sumOf { it.amount }
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             account = account,
+                            transactions = transactions,
                             balanceHistory = history,
-                            error = null
+                            error = null,
+                            totalInflow = totalInflow,
+                            totalOutflow = totalOutflow
                         )
                     }
                 }
-            }
+            }.collect()
         }
     }
 
-    private fun generateBalanceHistory(): List<BalanceHistoryItem> {
+    private fun buildBalanceHistory(
+        account: Account,
+        transactions: List<com.rudra.smartworktracker.data.entity.FinancialTransaction>
+    ): List<BalanceHistoryItem> {
         val calendar = Calendar.getInstance()
         val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
-        
+        val now = calendar.timeInMillis
+
         return (6 downTo 0).map { daysAgo ->
             val date = calendar.apply {
+                timeInMillis = now
                 add(Calendar.DAY_OF_YEAR, -daysAgo)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }.timeInMillis
-            
+
+            val dayEnd = date + 86400000L
+            val dayTransactions = transactions.filter { it.date in date until dayEnd }
+            val dayFlow = dayTransactions.sumOf { 
+                when {
+                    it.destinationAccountId == account.id -> it.amount
+                    it.sourceAccountId == account.id -> -it.amount
+                    else -> 0.0
+                }
+            }
+
             BalanceHistoryItem(
                 date = date,
-                balance = (2500..4000).random().toDouble(),
+                balance = dayFlow,
                 dayLabel = dayFormat.format(Date(date))
             )
         }

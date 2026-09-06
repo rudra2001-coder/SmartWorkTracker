@@ -12,7 +12,7 @@ class AddEntryViewModelFactory(private val context: Context) : AbstractSavedStat
     override fun <T : ViewModel> create(key: String, modelClass: Class<T>, handle: SavedStateHandle): T {
         if (modelClass.isAssignableFrom(AddEntryViewModel::class.java)) {
             val db = AppDatabase.getDatabase(context.applicationContext)
-            val expenseRepository = ExpenseRepository(db.expenseDao())
+            val expenseRepository = ExpenseRepository(db.expenseDao(), db.accountDao())
             val workLogRepository = WorkLogRepository(db.workLogDao())
             @Suppress("UNCHECKED_CAST")
             return AddEntryViewModel(expenseRepository, workLogRepository, handle) as T

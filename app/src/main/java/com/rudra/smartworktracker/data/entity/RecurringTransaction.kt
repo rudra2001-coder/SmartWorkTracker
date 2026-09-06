@@ -41,8 +41,8 @@ data class RecurringTransaction(
     val transactionType: TransactionType,
     val amount: Double,
     val category: String? = null,
-    val sourceAccount: AccountType,
-    val destinationAccount: AccountType? = null,
+    val sourceAccountId: Long = 0,
+    val destinationAccountId: Long? = null,
     
     // Scheduled execution date
     val scheduledDate: Long,

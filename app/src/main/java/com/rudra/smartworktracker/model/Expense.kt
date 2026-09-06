@@ -19,10 +19,10 @@ data class Expense(
     val timestamp: Long = System.currentTimeMillis(),
     val imageUri: String? = null,
     
-    // UUID for future sync preparation - Rule 1.1
     val uuid: String = id,
 
-    // Audit fields - Rule 1.2
+    val accountId: Long = 0,
+
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),
     override val isDeleted: Boolean = false,
@@ -41,6 +41,7 @@ enum class ExpenseCategory(val displayName: String) {
     GIFTS("Gifts"),
     TRAVEL("Travel"),
     SUBSCRIPTIONS("Subscriptions"),
+    TRANSFER_FEE("Transfer Fee"),
     OTHER("Other");
 
     val color: Color
@@ -56,6 +57,7 @@ enum class ExpenseCategory(val displayName: String) {
             GIFTS -> Color(0xFFE91E63)
             TRAVEL -> Color(0xFF00BCD4)
             SUBSCRIPTIONS -> Color(0xFF9C27B0)
+            TRANSFER_FEE -> Color(0xFFFF6B35)
             OTHER -> Color(0xFF9E9E9E)
         }
 }

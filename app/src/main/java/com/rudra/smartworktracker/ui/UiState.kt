@@ -1,5 +1,6 @@
 package com.rudra.smartworktracker.ui
 
+import com.rudra.smartworktracker.data.entity.Account
 import com.rudra.smartworktracker.data.entity.Income
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.DARK_THEME
 import com.rudra.smartworktracker.data.repository.SettingsRepository.Companion.NOTIFICATIONS
@@ -23,7 +24,10 @@ data class DashboardUiState(
     val errorMessage: String? = null,
     val incomes: List<Income> = emptyList(),
     val expenses: List<Expense> = emptyList(),
-    val workLogs: List<WorkLog> = emptyList()
+    val workLogs: List<WorkLog> = emptyList(),
+    val heroColor: String = "#FFFFFF",
+    val heroAccountId: Long = 0L,
+    val accounts: List<Account> = emptyList()
 )
 
 data class MonthlyStats(
@@ -49,6 +53,7 @@ data class FinancialSummary(
     val totalMealCost: Double = 0.0,
     val expenseBreakdown: Map<String, Double> = emptyMap(),
     val totalLoan: Double = 0.0,
+    val totalBalance: Double = 0.0,
     val totalOfficeDays: Int = 0,
     val totalOffDays: Int = 0,
     val overtimeHours: Double = 0.0,

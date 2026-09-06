@@ -120,11 +120,11 @@ class SettingsViewModel(
             val context = getApplication<Application>()
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    val success = backupManager.exportToJson(outputStream)
-                    if (success) {
-                        _backupResult.emit("Backup successful")
+                    val result = backupManager.exportToJson(outputStream)
+                    if (result.success) {
+                        _backupResult.emit("Backup successful (${result.totalRows} records)")
                     } else {
-                        _backupResult.emit("Backup failed")
+                        _backupResult.emit("Backup failed: ${result.errorMessage}")
                     }
                 }
             } catch (e: Exception) {
@@ -138,8 +138,8 @@ class SettingsViewModel(
             val context = getApplication<Application>()
             try {
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val result = backupManager.importFromJson(inputStream)
-                    _restoreResult.emit(result)
+                    backupManager.importFromJson(inputStream)
+                    _restoreResult.emit(Result.success(Unit))
                 }
             } catch (e: Exception) {
                 _restoreResult.emit(Result.failure(e))

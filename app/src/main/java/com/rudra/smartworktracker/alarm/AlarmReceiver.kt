@@ -13,6 +13,7 @@ import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.rudra.smartworktracker.MainActivity
 import com.rudra.smartworktracker.R
+import com.rudra.smartworktracker.engine.InAppNotificationManager
 import com.rudra.smartworktracker.model.Schedule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,12 @@ class AlarmReceiver : BroadcastReceiver() {
             else -> {
                 // Regular alarm trigger
                 showAlarmNotification(context, title, scheduleId)
-                // The sound and vibration are now handled by AlarmActivity or the Notification itself
+                InAppNotificationManager.getInstance(context).showAlarm(
+                    title = "Alarm: $title",
+                    message = "Your scheduled alarm is ringing",
+                    referenceId = scheduleId.toString(),
+                    actionRoute = "scheduler"
+                )
             }
         }
     }

@@ -8,19 +8,18 @@ data class FinancialTransaction(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     
-    // UUID field for future primary key transition - Rule 1.1
     val uuid: String? = null,
 
     val type: TransactionType,
     val amount: Double,
-    val source: AccountType,
-    val destination: AccountType?,
+    val sourceAccountId: Long = 0,
+    val destinationAccountId: Long? = null,
     val note: String,
     val category: String? = null,
     val date: Long,
     val relatedLoanId: Int? = null,
+    val relatedCreditCardId: Int? = null,
 
-    // Audit fields - Rule 1.2
     override val createdAt: Long = System.currentTimeMillis(),
     override val updatedAt: Long = System.currentTimeMillis(),
     override val isDeleted: Boolean = false,

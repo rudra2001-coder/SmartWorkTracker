@@ -9,8 +9,12 @@ import com.rudra.smartworktracker.data.repository.SavingsRepository
 class SavingsViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SavingsViewModel::class.java)) {
-            val savingsDao = AppDatabase.getDatabase(application).savingsDao()
-            val savingsRepository = SavingsRepository(savingsDao)
+            val db = AppDatabase.getDatabase(application)
+            val savingsRepository = SavingsRepository(
+                db.savingsDao(),
+                db.accountDao(),
+                db.financialTransactionDao()
+            )
             @Suppress("UNCHECKED_CAST")
             return SavingsViewModel(savingsRepository) as T
         }

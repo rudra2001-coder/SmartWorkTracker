@@ -16,10 +16,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rudra.smartworktracker.model.RealityCategory
 import com.rudra.smartworktracker.model.RealityEntry
 import com.rudra.smartworktracker.model.RealityEntryType
+
+private val CardShape = RoundedCornerShape(20.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
+private val PillShape = RoundedCornerShape(50.dp)
+
+private val EmeraldGreen = Color(0xFF00C896)
+private val CoralRed = Color(0xFFFF5757)
+private val SapphireBlue = Color(0xFF3B82F6)
+private val GoldenAmber = Color(0xFFF59E0B)
+private val VioletPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,12 +67,12 @@ fun RealityTrackerScreen(
                 .padding(16.dp)
         ) {
             item {
-                Text(
-                    text = "Reality Tracker",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 16.dp)) {
+                    Box(modifier = Modifier.size(32.dp).background(brush = Brush.linearGradient(listOf(SapphireBlue, VioletPurple)), shape = RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Star, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                    Text("Reality Tracker", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             item {
@@ -74,18 +88,20 @@ fun RealityTrackerScreen(
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Your Entries",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(modifier = Modifier.size(24.dp).background(brush = Brush.linearGradient(listOf(GoldenAmber, CoralRed)), shape = RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.List, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    }
+                    Text("Your Entries", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
 
             if (entries.isEmpty()) {
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+                        shape = CardShape,
+                        elevation = CardDefaults.cardElevation(0.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -165,7 +181,9 @@ fun TimeRangeSelector(
 @Composable
 fun RealityStatsCard(stats: RealityStats) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
@@ -173,12 +191,12 @@ fun RealityStatsCard(stats: RealityStats) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = "Reality Check",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.size(24.dp).background(brush = Brush.linearGradient(listOf(EmeraldGreen, SapphireBlue)), shape = RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.BarChart, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                }
+                Text("Reality Check", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
@@ -286,7 +304,9 @@ fun RealityEntryItem(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().shadow(6.dp, CardShape, clip = false),
+        shape = CardShape,
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (entry.isCompleted)
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

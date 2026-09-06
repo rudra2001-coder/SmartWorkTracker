@@ -37,17 +37,52 @@ interface WorkLogDao {
     @Query("SELECT COUNT(*) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
     suspend fun countByType(monthYear: String, workType: WorkType): Int
 
+    @Query("SELECT COUNT(*) FROM work_logs WHERE date >= :startOfMonth AND date < :endOfMonth AND workType = :workType")
+    fun countByTypeInRange(startOfMonth: Long, endOfMonth: Long, workType: WorkType): Flow<Int>
+
+    @Query("SELECT * FROM work_logs WHERE date >= :startOfMonth AND date <= :endOfMonth")
+    suspend fun getWorkLogsInRange(startOfMonth: Long, endOfMonth: Long): List<WorkLog>
+
     @Query("SELECT * FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear")
     suspend fun getWorkLogsByMonth(monthYear: String): List<WorkLog>
 
-    @Query("SELECT SUM((strftime('%s', endTime) - strftime('%s', startTime)) / 3600.0) FROM work_logs WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear AND workType = :workType")
-    suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double?
+    @Query("""
+        SELECT COALESCE(SUM(
+            CAST(
+                (strftime('%s', '2000-01-01 ' || endTime || ':00') - strftime('%s', '2000-01-01 ' || startTime || ':00'))
+            AS REAL) / 3600.0
+        ), 0) FROM work_logs 
+        WHERE strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear 
+        AND workType = :workType 
+        AND startTime IS NOT NULL 
+        AND endTime IS NOT NULL
+    """)
+    suspend fun getTotalExtraHours(monthYear: String, workType: WorkType = WorkType.EXTRA_WORK): Double
+
+    @Query("""
+        SELECT COALESCE(SUM(
+            CAST(
+                (strftime('%s', '2000-01-01 ' || endTime || ':00') - strftime('%s', '2000-01-01 ' || startTime || ':00'))
+            AS REAL) / 3600.0
+        ), 0) FROM work_logs 
+        WHERE date >= :startOfMonth AND date < :endOfMonth 
+        AND workType = :workType 
+        AND startTime IS NOT NULL 
+        AND endTime IS NOT NULL
+    """)
+    fun getTotalExtraHoursInRange(startOfMonth: Long, endOfMonth: Long, workType: WorkType = WorkType.EXTRA_WORK): Flow<Double>
 
     @Query("SELECT * FROM work_logs WHERE isOvertime = 1 ORDER BY date DESC")
     fun getOvertimeLogs(): Flow<List<WorkLog>>
 
+    @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND date >= :startOfMonth AND date <= :endOfMonth ORDER BY date DESC")
+    fun getOvertimeLogsInRange(startOfMonth: Long, endOfMonth: Long): Flow<List<WorkLog>>
+
     @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND strftime('%Y-%m', date / 1000, 'unixepoch') = :monthYear ORDER BY date DESC")
     fun getOvertimeLogsByMonth(monthYear: String): Flow<List<WorkLog>>
+
+    @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND date >= :startOfYear AND date <= :endOfYear ORDER BY date DESC")
+    fun getOvertimeLogsInYearRange(startOfYear: Long, endOfYear: Long): Flow<List<WorkLog>>
 
     @Query("SELECT * FROM work_logs WHERE isOvertime = 1 AND strftime('%Y', date / 1000, 'unixepoch') = :year ORDER BY date DESC")
     fun getOvertimeLogsByYear(year: String): Flow<List<WorkLog>>
@@ -58,8 +93,8 @@ interface WorkLogDao {
     @Query("SELECT * FROM work_logs WHERE id = :id")
     fun getWorkLogById(id: Long): Flow<WorkLog?>
 
-    @Query("SELECT * FROM work_logs WHERE date(date / 1000, 'unixepoch') = date('now')")
-    fun getTodayWorkLog(): Flow<WorkLog?>
+    @Query("SELECT * FROM work_logs WHERE date >= :startOfDay AND date < :endOfDay")
+    fun getTodayWorkLog(startOfDay: Long, endOfDay: Long): Flow<WorkLog?>
 
     @Query("SELECT * FROM work_logs ORDER BY date DESC LIMIT :pageSize OFFSET :offset")
     fun getPaginatedWorkLogs(offset: Int, pageSize: Int): Flow<List<WorkLog>>

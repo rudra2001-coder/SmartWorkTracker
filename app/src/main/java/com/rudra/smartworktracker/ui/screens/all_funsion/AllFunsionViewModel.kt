@@ -51,6 +51,7 @@ class AllFunsionViewModel(application: Application) : AndroidViewModel(applicati
             NavigationItem.Habit,
             NavigationItem.Expense,
             NavigationItem.Income,
+            NavigationItem.Notifications,
             NavigationItem.Health,
             NavigationItem.Achievements,
             NavigationItem.Wisdom,
